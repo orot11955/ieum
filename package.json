@@ -3,12 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=24"
-  },
+  "engines": { "node": ">=24" },
   "scripts": {
-    "design:build": "node scripts/design/build.mjs",
-    "design:check": "node scripts/design/check.mjs",
+    "design:build": "node scripts/design/build.mjs && node scripts/design/themes.mjs",
+    "design:check": "node scripts/design/check.mjs && node scripts/design/themes.mjs --check",
     "design:test": "node --test scripts/design/test.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -24,7 +22,7 @@
     "@fastify/helmet": "13.1.1",
     "@fastify/multipart": "9.4.0",
     "@fastify/rate-limit": "10.3.0",
-    "@fastify/static": "8.3.0",
+    "@fastify/static": "10.1.4",
     "@tanstack/react-query": "5.103.2",
     "better-auth": "1.7.5",
     "drizzle-orm": "0.45.3",
@@ -48,7 +46,6 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "5.2.0",
-    "drizzle-kit": "0.31.11",
     "jsdom": "27.4.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
