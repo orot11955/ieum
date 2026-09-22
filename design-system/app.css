@@ -24,3 +24,5 @@
 .ieum-inline-code{font-family:var(--ieum-semantic-font-family-mono);font-size:var(--ieum-semantic-font-size-label);overflow-wrap:anywhere}
 .ieum-page-footer{margin-block-start:var(--ieum-semantic-space-8);padding-block:var(--ieum-semantic-space-4);border-block-start:var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-color-border-decorative)}
 .ieum-sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.ieum-product-navigation{display:flex;flex-direction:column;gap:var(--ieum-semantic-space-1)}
+@media(max-width:40rem){.ieum-product-navigation[data-open="false"]{display:none}.ieum-nav{padding:var(--ieum-semantic-space-4)}.ieum-brand{font-size:var(--ieum-semantic-font-size-heading)}}
