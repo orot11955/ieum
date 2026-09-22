@@ -1,2 +1,0 @@
-import {defineConfig} from '@playwright/test';
-export default defineConfig({testDir:'tests/e2e',fullyParallel:false,workers:1,timeout:60000,use:{baseURL:'http://127.0.0.1:5173',headless:true,trace:'retain-on-failure',screenshot:'only-on-failure',launchOptions:process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH,args:['--no-sandbox']}:{}},reporter:[['list'],['html',{open:'never'}]],webServer:{command:'node --import tsx scripts/e2e-server.ts',url:'http://127.0.0.1:5173',reuseExistingServer:!process.env.CI,timeout:120000}});
