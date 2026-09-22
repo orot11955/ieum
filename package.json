@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "design:build": "node scripts/design/build.mjs && node scripts/design/themes.mjs",
     "design:check": "node scripts/design/check.mjs && node scripts/design/themes.mjs --check",
