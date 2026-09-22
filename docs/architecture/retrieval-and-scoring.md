@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](../adr/0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # 후보 검색 · 점수 · 정책
 
 - 개정: 2026-09-22
@@ -143,4 +145,4 @@ Session은 사용자가 제공한 session ID와 당시 대화 이력으로만 �
 
 주요 reason code: `NO_CONTENT_EVIDENCE`, `LOW_COVERAGE`, `NO_CANDIDATES`, `INSUFFICIENT_INPUT`, `STALE_PROFILE`, `PROVIDER_TIMEOUT`, `INVALID_SCORE`, `PRIMARY_AMBIGUOUS`, `EXPLICIT_USER_COMMAND`.
 
-빈 입력, 모두 missing, measured zero, NaN/Infinity, 같은 점수, 단일 후보, 둘 다 유효한 맥락, 부정문, 오랜 맥락, 거대 hub, 원본 중복, 자기 자신 누수, provider fallback, primary 변경 피드백을 table-driven test로 고정한다. 메트릭 정의와 평가 분할은 [Core Lab 계획](../plan/core-lab-experiment-plan.md)을 따른다.
+빈 입력, 모두 missing, measured zero, NaN/Infinity, 같은 점수, 단일 후보, 둘 다 유효한 맥락, 부정문, 오랜 맥락, 거대 hub, 원본 중복, 자기 자신 누수, provider fallback, primary 변경 피드백을 table-driven test로 고정한다. 메트릭 정의와 평가 분할은 [Core Lab 계획](../plan/02-core-plan.md)을 따른다.

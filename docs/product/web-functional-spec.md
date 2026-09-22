@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](../adr/0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # 개인 관리 웹 · 기능 명세
 
 - 개정: 2026-09-22
@@ -95,4 +97,4 @@
 
 ## 9. 기능 명세의 완료 기준
 
-각 기능은 화면뿐 아니라 입력 검증·권한·상태 전이·실패·감사·복구·자동 테스트까지 포함해야 완료다. [웹 구조](../architecture/web-application-design.md), [인증·권한](../architecture/identity-and-access.md), [데이터·운영](../architecture/data-and-operations.md), [실행 순서](../plan/web-product-implementation-plan.md)가 세부 계약이다.
+각 기능은 화면뿐 아니라 입력 검증·권한·상태 전이·실패·감사·복구·자동 테스트까지 포함해야 완료다. [웹 구조](../architecture/web-application-design.md), [인증·권한](../architecture/identity-and-access.md), [데이터·운영](../architecture/data-and-operations.md), [실행 순서](../plan/04-web-plan.md)가 세부 계약이다.

@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # ADR 0006 · 작은 baseline 뒤에 의미 검색을 조기 비교한다
 
 - Status: Accepted
@@ -26,4 +28,4 @@ Semantic이 유효하지 않으면 제거 가능한 adapter로 남기고 단순 
 
 초기에 모델 artifact 관리와 비교 실험이 추가되지만, 제품 핵심의 의미 표현 가능성을 뒤로 미루지 않는다. UI·DB·오케스트레이션 확대 대신 가장 작은 실험으로 도입 여부를 결정한다.
 
-관련 계약: [검색·점수](../architecture/retrieval-and-scoring.md) · [실험 계획](../plan/core-lab-experiment-plan.md)
+관련 계약: [검색·점수](../architecture/retrieval-and-scoring.md) · [실험 계획](../plan/02-core-plan.md)

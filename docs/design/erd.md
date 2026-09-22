@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](../adr/0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # IEUM · ERD
 
 기준: 2026-09-22. 아래는 저장소에서 바로 읽는 관계 중심 Mermaid 도식이다. 전달 패키지에는 같은 논리 모델의 상세 속성 SVG 7개와 전체 개요, `schema.json`, DBML, 데이터 사전을 포함했다.
@@ -299,4 +301,4 @@ erDiagram
 
 ## 모델 해석의 주의점
 
-관계선의 존재만으로 권한·현재 상태·인용의 진실성이 증명되지는 않는다. 최신 READY, 마지막 Owner, context DAG, publication 공개 상태 등은 일반적인 행 CHECK나 FK만으로 해결하지 않는다. 실제 DB 적용과 동시성 검증은 [구현 계획](../plan/implementation-backlog.md)의 완료 조건이다.
+관계선의 존재만으로 권한·현재 상태·인용의 진실성이 증명되지는 않는다. 최신 READY, 마지막 Owner, context DAG, publication 공개 상태 등은 일반적인 행 CHECK나 FK만으로 해결하지 않는다. 실제 DB 적용과 동시성 검증은 [구현 계획](../plan/task-index.md)의 완료 조건이다.

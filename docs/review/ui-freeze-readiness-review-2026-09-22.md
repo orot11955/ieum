@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](../adr/0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # UI 고정 · 최종 착수 검토 결과
 
 - 기준 commit: `e0620a280aa6fd9f498c6f00feca47203e178f29`
@@ -43,6 +45,6 @@
 
 제품 목적, 앱/Core/Delivery 경계, 화면과 관계 모델, 권한·운영 요구, 시각 정본이 있어 작은 기반 구현의 입력은 충분하다. 계획의 I00/I01 실행 기반 순서, 위키 편집보다 늦었던 충돌 처리, auth vendor schema와 논리 ERD의 혼동, 전체 운영 기능의 과도한 선행을 보완했다.
 
-실행 순서는 [S0–S5](../plan/final-implementation-readiness.md)가 기준이다. S0는 최소 runtime/test harness와 실제 공유 UI wrapper, S1은 인증 통합 시험, S2는 첫 계정·개인 공간이다. Core 연구는 기존 M0/M1 트랙을 유지한다. 실제 인증·격리·RLS·발행·복원을 확인하기 전 공개 릴리스는 허용하지 않는다.
+실행 순서는 [S0–S5](../plan/01-master-roadmap.md)가 기준이다. S0는 최소 runtime/test harness와 실제 공유 UI wrapper, S1은 인증 통합 시험, S2는 첫 계정·개인 공간이다. Core 연구는 기존 M0/M1 트랙을 유지한다. 실제 인증·격리·RLS·발행·복원을 확인하기 전 공개 릴리스는 허용하지 않는다.
 
 이번 판단은 개발을 시작할 수 있다는 결론이지 제품 구현/배포를 실행했다는 보고가 아니다. required CI/branch protection은 저장소 관리 설정으로 별도 확인해야 한다.

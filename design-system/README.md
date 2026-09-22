@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../docs/plan/README.md)과 [ADR 0012](../docs/adr/0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # IEUM Paper Terminal 1.0.0
 
 내부 관리 웹의 고정 디자인 계약이다. 사용자가 제공한 크림·검정·형광 초록 컨셉을 해석했다. 제품 React UI/인증/DB/API를 구현한 패키지는 아니다.
@@ -27,7 +29,7 @@ build는 `tokens.css`, `ui.css`, `tokens.ts`를 생성한다. 이 파일들은 G
 
 제품 web entry가 생성한 tokens.css → ui.css 순으로 한 번만 import하도록 한다. 컴포넌트마다 복사하지 않는다. 포털은 같은 theme/density 경계에 둔다. 외부 블로그에 이 CSS 사용을 강제하지 않는다.
 
-상세: [디자인 계약](../docs/design/design-system-contract.md), [컴포넌트 상태](../docs/design/component-state-contract.md), [최종 구현 판단](../docs/plan/final-implementation-readiness.md).
+상세: [디자인 계약](../docs/design/design-system-contract.md), [컴포넌트 상태](../docs/design/component-state-contract.md), [최종 구현 판단](../docs/plan/01-master-roadmap.md).
 
 ## 고정과 변경
 

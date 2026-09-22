@@ -1,0 +1,43 @@
+# IEUM 제로베이스 실행 계획 · 1.1
+
+2026-09-23 KST · **main 채택 / 제품 구현 대기**
+
+이음의 최종 목표는 원본·출처 보존, 일정·할일·위키 관리, 관련 맥락 연결·분리·병합, 근거 있는 문서 정제, 승인 발행·Delivery API다. 외부 블로그는 별도다. Core 장애가 명시적 저장·완료·편집·발행을 막지 않는다.
+
+## 실행 정본
+
+**[backlog.json](backlog.json)이 75개 카드의 ID·범위·계약·검증·완료 기준·상태 정본이다.** 상세 문서의 카드 부분과 [task-index.md](task-index.md)는 여기서 생성한다. 수동으로 양쪽을 따로 수정하지 않는다.
+
+| 문서 | 책임 |
+|---|---|
+| [00 · 재검토/결정](00-repository-review-and-decisions.md) | 현재/역사적 기준선, 보존·재작성, 기술 결정 |
+| [01 · P0–P9](01-master-roadmap.md) | 구간과 통합 순서 |
+| [02 · Core](02-core-plan.md) | CORE-01–16 |
+| [03 · Backend](03-backend-plan.md) | BE-01–26 |
+| [04 · Web](04-web-plan.md) | FE-01–21, W01–W27 |
+| [05 · 데이터/API](05-data-api-and-state-contracts.md) | 수명·transaction·출처·공개 계약 |
+| [06 · 검증](06-testing-and-release-gates.md) | QA-01–09 및 품질·운영 gate |
+| [07 · 실행 지시](07-codex-execution-playbook.md) | main 전용 시작 지시, 커밋·보고 |
+| [08 · 출처/추적](08-sources-and-traceability.md) | 기존 계획의 출처·요구/화면 매핑 |
+
+BASE-01은 저장소 준비 완료다. 다음 구현은 **BASE-02 → BASE-03 → CORE-01–08**이다. 라이브러리 호환성 spike는 카드의 선행관계가 충족될 때만 진행한다. main 이외 브랜치·PR을 만들지 않는다.
+
+## 현재 실행 가능한 검사
+
+Node 24에서 패키지 설치 없이 실행한다.
+
+```sh
+node scripts/plan/render.mjs --check
+node scripts/plan/check.mjs
+node scripts/design/build.mjs
+node scripts/design/themes.mjs
+node --test scripts/design/test.mjs
+node scripts/design/check.mjs
+node scripts/design/themes.mjs --check
+```
+
+카드를 바꾼 경우 `node scripts/plan/render.mjs`로 파생 문서를 갱신한다. 제품의 pnpm workspace·typecheck·unit/integration/E2E·build·lab 명령은 BASE-02 이후 실제 구현한 시점에 추가한다.
+
+[상태와 제한](../status/project-state.md) · [실제 준비 증거](../evidence/base-01.md) · [문서 우선순위](../adr/0012-main-zero-base-execution.md)
+
+통합 Markdown/ZIP·기존 validation-report·SHA256SUMS는 배포 사본이므로 저장소에 중복 체크인하지 않는다. 최신 실행/검사 결과는 상태 문서와 CI가 기준이다.

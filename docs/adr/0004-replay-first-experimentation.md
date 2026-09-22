@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # ADR 0004 · 시점 기반 Replay와 검증 분리
 
 - Status: Accepted, revised
@@ -21,4 +23,4 @@ Replay는 M0/M1부터 1급 기능이다. query 당시 recordedAt snapshot, 입�
 
 라벨·snapshot·artifact 관리가 필요하지만 이를 판단 엔진의 핵심 비용으로 인정한다. 평가셋이 작거나 label이 불완전하면 불확실성을 표시하고 정확도 하나로 다음 기능을 정당화하지 않는다.
 
-기준 계약: [실험 계획](../plan/core-lab-experiment-plan.md) · [성능 측정](../architecture/runtime-and-performance.md)
+기준 계약: [실험 계획](../plan/02-core-plan.md) · [성능 측정](../architecture/runtime-and-performance.md)

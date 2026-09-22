@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](../adr/0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # 제품 목적과 범위
 
 - 개정: 2026-09-22, 내부 관리 앱 및 발행 API 범위 보완
@@ -90,4 +92,4 @@ Core Lab은 판단 알고리즘의 가능성을 먼저 검증하는 실험이다
 
 판단 정확도만 높거나 CLI Replay만 통과해도 제품이 완성된 것은 아니다. 수동 기본 기능의 완성, 판단 보조의 유효성, 문서 정제의 효용, 공개 경계의 안전성을 각각 평가한다.
 
-설계: [앱·코어·발행 경계](../architecture/application-and-publishing.md). 실험과 제품 구현 구분: [계획서](../plan/core-lab-experiment-plan.md).
+설계: [앱·코어·발행 경계](../architecture/application-and-publishing.md). 실험과 제품 구현 구분: [계획서](../plan/02-core-plan.md).

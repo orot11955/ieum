@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # ADR 0005 · V1 AI 일괄 배제 — 대체됨
 
 - Status: Superseded
@@ -20,4 +22,4 @@
 
 ## 더 이상 적용하지 않는 부분
 
-`V1이므로 embedding 자체 금지`, `lexical 정확도 gate 통과 전 semantic 실험 금지`, `AI는 최종 evaluator에만 추가 가능`은 현재 규칙이 아니다. embedding은 retrieval 단계에서도 사용 가능하다. 최신 범위는 [ADR 0006](0006-early-semantic-experiments.md)과 [계획서](../plan/core-lab-experiment-plan.md)를 따른다.
+`V1이므로 embedding 자체 금지`, `lexical 정확도 gate 통과 전 semantic 실험 금지`, `AI는 최종 evaluator에만 추가 가능`은 현재 규칙이 아니다. embedding은 retrieval 단계에서도 사용 가능하다. 최신 범위는 [ADR 0006](0006-early-semantic-experiments.md)과 [계획서](../plan/02-core-plan.md)를 따른다.

@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # ADR 0009 · 화면·버전·관계 계약을 구현 기준으로 사용한다
 
 - Status: Accepted for implementation planning
@@ -16,7 +18,7 @@ Project는 context.kind로, Wiki/Article/Note는 document.kind와 공통 draft/r
 
 ## Authoritative detail
 
-[화면](../design/wireframes.md), [ERD](../design/erd.md), [schema 계약](../design/schema-contracts.md)이 기존 대표 필드 표보다 구체적인 기준이다. [검토](../review/wireframe-erd-review-2026-09-22.md)의 R01–R18과 [구현 백로그](../plan/implementation-backlog.md)의 I00–I14를 연결한다.
+[화면](../design/wireframes.md), [ERD](../design/erd.md), [schema 계약](../design/schema-contracts.md)이 기존 대표 필드 표보다 구체적인 기준이다. [검토](../review/wireframe-erd-review-2026-09-22.md)의 R01–R18과 [구현 백로그](../plan/task-index.md)의 I00–I14를 연결한다.
 
 ## Consequences
 

@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # ADR 0010 · Paper Terminal 디자인 고정과 구현 착수 경계
 
 - Status: Accepted for UI implementation
@@ -11,6 +13,6 @@
 
 token 검사와 source guard, 반례 테스트, CI workflow를 제공한다. branch protection은 별도이며, scanner만으로 모든 CSS/JSX 변형과 접근성을 보장하지 않는다. 제품 UI wrapper와 AST lint/시각 회귀가 구현 완료 조건이다.
 
-최종 판단은 **첫 제품 기반 구현 GO, 공개 운영 NO-GO**다. 실제 auth 통합·Workspace 격리·DB/발행 제약은 구현 중 검증해야 한다. 기존 I00/I01 순서의 실행 기반 문제와 I07 편집→I10 충돌 처리 순서를 보완한다. 최신 진입점은 [S0–S5 구현 판단](../plan/final-implementation-readiness.md)이며 기존 I00–I14를 삭제하지 않고 구체화한다. Core 연구 지시는 여전히 M0/M1이다.
+최종 판단은 **첫 제품 기반 구현 GO, 공개 운영 NO-GO**다. 실제 auth 통합·Workspace 격리·DB/발행 제약은 구현 중 검증해야 한다. 기존 I00/I01 순서의 실행 기반 문제와 I07 편집→I10 충돌 처리 순서를 보완한다. 최신 진입점은 [S0–S5 구현 판단](../plan/01-master-roadmap.md)이며 기존 I00–I14를 삭제하지 않고 구체화한다. Core 연구 지시는 여전히 M0/M1이다.
 
 이번 변경은 디자인 자산/검사/설계 문서 작업이다. 제품 React 앱·관리 API·migration·서비스 배포를 수행하지 않았다.

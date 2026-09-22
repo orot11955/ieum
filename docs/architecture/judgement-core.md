@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](../adr/0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # Judgement Core · 전체 구조
 
 - 개정: 2026-09-22
@@ -65,7 +67,7 @@ apps/api / apps/lab-web
 
 Core에 Fastify, React, Drizzle, pg, fetch, 모델 SDK를 import하지 않는다. Core의 evaluator는 DB를 직접 조회하지 않는다. 애플리케이션 계층이 필요한 데이터를 배치 준비한 뒤 동기적 계산 함수를 호출한다. 모듈 분리는 책임의 분리이지 microservice 분리가 아니다.
 
-첫 구현의 실제 폴더 수는 [계획서](../plan/core-lab-experiment-plan.md)를 따른다. ORM 모델을 Core 타입으로 노출하지 않는다.
+첫 구현의 실제 폴더 수는 [계획서](../plan/02-core-plan.md)를 따른다. ORM 모델을 Core 타입으로 노출하지 않는다.
 
 ## 4. 공통 계약
 
@@ -143,4 +145,4 @@ Attachment는 다중 라벨 문제다. A/B 둘 다 관련 있으면 둘 다 제�
 
 ## 9. 다음 문서의 책임
 
-[도메인 모델](domain-model.md)은 보존/변경 불변식을, [후보 검색·점수](retrieval-and-scoring.md)는 실제 계산과 실험 설정을, [구조·파생](structure-and-derivation.md)은 느린 분석과 글 정제의 계약을 정의한다. 성능 수치는 [런타임 문서](runtime-and-performance.md), 성공 지표와 데이터 분할은 [계획서](../plan/core-lab-experiment-plan.md)가 기준이다.
+[도메인 모델](domain-model.md)은 보존/변경 불변식을, [후보 검색·점수](retrieval-and-scoring.md)는 실제 계산과 실험 설정을, [구조·파생](structure-and-derivation.md)은 느린 분석과 글 정제의 계약을 정의한다. 성능 수치는 [런타임 문서](runtime-and-performance.md), 성공 지표와 데이터 분할은 [계획서](../plan/02-core-plan.md)가 기준이다.

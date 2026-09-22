@@ -1,3 +1,5 @@
+> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+
 # ADR 0008 · 개인 웹 기반과 계정·데이터·공개 경계
 
 - Status: Accepted for implementation planning
@@ -28,4 +30,4 @@
 
 M0/M1 Core Lab 기본 범위는 그대로다. 실제 웹 기반은 M3-A/F, 개인 관리는 M3-B/P, 문서는 M4/D, 발행은 M5/R로 구분한다. 기본 수동 기능을 Core 품질에 종속시키지 않지만 실제 사용자 웹의 인증·복구·운영 gate는 생략하지 않는다.
 
-세부 기준: [기능 명세](../product/web-functional-spec.md) · [인증·권한](../architecture/identity-and-access.md) · [웹 구조](../architecture/web-application-design.md) · [데이터·운영](../architecture/data-and-operations.md) · [제품 구현 계획](../plan/web-product-implementation-plan.md).
+세부 기준: [기능 명세](../product/web-functional-spec.md) · [인증·권한](../architecture/identity-and-access.md) · [웹 구조](../architecture/web-application-design.md) · [데이터·운영](../architecture/data-and-operations.md) · [제품 구현 계획](../plan/04-web-plan.md).

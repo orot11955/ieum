@@ -1,0 +1,173 @@
+{
+  "base_commit": "f4ccbc233aa5c62f3310e00d483c2115f145876a",
+  "branch": "main",
+  "scope": "source/documentation preparation only",
+  "deleted": [
+    {
+      "path": ".github/workflows/apply-product-stage.yml",
+      "previous_blob": "8e1cb0be77a339bbae9ba5e6fcd7bb70a0a71913",
+      "reason": "이전 제품 패치를 다른 브랜치에 자동 재적용"
+    },
+    {
+      "path": ".github/workflows/dependency-bootstrap.yml",
+      "previous_blob": "bf5bf723e8a4dce63b3eaf16768782bbdd426b0a",
+      "reason": "이전 브랜치 패키지 설치·자동 커밋"
+    },
+    {
+      "path": ".github/workflows/product-ci.yml",
+      "previous_blob": "7037658954bbda583a5b11b94aeb180232cf1838",
+      "reason": "없는 API/build/DB/E2E 경로를 실행"
+    },
+    {
+      "path": ".github/workflows/design-contract.yml",
+      "previous_blob": "e07876dc53fb3b6fd4e0dc7bb8cd520447b47c9d",
+      "reason": "새 main 준비 CI로 통합"
+    },
+    {
+      "path": "package-lock.json",
+      "previous_blob": "b00a495630141e794c364b22f102782d8f3dc013",
+      "reason": "제거된 제품 의존성의 npm lock; BASE-02에서 검증한 pnpm workspace/lock 생성"
+    },
+    {
+      "path": "apps/web/index.html",
+      "previous_blob": "5cfd44b96f7666bc86733cf3da2cf16e832861ce",
+      "reason": "제품 entrypoint 없는 HTML shell"
+    },
+    {
+      "path": "apps/web/vite.config.ts",
+      "previous_blob": "4dba9e37f25ea5a3e8990183dbe6740a524ebe65",
+      "reason": "제품 web 실행 설정 잔여; FE-01에 실제 harness와 함께 생성"
+    },
+    {
+      "path": "tsconfig.json",
+      "previous_blob": "fd9d5209d009b5d821dcc2710561719874347d1b",
+      "reason": "구형 root 전체 앱 설정; BASE-02 package별 경계로 재구성"
+    },
+    {
+      "path": "vitest.config.ts",
+      "previous_blob": "52e99306fd0be33e62f6ae98adb470677772a7c3",
+      "reason": "구형 제품 test harness; 유효한 theme test 원본은 보존"
+    },
+    {
+      "path": "docs/plan/core-lab-experiment-plan.md",
+      "previous_blob": "31ca6784f679d4fdba578fc33032e6cc52a851ab",
+      "reason": "CORE/QA 상세 카드와 새 계획에 통합"
+    },
+    {
+      "path": "docs/plan/final-implementation-readiness.md",
+      "previous_blob": "f8ba662fc7a7d007dcda912195f493e9a09ceccc",
+      "reason": "S0-S5 과거 착수 판정이 P0-P9와 충돌"
+    },
+    {
+      "path": "docs/plan/implementation-backlog.md",
+      "previous_blob": "e1ebdae7c784345e57cbee8bcc5f7a36d6d60e9e",
+      "reason": "I00-I14 대신 75개 canonical backlog 사용"
+    },
+    {
+      "path": "docs/plan/web-product-implementation-plan.md",
+      "previous_blob": "c5048226450c7974acb29ae030b868378b04077e",
+      "reason": "새 BE/FE 구간별 계획으로 대체"
+    }
+  ],
+  "preserved_assets": [
+    {
+      "path": "design-system/ieum.tokens.json",
+      "blob": "c438f55febc5e26f2fb7845a484da6928c3b3dd0"
+    },
+    {
+      "path": "design-system/themes.json",
+      "blob": "cb1224f0a26ed540b61de038979dc1d6e3fe1ee2"
+    },
+    {
+      "path": "design-system/baseline.lock.json",
+      "blob": "341ec1f7ea003492de90b12159a0ef70d2d11425"
+    },
+    {
+      "path": "design-system/themes.lock.json",
+      "blob": "c44a15796b4f59554c010279a478f7b684eb42f4"
+    },
+    {
+      "path": "design-system/recipes.css.in",
+      "blob": "d2fa5297cff3363da5b7b912366ed05d9eed6be6"
+    },
+    {
+      "path": "design-system/component-contracts.ts",
+      "blob": "bf7fe4aaeec96a8ffa2436cde72aff6c67543ecc"
+    },
+    {
+      "path": "design-system/app.css",
+      "blob": "157d469a0af1fbda1fc39471425ff4129e585728"
+    },
+    {
+      "path": "design-system/reference.html",
+      "blob": "8492103cc81ccaba02abce53983a90701ee1a978"
+    },
+    {
+      "path": "design-system/reference.mjs",
+      "blob": "d9d3aecc46e13ceabc2a1a747a2b3992e7b9eea3"
+    },
+    {
+      "path": "design-system/policy.json",
+      "blob": "f08fe2256f41cd53850104d357f22c944cc2ce6b"
+    },
+    {
+      "path": "design-system/screen-matrix.json",
+      "blob": "6424d2e81915335418dd392a57cb545d3a0b86df"
+    },
+    {
+      "path": "packages/ui/src/index.tsx",
+      "blob": "f8146f8f6301b06e93ca37f980a09a30bc9ae1a6"
+    },
+    {
+      "path": "packages/ui/src/theme.tsx",
+      "blob": "8d23ba5e40e784e68126c53392b4446ad6d4a13d"
+    },
+    {
+      "path": "apps/web/public/theme-init.js",
+      "blob": "3e7322d35289b16910ba7d6046f45c98064555fc"
+    },
+    {
+      "path": "tests/unit/theme.test.ts",
+      "blob": "70a39d3b7f04ce77b17fce50459cfd495cb47bc5"
+    },
+    {
+      "path": "scripts/design/build.mjs",
+      "blob": "ab276417a94f9204b4b6ff8d6fa96c36791835e7"
+    },
+    {
+      "path": "scripts/design/check.mjs",
+      "blob": "51f535afccc7f0352ef1a4ab26c48db0c6cbd26e"
+    },
+    {
+      "path": "scripts/design/guard.mjs",
+      "blob": "7941bdb6c1aeaa3641fc4cd1dfaf225c89a28faa"
+    },
+    {
+      "path": "scripts/design/test.mjs",
+      "blob": "3211dddea5b824b483a96129df7433c5db3c1cef"
+    },
+    {
+      "path": "scripts/design/themes.mjs",
+      "blob": "d103a07a2bcbbfdef56c1534a42ead9f27ca7c26"
+    }
+  ],
+  "preserved_reference_directories": [
+    "docs/product",
+    "docs/architecture",
+    "docs/design",
+    "docs/review",
+    "docs/adr"
+  ],
+  "rewritten": [
+    "README.md",
+    "AGENTS.md",
+    "package.json",
+    ".gitignore"
+  ],
+  "not_touched": [
+    "production database",
+    "deployment",
+    "user device working tree",
+    "repository branch protection"
+  ]
+}
