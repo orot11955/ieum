@@ -1,0 +1,119 @@
+/* Central recipes. Only this layer may compose appearance; page CSS is layout-only.
+   Breakpoints are compiled from ieum.tokens.json. Never ship this .in file as CSS. */
+* { box-sizing: border-box; }
+html { color-scheme: light; font-size: 100%; scroll-padding-block: var(--ieum-semantic-space-6); }
+body { margin: 0; background: var(--ieum-semantic-color-canvas); color: var(--ieum-semantic-color-text); font-family: var(--ieum-semantic-font-family-body); font-size: var(--ieum-semantic-font-size-body); line-height: var(--ieum-semantic-font-line-ui); }
+button, input, textarea, select { font: inherit; }
+button, a, input, textarea, select, summary { -webkit-tap-highlight-color: transparent; }
+a { color: var(--ieum-semantic-color-link); text-decoration: underline; text-underline-offset: var(--ieum-semantic-border-strong); }
+a:visited { color: var(--ieum-semantic-color-link-visited); }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: var(--ieum-semantic-font-size-heading); line-height: var(--ieum-semantic-font-line-heading); font-weight: var(--ieum-semantic-font-weight-strong); overflow-wrap: anywhere; }
+h2 { font-size: var(--ieum-semantic-font-size-section); line-height: var(--ieum-semantic-font-line-heading); font-weight: var(--ieum-semantic-font-weight-strong); }
+h3 { font-size: var(--ieum-semantic-font-size-body); font-weight: var(--ieum-semantic-font-weight-strong); }
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible { outline: var(--ieum-semantic-border-strong) solid var(--ieum-semantic-color-focus); outline-offset: var(--ieum-semantic-border-strong); scroll-margin-block: var(--ieum-semantic-space-6); }
+::selection { background: var(--ieum-semantic-color-selection); color: var(--ieum-semantic-color-on-selection); }
+body [hidden] { display: none; }
+.ieum-skip { position: fixed; inset-inline-start: var(--ieum-semantic-space-4); inset-block-start: var(--ieum-semantic-space-4); z-index: var(--ieum-semantic-layer-toast); padding: var(--ieum-semantic-space-3); background: var(--ieum-semantic-color-panel); transform: translateY(-200%); }
+.ieum-skip:focus { transform: none; }
+.ieum-shell { display: grid; grid-template-columns: var(--ieum-semantic-layout-nav) minmax(0,1fr); min-height: 100dvh; }
+.ieum-nav { border-inline-end: var(--ieum-semantic-border-regular) solid var(--ieum-semantic-color-border-strong); padding: var(--ieum-semantic-space-6) var(--ieum-semantic-space-4); display: flex; flex-direction: column; gap: var(--ieum-semantic-space-2); }
+.ieum-brand { font-family: var(--ieum-semantic-font-family-mono); font-weight: var(--ieum-semantic-font-weight-display); font-size: var(--ieum-semantic-font-size-display); line-height: var(--ieum-semantic-font-line-tight); margin-block-end: var(--ieum-semantic-space-2); }
+.ieum-nav a { display: flex; align-items: center; min-height: var(--ieum-semantic-control-standard); padding: var(--ieum-semantic-space-2) var(--ieum-semantic-space-3); border: var(--ieum-semantic-border-regular) solid transparent; text-decoration: none; color: var(--ieum-semantic-color-text); }
+.ieum-nav a[aria-current="page"] { background: var(--ieum-component-nav-selected); color: var(--ieum-component-nav-selected-fg); border-color: var(--ieum-semantic-color-border-strong); font-weight: var(--ieum-semantic-font-weight-strong); }
+.ieum-main { min-width: 0; padding: var(--ieum-semantic-space-8); }
+.ieum-stack { display: flex; flex-direction: column; gap: var(--ieum-semantic-space-4); }
+.ieum-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ieum-semantic-space-3); }
+.ieum-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--ieum-semantic-space-6); }
+.ieum-split { display: grid; grid-template-columns: minmax(0,1fr) var(--ieum-semantic-layout-aside); gap: var(--ieum-semantic-space-6); }
+.ieum-rule { inline-size: 100%; margin-inline: 0; border: 0; border-block-start: var(--ieum-semantic-border-regular) dotted var(--ieum-semantic-color-border); margin-block: var(--ieum-semantic-space-6); }
+.ieum-kicker { font-family: var(--ieum-semantic-font-family-mono); font-size: var(--ieum-semantic-font-size-label); color: var(--ieum-semantic-color-text-secondary); }
+.ieum-help { font-size: var(--ieum-semantic-font-size-helper); color: var(--ieum-semantic-color-text-secondary); overflow-wrap: anywhere; }
+.ieum-card { min-width: 0; border: var(--ieum-semantic-border-regular) solid var(--ieum-component-card-border); border-radius: var(--ieum-component-card-radius); background: var(--ieum-component-card-bg); }
+.ieum-card > header { background: var(--ieum-component-card-header); border-block-end: var(--ieum-semantic-border-hairline) solid var(--ieum-component-card-border); padding: var(--ieum-semantic-space-3) var(--ieum-semantic-space-4); }
+.ieum-pad { padding: var(--ieum-semantic-space-5); }
+.ieum-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--ieum-semantic-space-2); min-block-size: var(--ieum-component-button-height); padding: var(--ieum-semantic-space-2) var(--ieum-semantic-space-4); background: var(--ieum-component-button-secondary-bg); color: var(--ieum-component-button-secondary-fg); border: var(--ieum-semantic-border-regular) solid var(--ieum-component-button-border); border-radius: var(--ieum-component-button-radius); box-shadow: var(--ieum-component-button-shadow); text-decoration: none; font-weight: var(--ieum-semantic-font-weight-strong); cursor: pointer; white-space: normal; overflow-wrap: anywhere; transition: background-color var(--ieum-semantic-motion-fast) var(--ieum-semantic-motion-ease); }
+.ieum-button[data-variant="primary"] { background: var(--ieum-component-button-primary-bg); color: var(--ieum-component-button-primary-fg); }
+.ieum-button[data-variant="danger"] { background: var(--ieum-component-button-danger-bg); color: var(--ieum-component-button-danger-fg); }
+.ieum-button[data-variant="ghost"] { box-shadow: none; background: transparent; border-color: transparent; text-decoration: underline; }
+.ieum-button[data-icon-only] { min-inline-size: var(--ieum-component-button-height); padding-inline: var(--ieum-semantic-space-2); }
+@media (hover:hover) and (pointer:fine) {
+ .ieum-button:not(:disabled):not([aria-disabled="true"]):hover { background: var(--ieum-component-button-secondary-hover); }
+ .ieum-button[data-variant="primary"]:not(:disabled):not([aria-disabled="true"]):hover { background: var(--ieum-component-button-primary-hover); }
+ .ieum-button[data-variant="danger"]:not(:disabled):not([aria-disabled="true"]):hover { background: var(--ieum-component-button-danger-hover); }
+ .ieum-field:not(:disabled):not([readonly]):not([aria-invalid="true"]):hover { border-color: var(--ieum-component-field-hover); }
+ tr:not([aria-selected="true"]):hover { background: var(--ieum-component-row-hover); }
+}
+.ieum-button:not(:disabled):not([aria-disabled="true"]):active { background: var(--ieum-component-button-secondary-active); box-shadow: none; transform: translate(var(--ieum-semantic-border-regular),var(--ieum-semantic-border-regular)); }
+.ieum-button[data-variant="primary"]:not(:disabled):not([aria-disabled="true"]):active { background: var(--ieum-component-button-primary-active); }
+.ieum-button[data-variant="danger"]:not(:disabled):not([aria-disabled="true"]):active { background: var(--ieum-component-button-danger-active); }
+.ieum-button:disabled, .ieum-button[aria-disabled="true"] { background: var(--ieum-component-button-disabled-bg); color: var(--ieum-component-button-disabled-fg); box-shadow: none; cursor: not-allowed; transform: none; }
+.ieum-button[data-loading="true"] { cursor: progress; }
+.ieum-label { display: flex; flex-direction: column; gap: var(--ieum-semantic-space-2); font-size: var(--ieum-semantic-font-size-label); font-weight: var(--ieum-semantic-font-weight-strong); min-width: 0; }
+.ieum-field { width: 100%; min-block-size: var(--ieum-component-field-height); border: var(--ieum-semantic-border-regular) solid var(--ieum-component-field-border); border-radius: var(--ieum-component-field-radius); padding: var(--ieum-semantic-space-2) var(--ieum-semantic-space-3); background: var(--ieum-component-field-bg); color: var(--ieum-component-field-fg); font-size: var(--ieum-semantic-font-size-body); font-weight: var(--ieum-semantic-font-weight-normal); }
+.ieum-field::placeholder { color: var(--ieum-component-field-placeholder); opacity: 1; }
+.ieum-field[readonly] { background: var(--ieum-component-field-readonly); cursor: text; }
+.ieum-field:disabled { background: var(--ieum-component-field-disabled); color: var(--ieum-semantic-color-disabled-text); cursor: not-allowed; }
+.ieum-field[aria-invalid="true"] { border-color: var(--ieum-component-field-invalid); }
+.ieum-error { color: var(--ieum-semantic-status-danger-fg); font-size: var(--ieum-semantic-font-size-helper); }
+.ieum-check { display: inline-flex; gap: var(--ieum-semantic-space-2); align-items: center; min-block-size: var(--ieum-semantic-control-standard); padding: var(--ieum-semantic-space-2); }
+.ieum-check input { accent-color: var(--ieum-semantic-color-text); width: var(--ieum-semantic-space-5); height: var(--ieum-semantic-space-5); flex: none; }
+.ieum-chip { display: inline-flex; align-items: center; gap: var(--ieum-semantic-space-2); padding: var(--ieum-semantic-space-1) var(--ieum-semantic-space-2); background: var(--ieum-component-chip-bg); color: var(--ieum-component-chip-fg); border: var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-color-border); border-radius: var(--ieum-semantic-radius-control); font-size: var(--ieum-semantic-font-size-label); }
+button.ieum-chip { min-block-size: var(--ieum-semantic-control-standard); cursor: pointer; }
+.ieum-chip[aria-pressed="true"] { background: var(--ieum-component-chip-selected); border-color: var(--ieum-semantic-color-border-strong); font-weight: var(--ieum-semantic-font-weight-strong); }
+.ieum-status, .ieum-notice { color: var(--ieum-semantic-status-neutral-fg); background: var(--ieum-semantic-status-neutral-bg); border: var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-status-neutral-border); border-radius: var(--ieum-semantic-radius-control); }
+.ieum-status { display: inline-block; padding: var(--ieum-semantic-space-1) var(--ieum-semantic-space-2); font-size: var(--ieum-semantic-font-size-label); }
+.ieum-notice { padding: var(--ieum-semantic-space-3) var(--ieum-semantic-space-4); border-inline-start-width: var(--ieum-semantic-border-strong); overflow-wrap: anywhere; }
+[data-tone="success"] { color: var(--ieum-semantic-status-success-fg); background: var(--ieum-semantic-status-success-bg); border-color: var(--ieum-semantic-status-success-border); }
+[data-tone="warning"] { color: var(--ieum-semantic-status-warning-fg); background: var(--ieum-semantic-status-warning-bg); border-color: var(--ieum-semantic-status-warning-border); }
+[data-tone="danger"] { color: var(--ieum-semantic-status-danger-fg); background: var(--ieum-semantic-status-danger-bg); border-color: var(--ieum-semantic-status-danger-border); }
+[data-tone="info"] { color: var(--ieum-semantic-status-info-fg); background: var(--ieum-semantic-status-info-bg); border-color: var(--ieum-semantic-status-info-border); }
+.ieum-table-wrap { overflow-x: auto; max-width: 100%; padding: var(--ieum-semantic-space-2); }
+.ieum-table { border-collapse: collapse; inline-size: 100%; font-size: var(--ieum-semantic-font-size-label); font-variant-numeric: tabular-nums; }
+.ieum-table th, .ieum-table td { padding: var(--ieum-semantic-space-3); text-align: start; border-block-end: var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-color-border-decorative); overflow-wrap: anywhere; }
+.ieum-table th { color: var(--ieum-semantic-color-text); background: var(--ieum-semantic-color-subtle); border-block-end-color: var(--ieum-semantic-color-border); }
+.ieum-table tr[aria-selected="true"] { background: var(--ieum-component-row-selected); color: var(--ieum-component-row-selected-fg); }
+.ieum-editor { min-block-size: var(--ieum-semantic-layout-aside); resize: vertical; line-height: var(--ieum-component-editor-line); background: var(--ieum-component-editor-bg); font-size: var(--ieum-component-editor-body-size); }
+.ieum-prose { max-inline-size: var(--ieum-semantic-layout-reading); line-height: var(--ieum-semantic-font-line-reading); overflow-wrap: anywhere; }
+.ieum-prose pre { max-width: 100%; overflow: auto; white-space: pre; background: var(--ieum-component-code-bg); color: var(--ieum-component-code-fg); padding: var(--ieum-semantic-space-4); font-family: var(--ieum-semantic-font-family-mono); font-size: var(--ieum-semantic-font-size-label); }
+.ieum-prose blockquote { margin-inline: 0; border-inline-start: var(--ieum-semantic-border-strong) solid var(--ieum-semantic-color-border); padding-inline-start: var(--ieum-semantic-space-4); }
+.ieum-dialog { max-inline-size: min(var(--ieum-semantic-layout-dialog), calc(100% - var(--ieum-semantic-space-8))); max-block-size: calc(100dvh - var(--ieum-semantic-space-8)); overflow: auto; border: var(--ieum-semantic-border-regular) solid var(--ieum-semantic-color-border-strong); border-radius: var(--ieum-semantic-radius-panel); padding: var(--ieum-semantic-space-6); background: var(--ieum-component-dialog-bg); color: var(--ieum-semantic-color-text); box-shadow: var(--ieum-component-dialog-shadow); }
+.ieum-dialog::backdrop { background: var(--ieum-semantic-color-overlay); }
+.ieum-auth { max-width: var(--ieum-semantic-layout-auth); margin-inline: auto; }
+.ieum-progress { width: 100%; height: var(--ieum-semantic-space-3); accent-color: var(--ieum-semantic-color-text); }
+@media (min-width: __IEUM_SMALL__) and (pointer: fine) {
+ [data-density="compact"] { --ieum-component-button-height: var(--ieum-semantic-control-compact); --ieum-component-field-height: var(--ieum-semantic-control-compact); }
+ [data-density="compact"] .ieum-table td { padding-block: var(--ieum-semantic-space-2); }
+}
+@media (max-width: __IEUM_WIDE__) { .ieum-split { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: __IEUM_SMALL__) {
+ .ieum-shell, .ieum-grid { grid-template-columns: minmax(0,1fr); }
+ .ieum-nav { border-inline-end: 0; border-block-end: var(--ieum-semantic-border-regular) solid var(--ieum-semantic-color-border-strong); }
+ .ieum-main { padding: var(--ieum-semantic-space-4); }
+ .ieum-dialog { padding: var(--ieum-semantic-space-4); }
+}
+@media (pointer: coarse), (max-width: __IEUM_SMALL__) {
+ :root { --ieum-component-button-height: var(--ieum-semantic-control-touch); --ieum-component-field-height: var(--ieum-semantic-control-touch); }
+ .ieum-check, button.ieum-chip, .ieum-nav a { min-block-size: var(--ieum-semantic-control-touch); }
+}
+@media (prefers-reduced-motion: reduce) {
+ :root { --ieum-semantic-motion-fast: var(--ieum-semantic-motion-instant); --ieum-semantic-motion-normal: var(--ieum-semantic-motion-instant); --ieum-semantic-motion-slow: var(--ieum-semantic-motion-instant); }
+ *, *::before, *::after { animation: none; transition: none; scroll-behavior: auto; }
+ .ieum-button { transition: none; }
+ .ieum-button:not(:disabled):not([aria-disabled="true"]):active { transform: none; }
+}
+@media (forced-colors: active) {
+ body, .ieum-card, .ieum-field, .ieum-dialog, .ieum-notice, .ieum-status, .ieum-nav a { background: Canvas; color: CanvasText; border-color: CanvasText; box-shadow: none; }
+ .ieum-button, button.ieum-chip { background: ButtonFace; color: ButtonText; border-color: ButtonText; box-shadow: none; }
+ .ieum-button:disabled, .ieum-button[aria-disabled="true"], .ieum-field:disabled { color: GrayText; border-color: GrayText; }
+ .ieum-nav a[aria-current="page"], .ieum-chip[aria-pressed="true"] { outline: var(--ieum-semantic-border-regular) solid Highlight; }
+ :where(button,a,input,select,textarea,summary,[tabindex]):focus-visible { outline-color: Highlight; }
+ a { color: LinkText; }
+}
+@media print {
+ .ieum-nav, .ieum-skip, [data-no-print] { display: none; }
+ .ieum-shell, .ieum-grid, .ieum-split { display: block; }
+ body { background: white; color: black; }
+ .ieum-card, .ieum-dialog { box-shadow: none; break-inside: avoid; }
+ .ieum-main { padding: 0; }
+}

@@ -1,0 +1,4 @@
+# Reproducible build outputs. Included in the downloadable package, not authored in Git.
+/tokens.css
+/ui.css
+/tokens.ts

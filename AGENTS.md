@@ -2,23 +2,32 @@
 
 이 파일은 저장소 구현 지침이다. 제품 요구, 세부 설계, 실험 결과를 대신하지 않는다.
 
+## 최신 디자인과 제품 착수 기준
+
+내부 UI는 **Paper Terminal 1.0.0**으로 고정한다. [토큰 정본](design-system/ieum.tokens.json), [디자인 계약](docs/design/design-system-contract.md), [컴포넌트 상태](docs/design/component-state-contract.md), [27개 화면 매핑](design-system/screen-matrix.json)을 먼저 읽는다. 이전 파란색 이미지나 각 워커의 선호 스타일을 적용하지 않는다.
+
+제품 구현 시작 지시에는 [최신 S0–S5 계획](docs/plan/final-implementation-readiness.md)을 적용한다. S0 최소 실행/테스트 기반+공통 UI, S1 auth spike, S2 첫 계정/개인 공간이다. 기존 I01/I00의 선행 관계를 이 순서로 해석하고, 위키 자동저장/IME/충돌은 I07부터 처리한다. 설계/착수 판단 요청은 제품 구현 또는 공개 배포 승인과 다르다.
+
+primitive/hex/임의 px·radius·shadow/inline appearance/Tailwind 임의값/!important/화면별 token override를 쓰지 않는다. UI는 공유 wrapper의 intent/tone/density/state를 사용한다. 외부 에디터·picker·toast는 공통 adapter로 정규화한다. page CSS는 배치 중심으로 둔다. source guard는 제한된 scanner이므로 AST lint와 상태 gallery/시각 회귀를 실제 FE 단계에서 추가한다.
+
+변경은 원본→공통 recipe→검사→승인된 버전/lock 순으로 수행한다. lock만 갱신해 경고를 지우거나 생성 CSS/TS를 직접 수정하지 않는다. 변경한 화면에 invalid+focus/hover, disabled/readOnly, busy, long text/IME, narrow/keyboard/reduced-motion/forced-colors를 점검한다. CI는 required check로 연결해야 merge 차단이 된다는 사실을 구분한다.
+
 ## 먼저 읽을 문서
 
 - [README](README.md), [제품 목적](docs/product/vision-and-scope.md), [앱·발행 경계](docs/architecture/application-and-publishing.md)
 - Core 작업: [Core 구조](docs/architecture/judgement-core.md), [실험 계획](docs/plan/core-lab-experiment-plan.md)
 - 웹 작업: [기능 명세](docs/product/web-functional-spec.md), [인증·권한](docs/architecture/identity-and-access.md), [웹 구조](docs/architecture/web-application-design.md), [데이터·운영](docs/architecture/data-and-operations.md), [웹 계획](docs/plan/web-product-implementation-plan.md)
+- 화면/관계: [와이어프레임](docs/design/wireframes.md), [ERD](docs/design/erd.md), [제약](docs/design/schema-contracts.md)
 
-세부 계약은 문서별 책임에 따라 읽는다. 충돌을 발견하면 임의 혼합하지 말고 더 구체적인 계약과 변경 이유를 확인한다. `Superseded` ADR을 현재 규칙으로 적용하지 않는다. 제품 경계는 ADR 0007, 웹 기반 보완은 ADR 0008이다.
+세부 계약은 문서별 책임에 따라 읽는다. 충돌을 발견하면 임의 혼합하지 말고 더 구체적인 계약과 변경 이유를 확인한다. Superseded ADR을 현재 규칙으로 적용하지 않는다. 제품 경계는 ADR 0007/0008, 관계는 0009, 디자인과 최종 착수 순서는 0010이다.
 
 ## 제품 전체와 작업 범위
 
 이음은 내부 사용자 웹·앱과 관리 백엔드가 있는 개인 관리 제품이다. 일정·할일·위키·문서 작성·검토·발행·Delivery API는 제품 범위이며 Core는 일부 의미 판단을 맡는다. 외부 블로그 독자 화면은 별도다. 모든 저장·편집·완료·수동 발행을 모델 응답에 묶지 않는다.
 
-별도 지시가 없는 최초 Core 구현은 **M0+M1**이다. 순수 TS, 파일 어댑터/CLI, 합성 fixture, 시점 Replay, 후보·보류·근거, 수동 선택 이력과 evidence pack을 구현한다. 제품 DB/UI/Delivery·모델·구조 변경기를 선행 구현하지 않는다. M2 의미 검색은 baseline 측정 후 진행하며 lexical 정확도 통과가 전제는 아니다.
+별도 지시가 없는 최초 Core 연구 구현은 M0+M1이다. 순수 TS, 파일 어댑터/CLI, 합성 fixture, 시점 Replay, 후보·보류·근거, 수동 선택 이력과 evidence pack을 구현한다. 제품 DB/UI/Delivery·모델·구조 변경기를 선행 구현하지 않는다. M2 의미 검색은 baseline 측정 후 진행하며 lexical 정확도 통과가 전제는 아니다.
 
-사용자가 **웹 제품 기반 구현을 명시적으로 지시하면 M3-A/F**부터 시작한다. 내부 web/API, auth 통합 시험, 개인 Workspace, 초대형 회원·세션·권한, 최소 감사/health/설정과 격리 테스트가 범위다. P/D/R은 이후 작은 단계로 나눈다. 웹 설계 문서 작성만으로 코드 구현을 승인받았다고 해석하지 않는다.
-
-Core/Lab 문서의 UI/발행 제외는 첫 판단 실험의 경계다. 최종 제품의 내부 UI와 문서 편집을 선택 사항으로 만들거나 발행을 파일 export로만 제한하지 않는다.
+사용자가 웹 제품 구현을 명시적으로 지시하면 S0부터 시작한다. 모든 계정/운영 기능을 한 번에 만들지 않고 S1/S2에서 검증된 계약에 맞춰 붙인다. P/D/R은 이후 작은 단계로 나눈다. Core/Lab 문서의 UI/발행 제외는 첫 판단 실험에만 적용하며 최종 제품의 내부 UI·문서 편집·공개 API를 제외하는 규칙이 아니다.
 
 ## 원본·판단·발행 불변식
 
@@ -45,13 +54,21 @@ Core/Lab 문서의 UI/발행 제외는 첫 판단 실험의 경계다. 최종 �
 9. 개인 Export와 전체 Backup을 구분한다. 운영 복원은 제한된 절차로 수행하고 파일 생성 성공을 복원 성공으로 보고하지 않는다.
 10. 실제 개인정보·비공개 데이터·embedding·secret·private export를 공개 저장소에 커밋하지 않는다. 비밀값은 설정됨 여부만 반환한다.
 
-## 구현 기준
+## 구현 기준과 검사
 
-`packages/core`는 동기적 계산과 도메인 타입 중심이다. DB·네트워크·모델 I/O는 application/adapter에서 끝내고 권한 내 불변 snapshot을 넘긴다. evaluator마다 SQL을 실행하는 N+1을 만들지 않는다.
+packages/core는 동기적 계산과 도메인 타입 중심이다. DB·네트워크·모델 I/O는 application/adapter에서 끝내고 권한 내 불변 snapshot을 넘긴다. evaluator마다 SQL을 실행하는 N+1을 만들지 않는다.
 
 strict TS, finite number 검증, stable tie-break, 주입 clock·seed, 빈 집합 처리, typed failure를 사용한다. case ID에 맞춘 production 정답 하드코딩과 불필요한 generic framework를 금지한다. 웹 modules는 구현 중인 기능만 만들고 ORM 타입을 Core/Delivery DTO에 노출하지 않는다.
 
 라이브러리 버전은 호환성·현재 advisory·실제 설정 시험 후 lockfile에 고정한다. auth·MFA·CSRF·RLS를 문서의 이름만으로 구현 완료라고 취급하지 않는다. 외부 public signup/URL fetch/upload/공유 기능은 관련 gate를 통과한 뒤 켠다.
+
+```bash
+node scripts/design/build.mjs
+node --test scripts/design/test.mjs
+node scripts/design/check.mjs
+```
+
+디자인 변경에는 위 검사를 실행한다. 아직 제품 경로가 없어서 source scan 0이면 제품 전체의 준수로 보고하지 않는다. 실제 UI wrapper가 생기면 컴포넌트·브라우저 테스트를 추가한다.
 
 ## 완료 보고
 

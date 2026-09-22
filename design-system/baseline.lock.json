@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "status": "frozen",
+  "approval": "2026-09-22 user reference; subsequent changes require explicit review and version update",
+  "files": {
+    "design-system/ieum.tokens.json": "0a508907768bcaf8cc8692cf12a01f7a545cf951c9af92db3ba5d07151557221",
+    "design-system/policy.json": "e38d81b939693513405fb7497eb5889eb0dc591fe77e8129fa8b95202b82a2cb",
+    "design-system/recipes.css.in": "e7a19c752edcc5f2cc75f5d8068acd130b41caa07153f900f68ec2e583cf19af",
+    "design-system/screen-matrix.json": "86e4203c605db11e8800ba542eeeec2286f1ff7baad8e0d7981bce2c9cdb60a5",
+    "design-system/component-contracts.ts": "d1153fc9877bcddda2db67e671926e856db876ab508ce20fa67a9f78572b9c08"
+  }
+}
