@@ -40,11 +40,11 @@ jobs:
           base64 --decode "$RUNNER_TEMP/ieum-stage.base64" > "$RUNNER_TEMP/ieum-stage.patch.xz"
           echo "7e18a0818d248b0c79663f0874cb787b3162c8bc1fad75286e47fed7d7b93912  $RUNNER_TEMP/ieum-stage.patch.xz" | sha256sum -c -
           xz -dc "$RUNNER_TEMP/ieum-stage.patch.xz" > "$RUNNER_TEMP/ieum-stage.patch"
-      - name: Preserve the five implementation commits
+      - name: Apply application source only; the workflow was installed by the authorized connector
         run: |
           git config user.name 'ieum-build'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git am --3way "$RUNNER_TEMP/ieum-stage.patch"
+          git am --3way --exclude=.github/workflows/product-ci.yml "$RUNNER_TEMP/ieum-stage.patch"
           git push origin HEAD:feat/paper-dark-product
           git log -6 --oneline
       - run: npm ci --ignore-scripts --no-fund && npm rebuild esbuild
