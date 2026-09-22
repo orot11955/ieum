@@ -1,62 +1,27 @@
-# ADR 0001 — PostgreSQL을 기본 저장소로 사용한다
+# ADR 0001 · 운영 저장소는 PostgreSQL, 첫 실험은 파일
 
-- Status: Accepted
-- Date: 2026-09-22
+- Status: Accepted, revised
+- 최초 결정/개정: 2026-09-22
+- 의미: 다음 구현의 선택이며 성능 검증 완료가 아니다.
 
 ## Context
 
-ieum Core는 Capture, ThoughtUnit, Context, Membership, Relation, Judgement Evidence를 저장해야 한다.
-
-초기에는 관계 그래프처럼 보이지만 다음 요구가 동시에 존재한다.
-
-- 강한 FK/Unique 제약
-- Primary Context 최대 1개 같은 Partial Unique 제약
-- JSON 구조 Evidence
-- Replay를 위한 안정적인 Query
-- 향후 Full Text / trigram / vector 실험 가능성
-- 단일 사용자 환경에서의 단순 운영
+기록 revision, 다중 소속, primary 최대 하나, 출처 관계, 승인·취소 트랜잭션이 필요하다. 기존 설계는 첫 가설 검증 전에 DB/API/UI를 모두 준비하도록 하여 실험 비용이 커졌다.
 
 ## Decision
 
-기본 DB로 **PostgreSQL 18**을 사용한다.
+운영 저장 단계 M3의 기본 저장소는 PostgreSQL 18로 유지한다. Drizzle + node-postgres는 DB adapter에만 둔다. M0/M1은 JSONL과 불변 snapshot으로 실행하며 PostgreSQL 설치를 요구하지 않는다.
 
-초기 확장:
+DB 도입 시 FK, active membership unique, primary partial unique, revision 확인, idempotent command, profile invalidation을 구현한다. 자료의 의미를 JSONB에 모두 숨기는 Generic EAV는 사용하지 않는다.
 
-- pg_trgm
+검색은 exact reference를 먼저 만든다. pg_trgm/FTS, 필요 시 pgvector를 같은 DB에서 시험하되 인덱스가 품질과 속도를 자동 보장한다고 가정하지 않는다. [PostgreSQL 18](https://www.postgresql.org/docs/18/) · [pgvector](https://github.com/pgvector/pgvector)
 
-필요할 때만 검토:
+## Alternatives
 
-- PostgreSQL Full Text Search
-- pgvector
-
-ORM/Query Adapter는 Drizzle ORM을 사용한다.
-
-## Rejected Alternatives
-
-### Neo4j
-
-현재 관계 규모에서는 운영 복잡성이 이득보다 크다.
-Graph 탐색은 RDB Relation Table로 충분하다.
-
-### 별도 Vector DB
-
-V1에 Embedding 자체가 없다.
-향후 Semantic Evaluator가 실제 Replay 성능을 크게 개선할 때만 검토한다.
-
-### Generic EAV
-
-Domain 의미와 제약이 사라지고 Query/Test/이해 비용이 커지므로 사용하지 않는다.
+SQLite는 단일 사용자 저장의 단순한 대안이지만, 현재 계획의 트랜잭션·검색 확장 실험을 위해 운영 DB는 PostgreSQL로 정한다. Neo4j, 별도 vector DB, Elasticsearch는 측정된 병목이나 필수 검색 요구가 있을 때 다시 검토한다. 얕은 관계 조회부터 RDB에서 검증한다.
 
 ## Consequences
 
-장점:
+파일 baseline과 DB adapter 간 결과 일치를 검사해야 한다. DB 운영 비용은 M3까지 미룬다. 이후 graph/vector 규모가 커지면 실제 쿼리·recall·자원 측정으로 재평가한다.
 
-- 하나의 DB로 Core V1 전체를 운영할 수 있다.
-- 강한 제약과 재현 가능한 Query를 유지한다.
-- Search/Semantic 실험도 같은 DB 안에서 시작할 수 있다.
-
-비용:
-
-- 아주 깊은 Graph Traversal이 중요해지면 별도 최적화가 필요할 수 있다.
-
-그 시점이 오기 전에는 별도 Graph DB를 추가하지 않는다.
+기준 계약: [도메인](../architecture/domain-model.md) · [런타임](../architecture/runtime-and-performance.md)

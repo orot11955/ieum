@@ -1,74 +1,24 @@
-# ADR 0003 — 의미 판단은 자동 실행하지 않는다
+# ADR 0003 · 사용자 통제 아래 의미 구조 변경
 
-- Status: Accepted
-- Date: 2026-09-22
+- Status: Accepted, revised
+- 최초 결정/개정: 2026-09-22
 
 ## Context
 
-ieum은 기록을 Context에 연결하고 이후 Split, Merge, Derivation까지 제안하게 된다.
-
-잘못된 의미 연결이 자동으로 누적되면 데이터 구조 자체가 오염된다.
-
-특히 개인 지식 시스템에서는:
-
-- 연결되지 않은 기록 몇 개
-보다
-- 잘못 연결된 기록 수십 개
-
-가 더 위험하다.
+잘못된 연결·병합이 다음 판단의 근거가 되면 오류가 누적된다. 반대로 모든 단순한 기록 동작에 추가 승인을 요구하면 사용자가 기록 자체를 포기할 수 있다. 명시적 명령과 모델 추론을 구분해야 한다.
 
 ## Decision
 
-기계적으로 확정 가능한 변화와 의미 변화 정책을 구분한다.
+사용자의 직접 입력/명령은 권한과 revision을 확인해 실행한다. 새 Capture 저장, 사용자가 선택한 소속, 명시적 관계가 이에 해당한다. 이는 자동 의미 판단의 성과로 집계하지 않는다.
 
-자동 처리 가능:
+시스템의 연결·primary 이동·분리·병합·상위 맥락 생성은 `Judgement → Proposal → 사용자 승인 → 원자적 Mutation`을 거친다. profile/index 재생성은 의미 구조가 아닌 파생 cache 변경으로 자동 수행할 수 있다.
 
-- 사용자가 직접 지정한 값
-- deterministic 날짜 parsing 결과
-- 명시적 Relation 저장
-- 재생성 가능한 Profile/Index
+생성 모델은 DB 쓰기나 외부 발행 권한을 갖지 않는다. evidence pack/초안 생성은 읽기 기반 제안이며, 공개 export는 별도 사용자 검토를 거친다. 날짜 parsing처럼 결정적으로 보이는 처리도 시간대·문맥이 모호하면 자동 확정하지 않는다.
 
-자동 처리 금지:
-
-- Context Attach/Move
-- Context Split
-- Context Merge
-- Parent Context 생성
-- Synthesis/Artifact 승격
-
-의미 변화는 항상:
-
-```text
-Judgement
-→ Proposal
-→ User Feedback
-→ Mutation
-```
-
-순서를 따른다.
-
-Policy는 초기에는:
-
-- IGNORE
-- CANDIDATE
-- SUGGEST
-- STRONG_SUGGEST
-
-까지만 허용한다.
-
-Semantic AUTO_EXECUTE는 만들지 않는다.
+초기 policy는 ABSTAIN/CANDIDATE/SUGGEST이며 기본 모드는 observe다. 검증되지 않은 STRONG_SUGGEST와 AUTO_EXECUTE를 만들지 않는다. 다중 attachment와 단일 primary 선택은 별도로 처리한다.
 
 ## Consequences
 
-장점:
+적용 전 revision 확인, idempotency, 감사 이력, 안전한 Undo가 필요하다. 승인 횟수와 노출을 최소화하는 것은 별도 UX 목표다. 사용자가 아무 응답을 하지 않은 것을 거절로 학습하지 않는다.
 
-- 데이터 오염 방지
-- 사용자 사고 구조에 대한 최종 통제권 유지
-- Feedback을 고품질 학습 신호로 사용할 수 있음
-- 잘못된 판단의 원인 추적 가능
-
-비용:
-
-- 사용자의 승인 동작이 필요하다.
-
-따라서 Core는 Suggestion Precision과 Noise Rate를 중요한 지표로 관리한다.
+기준 계약: [도메인](../architecture/domain-model.md) · [구조·파생](../architecture/structure-and-derivation.md)

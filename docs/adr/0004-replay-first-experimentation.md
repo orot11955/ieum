@@ -1,81 +1,24 @@
-# ADR 0004 — 모든 판단 알고리즘은 Replay 가능해야 한다
+# ADR 0004 · 시점 기반 Replay와 검증 분리
 
-- Status: Accepted
-- Date: 2026-09-22
+- Status: Accepted, revised
+- 최초 결정/개정: 2026-09-22
 
 ## Context
 
-판단 Core는 가중치, Feature, Candidate Search, Evaluator가 반복적으로 변경된다.
-
-실제 개선인지 감각적으로 판단하면 다음 문제가 생긴다.
-
-- 최근 몇 사례에만 최적화
-- Weight 변경에 의한 Regression 파악 불가
-- AI/Embedding 추가 효과 측정 불가
-- 과거 판단 재현 불가
+같은 dataset/engine/config라는 설명만으로 과거 판단을 재현할 수 없다. profile·membership·feedback·모델·후보 검색 결과가 달라질 수 있고, 최종 상태를 과거 입력에 사용하면 정보가 누수된다.
 
 ## Decision
 
-Replay를 제품 부가기능이 아니라 Core 개발의 1급 기능으로 둔다.
+Replay는 M0/M1부터 1급 기능이다. query 당시 recordedAt snapshot, 입력/source revision, eligible Context, profile manifest, candidate 목록, feature/model/config hash를 남긴다. 현재 query와 같은 원본의 파생물이 자기 검색 근거가 되는 것을 막는다.
 
-모든 Judgement는 다음 버전을 추적한다.
+정확히 같은 저장 feature와 후보에서 score/policy를 재생하는 `decision replay`와 모델/ANN을 다시 실행하는 `rerun`을 구분한다. 외부 모델의 bit-identical 재추론을 약속하지 않는다. 고정 seed를 가진 난수는 실험에 허용하며 stable tie-break와 clock을 명시한다.
 
-- engineVersion
-- configVersion
-- configHash
-- featureExtractorVersion
+시간과 원본/대화 group을 고려하여 development/validation/final holdout을 나눈다. weight/transform/threshold는 개발·검증 구간에서 결정한다. test를 보고 조정하면 새 holdout이 필요하다.
 
-Replay 입력은 Gold Dataset으로 관리한다.
-
-Private Dataset:
-
-```text
-datasets/private/
-```
-
-Git에 포함하지 않는다.
-
-Sanitized Sample:
-
-```text
-datasets/sample/
-```
-
-측정 Metric:
-
-- Candidate Recall@5
-- Candidate Recall@10
-- Top-1 Accuracy
-- Top-3 Accuracy
-- MRR
-- Strong Suggestion Precision
-- Correction Rate
-- No-match Accuracy
-- Noise Rate
-
-Gold Dataset은 Calibration / Holdout으로 분리한다.
-
-같은 Dataset + Engine + Config는 항상 같은 결과를 내야 한다.
-
-따라서:
-
-- Random 금지
-- Clock 주입
-- deterministic tie-break
-
-를 적용한다.
+다중 라벨 Recall과 Hit, 제안 precision과 coverage, no-match 오제안, 사용자 행동, latency를 각각 정의한다. 합성 fixture 통과와 실제 품질 검증을 분리한다. 공개 저장소에는 합성 데이터와 검토한 집계만 둔다.
 
 ## Consequences
 
-장점:
+라벨·snapshot·artifact 관리가 필요하지만 이를 판단 엔진의 핵심 비용으로 인정한다. 평가셋이 작거나 label이 불완전하면 불확실성을 표시하고 정확도 하나로 다음 기능을 정당화하지 않는다.
 
-- Core 개선 여부를 수치로 확인
-- Regression 즉시 발견
-- AI/Embedding의 실제 가치 검증
-- 판단 실패 원인 Trace 가능
-
-비용:
-
-- Gold Dataset을 사람이 지속적으로 관리해야 한다.
-
-이 비용 자체를 Core 품질 검증의 필수 비용으로 간주한다.
+기준 계약: [실험 계획](../plan/core-lab-experiment-plan.md) · [성능 측정](../architecture/runtime-and-performance.md)

@@ -1,85 +1,23 @@
-# ADR 0005 — V1은 AI 없이 검증한다
+# ADR 0005 · V1 AI 일괄 배제 — 대체됨
 
-- Status: Accepted
-- Date: 2026-09-22
+- Status: Superseded
+- 최초 결정: 2026-09-22
+- 대체 결정: [ADR 0006](0006-early-semantic-experiments.md), 2026-09-22
 
-## Context
+## 당시 결정
 
-ieum의 최종 형태에는 Semantic Search, 자동 정리, 글감 제안, 자연어 보조가 유용할 수 있다.
+기존 설계는 Core Lab V1에서 생성형 LLM, embedding, vector DB, 자동 분할/요약/글쓰기 등을 함께 배제했다. lexical·관계·session baseline을 먼저 검증하고, 이후 AI를 evaluator 하나로 추가하려는 취지였다.
 
-하지만 처음부터 LLM/Embedding을 넣으면 다음을 구분하기 어렵다.
+이전 문서의 원문은 Git 이력 `2d14454cc587b9faf5d8fd8b8f42513bdb0f5b38`에서 확인할 수 있다. 이 파일은 기존 결정을 없었던 것으로 만드는 대신 상태와 변경 이유를 보존한다.
 
-- 데이터 모델이 좋은가?
-- Context 개념이 유효한가?
-- Relation 구조가 도움이 되는가?
-- 단순 Lexical/Graph Signal만으로 충분한가?
-- AI가 실제로 개선했는가?
+## 대체 이유
 
-## Decision
+바꿔 말하기, 한영 혼용, 기록과 Context 설명의 어휘 차이는 핵심 불확실성이다. lexical 목표를 통과해야만 semantic 실험을 허용하면 바로 그 불확실성을 시험하지 못할 수 있다. embedding은 생성형 모델의 자유로운 판단·DB 쓰기와도 구분해야 한다.
 
-Core Lab V1에서는 다음을 사용하지 않는다.
+## 계속 유지되는 부분
 
-- LLM
-- Embedding
-- Vector DB
-- 자동 ThoughtUnit 분리
-- 자동 요약
-- 자동 글 작성
-- 자동 Knowledge Graph 생성
+모델 없는 baseline을 먼저 측정한다. 생성형 LLM을 routing의 필수 동기 의존성으로 두지 않는다. 모델 출력이 의미 구조를 직접 변경하거나 외부 발행하지 못하게 한다. 모델 도입 효과는 같은 평가 조건에서 비교한다.
 
-먼저 다음으로 Baseline을 만든다.
+## 더 이상 적용하지 않는 부분
 
-- explicit relation
-- lexical similarity
-- Context purpose
-- Context corpus
-- session continuity
-- recency
-- feedback history
-
-Core Baseline이 검증된 뒤 AI/Embedding은 **Evaluator 하나**로 추가한다.
-
-```text
-Rule / Relation Evaluators
-+
-Statistical Evaluator
-+
-Semantic Evaluator
-        ↓
-Aggregator
-        ↓
-Policy
-```
-
-AI가 최종 판단자나 DB 변경 주체가 되어서는 안 된다.
-
-## Adoption Rule
-
-AI 기능은 Holdout Replay에서 기존 Core 대비 의미 있는 개선이 확인될 때만 유지한다.
-
-예:
-
-```text
-Base Top3       89%
-Embedding       90%
-→ 복잡성 대비 보류
-
-Base Top3       89%
-Embedding       96%
-→ 채택 검토
-```
-
-## Consequences
-
-장점:
-
-- Core 자체의 가치 검증 가능
-- AI 비용/모델 변화에 비의존
-- Explainability 유지
-- 향후 어떤 AI 모델도 Adapter/Evaluator로 교체 가능
-
-비용:
-
-- 초기 Semantic 이해력은 제한된다.
-
-이 제한을 의도적인 실험 조건으로 받아들인다.
+`V1이므로 embedding 자체 금지`, `lexical 정확도 gate 통과 전 semantic 실험 금지`, `AI는 최종 evaluator에만 추가 가능`은 현재 규칙이 아니다. embedding은 retrieval 단계에서도 사용 가능하다. 최신 범위는 [ADR 0006](0006-early-semantic-experiments.md)과 [계획서](../plan/core-lab-experiment-plan.md)를 따른다.
