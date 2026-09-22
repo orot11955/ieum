@@ -9,7 +9,14 @@ function show(view) {
 }
 window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
 show(location.hash.slice(1));
-for(const button of document.querySelectorAll('[data-filter]'))button.addEventListener('click',()=>button.setAttribute('aria-pressed',String(button.getAttribute('aria-pressed')!=='true')));
+for(const button of document.querySelectorAll('[data-filter]')) {
+ const label=button.textContent.replace(/^✓\s*/, '');
+ button.addEventListener('click',()=>{
+  const pressed=button.getAttribute('aria-pressed')!=='true';
+  button.setAttribute('aria-pressed',String(pressed));
+  button.textContent=(pressed?'✓ ':'')+label;
+ });
+}
 const busy=document.querySelector('#busy-demo');
 busy.addEventListener('click',()=>{if(busy.getAttribute('aria-disabled')==='true')return;busy.setAttribute('aria-disabled','true');busy.dataset.loading='true';busy.textContent='처리 중…';setTimeout(()=>{busy.setAttribute('aria-disabled','false');delete busy.dataset.loading;busy.textContent='처리 상태 시연';document.querySelector('#busy-result').textContent='시연 완료 · 실제 자료는 변경하지 않았습니다.'},700)});
 const dialog=document.querySelector('#dialog');let returnFocus=null;
