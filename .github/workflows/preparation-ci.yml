@@ -1,0 +1,40 @@
+name: Preparation checks
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preparation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preparation:
+    name: Plan and preserved design
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Check preparation scripts
+        run: |
+          node --check scripts/plan/render.mjs
+          node --check scripts/plan/check.mjs
+      - name: Generate local design assets
+        run: npm run design:build
+      - name: Check task graph, local links, generated documents and design
+        run: npm run prep:check
+      - name: Verify tracked sources remain unchanged
+        run: git diff --exit-code
+
+# No installs, product migrations, deployment or automatic commits.
+# Product lint/typecheck/test/build/E2E checks are added only with the
+# corresponding BASE-02/BASE-03 and implementation tasks.
