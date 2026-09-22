@@ -1,0 +1,28 @@
+/* Product recipes: appearance stays centralized and uses semantic tokens. */
+.ieum-button-wrap{display:inline-flex;flex-direction:column;gap:var(--ieum-semantic-space-1);max-width:100%}
+.ieum-stack-small{display:flex;flex-direction:column;gap:var(--ieum-semantic-space-2);min-width:0}
+.ieum-page-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--ieum-semantic-space-4);flex-wrap:wrap}
+.ieum-empty{padding-block:var(--ieum-semantic-space-8);color:var(--ieum-semantic-color-text-secondary);text-align:center}
+.ieum-app-top{display:flex;align-items:center;justify-content:space-between;gap:var(--ieum-semantic-space-4);flex-wrap:wrap;margin-block-end:var(--ieum-semantic-space-8);padding-block-end:var(--ieum-semantic-space-4);border-block-end:var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-color-border)}
+.ieum-metric{font-family:var(--ieum-semantic-font-family-mono);font-size:var(--ieum-semantic-font-size-display);font-weight:var(--ieum-semantic-font-weight-display)}
+.ieum-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:var(--ieum-semantic-space-3)}
+.ieum-list-item{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--ieum-semantic-space-4);padding:var(--ieum-semantic-space-4);background:var(--ieum-semantic-color-panel);border:var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-color-border);border-radius:var(--ieum-semantic-radius-control);flex-wrap:wrap}
+.ieum-list-item>div{min-width:0;flex:1}
+.ieum-break{overflow-wrap:anywhere;white-space:pre-wrap}
+.ieum-grow{flex:1;min-width:0}
+.ieum-toolbar{display:flex;gap:var(--ieum-semantic-space-3);align-items:flex-end;flex-wrap:wrap}
+.ieum-toolbar>*{min-width:0}
+.ieum-auth-page{padding:var(--ieum-semantic-space-8);min-height:100dvh;background:var(--ieum-semantic-color-canvas)}
+.ieum-prose{max-width:100%}
+.ieum-prose>:not(:first-child){margin-block-start:var(--ieum-semantic-space-4)}
+.ieum-prose table{display:block;overflow:auto;max-width:100%;border-collapse:collapse}
+.ieum-prose th,.ieum-prose td{padding:var(--ieum-semantic-space-2);border:var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-color-border)}
+.ieum-prose code{font-family:var(--ieum-semantic-font-family-mono);background:var(--ieum-semantic-color-subtle);color:var(--ieum-semantic-color-text)}
+.ieum-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--ieum-semantic-layout-aside)),1fr));gap:var(--ieum-semantic-space-4)}
+.ieum-auth-page .ieum-brand{margin-block:var(--ieum-semantic-space-8)}
+.ieum-nav .ieum-rule{margin-block:var(--ieum-semantic-space-3)}
+.ieum-inline-code{font-family:var(--ieum-semantic-font-family-mono);font-size:var(--ieum-semantic-font-size-label);overflow-wrap:anywhere}
+.ieum-page-footer{margin-block-start:var(--ieum-semantic-space-8);padding-block:var(--ieum-semantic-space-4);border-block-start:var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-color-border-decorative)}
+.ieum-sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.ieum-product-navigation{display:flex;flex-direction:column;gap:var(--ieum-semantic-space-1)}
+@media(max-width:40rem){.ieum-product-navigation[data-open="false"]{display:none}.ieum-nav{padding:var(--ieum-semantic-space-4)}.ieum-brand{font-size:var(--ieum-semantic-font-size-heading)}}

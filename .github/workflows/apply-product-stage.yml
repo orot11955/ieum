@@ -1,0 +1,81 @@
+name: apply-product-stage
+on:
+  push:
+    branches: [feat/paper-dark-product]
+    paths: [.github/workflows/apply-product-stage.yml]
+permissions:
+  contents: write
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-only-password
+          POSTGRES_DB: ieum_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ieum_test"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Assemble the immutable implementation patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_REF" = refs/heads/feat/paper-dark-product
+          git merge-base --is-ancestor db579997fe26f86d72aaa32c34e5463b31e2f4f9 HEAD
+          : > "$RUNNER_TEMP/ieum-stage.base64"
+          for sha in b4c7448458419eea445a895ace49cde29d01cd6b 5647fcb25b7cf5081e7b5a32d1f5869f5860f720 3a3c56c39c45e22a69ebaaa59f50920f44c2fecd 4b8eabca0a749ee38e73cab634f54ce6e555f3cc 7942f42ac8a93cb90c4419f84532dfb73bc177c0 dc5637608ff8dbca62dc2d6f58836fd6bea38f6d 7552497ac5721f31a95ca6fb111cdd34364086c3 da8eef18a13a16a06a2f0985479d067d0d27cc24 a5fc5d6b8ecf053844f2dc21454bd2c2c9032482 eddb80310dd730ffde4de4adc6845cb43b91120d 9746226f2613daf6e44483db58f68dfeb2a49b03 66b919d462207a13216a6195e241dfc9656f0b05 3a2074d721816b142e81ecbf676da23c3e0a00a6; do
+            gh api "repos/orot11955/ieum/git/blobs/$sha" --jq .content | base64 --decode >> "$RUNNER_TEMP/ieum-stage.base64"
+          done
+          base64 --decode "$RUNNER_TEMP/ieum-stage.base64" > "$RUNNER_TEMP/ieum-stage.patch.xz"
+          echo "7e18a0818d248b0c79663f0874cb787b3162c8bc1fad75286e47fed7d7b93912  $RUNNER_TEMP/ieum-stage.patch.xz" | sha256sum -c -
+          xz -dc "$RUNNER_TEMP/ieum-stage.patch.xz" > "$RUNNER_TEMP/ieum-stage.patch"
+      - name: Apply application source only; the workflow was installed by the authorized connector
+        run: |
+          git config user.name 'ieum-build'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git am --3way --exclude=.github/workflows/product-ci.yml "$RUNNER_TEMP/ieum-stage.patch"
+          git push origin HEAD:feat/paper-dark-product
+          git log -6 --oneline
+      - run: npm ci --ignore-scripts --no-fund && npm rebuild esbuild
+      - name: Design and source checks
+        run: npm run design:build && npm run design:test && npm run design:check && npm run typecheck
+      - name: Local SQL reference and production build
+        run: npm test && npm run build
+      - name: Real PostgreSQL integration
+        env:
+          TEST_DATABASE_URL: postgres://postgres:synthetic-ci-only-password@127.0.0.1:5432/ieum_test
+        run: npm test
+      - run: npx playwright install --with-deps chromium
+      - name: Browser workflows
+        run: npm run test:e2e
+      - name: Runtime dependency advisory check
+        if: always()
+        run: npm audit --omit=dev --audit-level=high
+      - name: Export source and exact commit history
+        if: always()
+        run: |
+          git archive --format=tar HEAD > product-source.tar
+          git bundle create product-history.bundle --all
+          git log -12 --format='%H %s' > product-commits.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: product-stage-verification
+          path: |
+            product-source.tar
+            product-history.bundle
+            product-commits.txt
+            playwright-report/
+            test-results/
+          retention-days: 3
