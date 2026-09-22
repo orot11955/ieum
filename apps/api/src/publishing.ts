@@ -1,0 +1,44 @@
+import {randomUUID,randomBytes} from 'node:crypto';
+import {z} from 'zod';
+import type {Database,Executor} from './db';
+import type {Principal} from './auth';
+import {requireFresh,digest} from './auth';
+import {audit,command,readScoped} from './commands';
+import {requireValue,invariant,AppError} from './errors';
+import {uuid,publicMeta,pageQuery,type Evidence} from '../../../packages/contracts/src';
+import {validateEvidence} from './documents';
+async function channel(tx:Executor,actor:Principal){return (await tx.query<{id:string}>('INSERT INTO publication_channel(id,workspace_id) VALUES($1,$2) ON CONFLICT(workspace_id) DO UPDATE SET name=publication_channel.name RETURNING id',[randomUUID(),actor.workspaceId])).rows[0]!.id;}
+export class PublishingService{
+ constructor(private db:Database){}
+ list(actor:Principal){return readScoped(this.db,actor,async tx=>({items:(await tx.query('SELECT p.id,p.document_id,p.current_revision,p.status,p.updated_at,r.title,s.slug FROM publication p JOIN publication_revision r ON r.workspace_id=p.workspace_id AND r.publication_id=p.id AND r.revision=p.current_revision LEFT JOIN publication_slug s ON s.workspace_id=p.workspace_id AND s.publication_id=p.id AND s.is_current ORDER BY p.updated_at DESC,p.id LIMIT 100')).rows}));}
+ async publish(actor:Principal,value:unknown,key:unknown){await requireFresh(this.db,actor);const p=z.object({documentId:uuid,revision:z.number().int().positive(),manifestHash:z.string().length(64)}).strict().parse(value);return command(this.db,actor,'publication.publish',key,p,async(tx,cid)=>{
+  // Freshness is rechecked inside the write transaction as well.
+  invariant((await tx.query('SELECT 1 FROM app_session_state WHERE session_id=$1 AND reauth_until>now()',[actor.sessionId])).rows.length>0,'REAUTH_REQUIRED','민감 작업을 위해 다시 인증해 주세요.',403);
+  requireValue((await tx.query('SELECT id FROM document WHERE id=$1 AND deleted_at IS NULL FOR UPDATE',[p.documentId])).rows[0]);
+  const r=requireValue((await tx.query<{title:string;body:string;public_meta:unknown;sources:Evidence[];manifest_hash:string}>('SELECT title,body,public_meta,sources,manifest_hash FROM document_revision WHERE document_id=$1 AND revision=$2',[p.documentId,p.revision])).rows[0]);
+  invariant(r.manifest_hash===p.manifestHash,'MANIFEST_CONFLICT','검토한 내용과 일치하지 않습니다.',409);const meta=publicMeta.parse(r.public_meta);await validateEvidence(tx,r.sources,p.documentId);
+  // Private assets cannot be published until the public derivative pipeline is implemented.
+  invariant(!/asset:\/\/|\/api\/.*(?:assets|download)/i.test(r.body),'PRIVATE_ASSET','비공개 첨부는 공개 본문에서 제외해 주세요.');
+  const review=requireValue((await tx.query<{id:string;decision:string;manifest_hash:string}>('SELECT id,decision,manifest_hash FROM document_review WHERE document_id=$1 AND document_revision=$2 ORDER BY review_no DESC LIMIT 1',[p.documentId,p.revision])).rows[0]);invariant(review.decision==='READY'&&review.manifest_hash===p.manifestHash,'REVIEW_REQUIRED','현재 유효한 공개 검토가 필요합니다.',409);
+  const channelId=await channel(tx,actor);const pub=(await tx.query<{id:string;current_revision:number|null}>('SELECT id,current_revision FROM publication WHERE channel_id=$1 AND document_id=$2 FOR UPDATE',[channelId,p.documentId])).rows[0];const id=pub?.id??randomUUID(),revision=(pub?.current_revision??0)+1;
+  if(!pub)await tx.query('INSERT INTO publication(id,workspace_id,channel_id,document_id) VALUES($1,$2,$3,$4)',[id,actor.workspaceId,channelId,p.documentId]);
+  const reserved=(await tx.query<{publication_id:string}>('SELECT publication_id FROM publication_slug WHERE channel_id=$1 AND slug=$2',[channelId,meta.slug])).rows[0];invariant(!reserved||reserved.publication_id===id,'SLUG_RESERVED','이미 예약된 글 주소입니다.',409);
+  await tx.query('UPDATE publication_slug SET is_current=false WHERE publication_id=$1',[id]);await tx.query('INSERT INTO publication_slug(workspace_id,channel_id,slug,publication_id,is_current) VALUES($1,$2,$3,$4,true) ON CONFLICT(workspace_id,channel_id,slug) DO UPDATE SET is_current=true',[actor.workspaceId,channelId,meta.slug,id]);
+  await tx.query('INSERT INTO publication_revision(workspace_id,publication_id,revision,channel_id,document_id,document_revision,review_id,manifest_hash,title,body,summary,author,tags,sources) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14::jsonb)',[actor.workspaceId,id,revision,channelId,p.documentId,p.revision,review.id,p.manifestHash,r.title,r.body,meta.summary,meta.author,JSON.stringify(meta.tags),JSON.stringify(meta.publicSources)]);
+  await tx.query("UPDATE publication SET current_revision=$1,status='PUBLISHED',updated_at=now() WHERE id=$2",[revision,id]);await audit(tx,actor,'PUBLICATION_PUBLISHED','publication',id,revision,cid);return {id,revision,channelId,slug:meta.slug};
+ });}
+ async withdraw(actor:Principal,id:string,key:unknown){uuid.parse(id);await requireFresh(this.db,actor);return command(this.db,actor,'publication.withdraw',key,{id},async(tx,cid)=>{const row=requireValue((await tx.query<{current_revision:number}>('SELECT current_revision FROM publication WHERE id=$1 FOR UPDATE',[id])).rows[0]);await tx.query("UPDATE publication SET status='WITHDRAWN',updated_at=now() WHERE id=$1",[id]);await audit(tx,actor,'PUBLICATION_WITHDRAWN','publication',id,row.current_revision,cid);return {withdrawn:true};});}
+ clients(actor:Principal){return readScoped(this.db,actor,async tx=>({channelId:await channel(tx,actor),items:(await tx.query('SELECT c.id,c.name,c.created_at,k.id AS key_id,k.prefix,k.expires_at,k.revoked_at,k.last_used_at FROM delivery_client c LEFT JOIN delivery_key k ON k.workspace_id=c.workspace_id AND k.client_id=c.id WHERE c.revoked_at IS NULL ORDER BY c.created_at DESC,k.created_at DESC')).rows}));}
+ async issueKey(actor:Principal,value:unknown){await requireFresh(this.db,actor);const p=z.object({name:z.string().trim().min(1).max(100),clientId:uuid.optional()}).strict().parse(value);return this.db.scoped(actor.workspaceId,actor.userId,async tx=>{
+  const {assertActor}=await import('./commands');await assertActor(tx,actor);const clientId=p.clientId??randomUUID(),channelId=await channel(tx,actor);
+  if(p.clientId)requireValue((await tx.query('SELECT id FROM delivery_client WHERE id=$1 AND revoked_at IS NULL',[clientId])).rows[0]);else await tx.query('INSERT INTO delivery_client(id,workspace_id,channel_id,name) VALUES($1,$2,$3,$4)',[clientId,actor.workspaceId,channelId,p.name]);
+  const token='ieum_d_'+randomBytes(32).toString('base64url'),id=randomUUID();await tx.query("INSERT INTO delivery_key(id,workspace_id,client_id,key_digest,prefix,expires_at) VALUES($1,$2,$3,$4,$5,now()+interval '90 days')",[id,actor.workspaceId,clientId,digest(token),token.slice(0,14)]);await audit(tx,actor,'DELIVERY_KEY_CREATED','delivery_key',id,1,randomUUID());return {id,clientId,token};
+ });}
+ async revokeKey(actor:Principal,id:string,key:unknown){uuid.parse(id);await requireFresh(this.db,actor);return command(this.db,actor,'delivery.key.revoke',key,{id},async(tx,cid)=>{requireValue((await tx.query('SELECT id FROM delivery_key WHERE id=$1',[id])).rows[0]);await tx.query('UPDATE delivery_key SET revoked_at=now() WHERE id=$1',[id]);await audit(tx,actor,'DELIVERY_KEY_REVOKED','delivery_key',id,null,cid);return {revoked:true};});}
+ async deliveryScope(bearer:string|undefined,publicAllowed:boolean,requestedChannel:string|undefined){
+  if(bearer){invariant(/^Bearer ieum_d_[A-Za-z0-9_-]+$/.test(bearer),'INVALID_CREDENTIAL','읽기 자격증명이 유효하지 않습니다.',401);const row=(await this.db.query<{id:string;channel_id:string}>('SELECT k.id,c.channel_id FROM delivery_key k JOIN delivery_client c ON c.workspace_id=k.workspace_id AND c.id=k.client_id JOIN publication_channel p ON p.workspace_id=c.workspace_id AND p.id=c.channel_id WHERE k.key_digest=$1 AND k.expires_at>now() AND k.revoked_at IS NULL AND c.revoked_at IS NULL AND p.active AND NOT p.delivery_blocked',[digest(bearer.slice(7))])).rows[0];if(!row)throw new AppError(401,'INVALID_CREDENTIAL','읽기 자격증명이 유효하지 않습니다.');await this.db.query('UPDATE delivery_key SET last_used_at=now() WHERE id=$1',[row.id]);return row.channel_id;}
+  invariant(publicAllowed,'AUTH_REQUIRED','발행 API 읽기 키가 필요합니다.',401);return uuid.parse(requestedChannel);
+ }
+ async deliveryList(channelId:string,value:unknown){const p=pageQuery.parse(value);return {items:(await this.db.query('SELECT id,revision,title,summary,author,tags,slug,published_at,updated_at FROM public_delivery WHERE channel_id=$1 ORDER BY published_at DESC,id LIMIT $2 OFFSET $3',[channelId,p.limit,p.offset])).rows};}
+ async deliveryGet(channelId:string,id:string):Promise<Record<string,unknown>>{uuid.parse(id);const r=requireValue((await this.db.query('SELECT id,revision,title,body,summary,author,tags,sources,slug,published_at,updated_at FROM public_delivery WHERE channel_id=$1 AND id=$2',[channelId,id])).rows[0]);return {...r,bodyFormat:'markdown'};}
+}
