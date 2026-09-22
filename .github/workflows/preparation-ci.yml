@@ -28,9 +28,7 @@ jobs:
         run: |
           node --check scripts/plan/render.mjs
           node --check scripts/plan/check.mjs
-      - name: Generate local design assets
-        run: npm run design:build
-      - name: Check task graph, local links, generated documents and design
+      - name: Verify preparation from a clean checkout without dependency installation
         run: npm run prep:check
       - name: Verify tracked sources remain unchanged
         run: git diff --exit-code

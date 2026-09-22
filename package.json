@@ -12,6 +12,6 @@
     "design:build": "node scripts/design/build.mjs && node scripts/design/themes.mjs",
     "design:test": "node --test scripts/design/test.mjs",
     "design:check": "node scripts/design/check.mjs && node scripts/design/themes.mjs --check",
-    "prep:check": "npm run plan:check && npm run design:build && npm run design:test && npm run design:check"
+    "prep:check": "npm run design:build && npm run plan:check && npm run design:test && npm run design:check"
   }
 }
