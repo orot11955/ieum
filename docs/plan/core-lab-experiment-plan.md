@@ -1,8 +1,16 @@
-# Core Lab · 실험 및 구현 계획
+# Core Lab · 실험 및 개인 관리 제품 구현 계획
 
-- 개정: 2026-09-22
+- 개정: 2026-09-22, 내부 앱·발행 API 범위 보완
 - 상태: 구현 전 계획. 이 문서의 명령과 산출물은 아직 존재하지 않는다.
-- 처음 읽기: [제품 목적](../product/vision-and-scope.md) · [Core 구조](../architecture/judgement-core.md)
+- 처음 읽기: [제품 목적](../product/vision-and-scope.md) · [내부 앱·발행 경계](../architecture/application-and-publishing.md) · [Core 구조](../architecture/judgement-core.md)
+
+## 0. 제품 전체와 실험의 관계
+
+이음은 일정·생각·경험·외부지식을 기록하고 정리하여 일정·할일·위키를 관리하고, 통찰 문서를 작성·정제·발행하여 API로 제공하는 개인 내부 웹·앱이다. 판단 Core는 일부 의미 판단을 맡는 구성요소다. 외부 블로그의 독자 화면은 별도 클라이언트로 만든다.
+
+M0/M1을 CLI로 시작하는 이유는 Core의 가능성을 작게 시험하기 위해서다. 최종 제품을 CLI나 백엔드로 축소하는 결정이 아니다. 내부 사용자 UI, 실제 관리 기능, 문서 편집·발행과 Delivery API는 제품 산출물이다. 선택적인 Lab Inspector와 제품 내부 UI를 구분한다.
+
+단계는 가설을 검증하는 순서이지 모든 자동 판단이 성공해야 다음 수동 기능을 만들 수 있다는 의존성이 아니다. 기본 관리·문서 작성·명시적 발행은 Core 없이도 동작하도록 만들고, 자동화의 채택은 별도 실험 결과에 따른다.
 
 ## 1. 검증할 가설
 
@@ -12,6 +20,7 @@
 | H2: 불확실할 때 보류할 수 있다 | precision–coverage, no-match 오제안 | 임계값·데이터·점수 정의 수정 |
 | H3: 사용자 수고가 줄어든다 | 직접 검색 vs 후보·근거 활용 | 노출 빈도·흐름·제품 가설 재검토 |
 | H4: 근거를 잃지 않고 정리할 수 있다 | 수동 정리 vs source pack | provenance·자료 선택·정제 흐름 수정 |
+| H5: 실제 개인 관리와 발행에 쓸 수 있다 | 내부 앱의 기록→관리→문서→발행 API 흐름 | 화면·업무 상태·발행 경계·API 계약 수정 |
 
 H1만 통과했다고 전체 제품이 검증된 것은 아니다. H1의 lexical baseline 실패만으로 의미 검색을 금지하거나 전체 프로젝트를 실패로 판단하지 않는다.
 
@@ -21,7 +30,7 @@ H1만 통과했다고 전체 제품이 검증된 것은 아니다. H1의 lexical
 
 구현: pnpm workspace, strict TS/ESM, `packages/core`, `apps/lab-cli`, fixture/config/report 디렉터리, Vitest, JSONL schema 검증, ID/revision/source span 계약.
 
-다음 구조만 출발점으로 사용한다. 미래 API·DB·UI package는 아직 만들지 않는다.
+다음 구조만 출발점으로 사용한다. 미래 API·DB·제품 UI package는 아직 만들지 않는다.
 
 ```text
 apps/lab-cli/
@@ -53,19 +62,35 @@ JSONL의 명시적 선택과 피드백은 이력으로 남기되 가중치를 �
 
 완료 조건: 같은 입력·시점·eligible Context에서 비교 결과, 한국어/바꿔 말하기/부정/identifier/no-match slice, 품질–비용 차이를 보고한다. 모델이 실패하면 원문과 lexical 흐름이 유지되어야 한다.
 
-### M3 — 영속 저장과 실제 승인 흐름
+### M3 — 개인 내부 관리 웹과 영속 저장
 
-조건: 후보·근거가 사용자에게 도움이 된다는 실험 근거 또는 명시적인 제품화 결정.
+진행 판단: 앞선 실험의 결과와 제품 작업 우선순위를 정한 뒤 수행한다. Core 정확도 목표 달성을 기본 수동 관리 기능의 필수 전제로 두지 않는다.
 
-구현: PostgreSQL/Drizzle migration, revision/unique/FK, 승인·취소 트랜잭션, 최소 Fastify API, 필요 시 React/Vite inspector. profile invalidation, stale Proposal, idempotency, privacy/logging 검사.
+구현: PostgreSQL/Drizzle migration, revision/unique/FK, 승인·취소 트랜잭션, 관리 API, **실제 사용자가 쓰는 내부 React/Vite 웹**. 개발용 Lab Inspector만 만드는 것으로 이 단계를 끝내지 않는다.
 
-UI는 Capture, 후보/근거, 승인/거절/primary 변경, Context의 목적과 member 확인으로 제한한다. DB 도입 시 Testcontainers, UI 도입 시 필요한 Playwright 검사를 추가한다. 달력·블로그 편집기는 만들지 않는다.
+첫 내부 흐름은 기록함, 원문·출처 편집, 맥락 연결, 기본 일정·할일·위키 관리다. 일정은 시간/시간대/변경·취소, 할일은 완료/보류/기한, 위키는 본문/revision을 갖는다. 반복 일정·외부 캘린더 동기화·네이티브 앱·대시보드 고도화를 동시에 구현하지 않는다.
 
-### M4 — 구조·파생의 제한된 실험
+Core는 관련 맥락과 기록에서 추출한 관리 항목 후보를 보조할 수 있다. 수동 저장·완료·편집은 Core가 꺼져 있어도 수행되어야 한다. 자유 기록 해석과 명시적인 폼 명령을 구분한다. profile invalidation, stale Proposal, idempotency, privacy/logging을 검사한다.
 
-구현: 작은 dirty Context의 구조 진단과 변경 미리보기, bridge member, 병합/분리 역변경, ArtifactRevision과 claim map. 먼저 하나의 source pack을 실제 정리본으로 만드는 흐름을 완성한다.
+DB 도입 시 Testcontainers, 내부 UI 도입 시 실제 사용자 흐름의 Playwright 검사를 추가한다. 내부망에서도 사용자 인증·권한과 안전한 렌더링을 생략하지 않는다.
 
-생성 모델 도입은 출처 검증과 수동 정리 기준선 이후 선택 사항이다. 자동 Split/Merge, 자동 공개 발행, 범용 지식 그래프는 범위 밖이다.
+### M4 — 문서 작업실과 정제 보조
+
+제품 구현: 기록·경험·외부지식·위키에서 자료를 골라 문서를 작성·편집하고, source revision과 claim map을 보존하며, 검토 가능한 DocumentRevision을 만드는 내부 문서 작업실. 사용자는 자신의 경험과 여러 외부 관점을 비교하여 통찰을 담은 문서를 작성할 수 있어야 한다.
+
+생성 모델은 선택적이다. 수동 문서 작성과 자료 묶음은 먼저 작동해야 한다. 모델 초안은 자신의 주장/외부 인용/해석을 구분하고 존재하지 않는 출처를 생성하지 못하게 검증한다. 모델이 없다는 이유로 문서 편집을 금지하지 않는다.
+
+병행 가능한 판단 실험: 작은 dirty Context의 구조 진단, bridge member, 분리·병합·상위 맥락 변경 미리보기와 역변경. 이 실험의 성공을 수동 문서 작성·공개 발행의 선행 조건으로 두지 않는다.
+
+### M5 — 승인 발행과 Delivery API
+
+제품 구현: 검토한 문서 revision의 READY 상태, 사용자 Publish 명령, 공개 필드만 포함한 Publication snapshot, 발행 목록·상세·개정·철회와 읽기용 Delivery API. 내부 관리 API와 권한·DTO를 분리한다.
+
+외부 블로그의 디자인·페이지는 이음 제품 밖에서 별도로 만든다. 이 단계에서는 별도 계약 테스트 소비자로 목록/본문 표시, 개정 반영, 철회 처리, 응답 schema를 검증한다. 이음 DB나 내부 타입을 알아야만 동작하는 소비자로 만들지 않는다.
+
+완료 조건: 내부 앱의 `문서 편집 → 검토 → 발행` 후 API에 승인된 공개본만 나타난다. Draft를 수정해도 이전 발행본은 유지되고, 새 버전 발행 후에만 바뀐다. 미발행/철회 콘텐츠와 비공개 출처·일정·할일·첨부가 Delivery를 통해 노출되지 않는다. 소비자의 캐시·정적 빌드가 철회를 반영하는 동작과 한계를 명시한다.
+
+OpenAPI 계약, 소비자 테스트, Preview 인증·비캐시, asset 공개 범위와 서버용 비밀의 비노출을 검사한다. 자동 발행·여러 사이트 동시 운영·분산 서버는 기본 범위에 추가하지 않는다. API·발행 세부 설계는 [앱·발행 경계](../architecture/application-and-publishing.md)를 따른다.
 
 ## 3. 평가 데이터 계약
 
@@ -141,6 +166,8 @@ Hit@3와 다중 라벨 Recall@3를 둘 다 `Top3 accuracy`라고 부르지 않�
 
 정밀도만 보고하지 않고 precision–coverage를 함께 그린다. 보류를 포함한 selective prediction의 기본 trade-off는 [Geifman & El-Yaniv, 2017](https://arxiv.org/abs/1705.08500)을 참고하되, 그 논문의 성능이나 보증을 IEUM에 그대로 적용하지 않는다.
 
+제품 단계의 메트릭은 별도다. 일정·할일의 명시적 상태 변경 성공률, 중복 추출/생성, 위키 편집·회수 흐름, 문서 정리 시간, 발행본 일관성, 비공개 노출 여부, 외부 API 계약 충족을 평가한다. 이를 추천 정확도와 하나의 점수로 합치지 않는다.
+
 ## 7. 잠정 의사결정 gate
 
 다음 값은 성공 실적이 아니라 validation 전에 선언할 실험 목표다. 데이터가 작으면 건수와 불확실성을 보고하고 통과를 확정하지 않는다.
@@ -183,15 +210,21 @@ run 산출물은 `manifest.json`, `metrics.json`, `judgements.jsonl`, `failures.
 - 같은 snapshot의 반복 구조 분석은 독립 증거 수를 증가시키지 않는다.
 - stale Proposal, 중복 승인, 동시에 primary 변경, Undo 충돌을 단계에 맞게 검사한다.
 - source span 불일치, 없는 source ID, 편집 후 stale claim map을 검출한다.
+- Core/provider 장애 시에도 명시적 Task 완료·일정 저장·위키 편집이 작동한다.
+- 반복 추출/승인으로 같은 관리 항목을 중복 만들지 않고, 원문 수정으로 기존 작업 상태를 덮어쓰지 않는다.
+- Draft 수정으로 공개본이 바뀌지 않으며 미발행·철회 상태가 Delivery에서 조회되지 않는다.
+- private source/첨부/개인 일정이 공개 응답에 섞이지 않는다. 외부 소비자는 내부 DB나 비밀키의 브라우저 노출 없이 계약을 사용한다.
 
 ## 10. Codex 최초 작업 지시
 
 이 절을 최초 구현 범위로 사용한다.
 
-> README, AGENTS, 제품 목적, Core 구조, 도메인, retrieval/scoring, 이 계획서를 읽고 M0+M1만 구현하라. baseline은 lexical이고 mode는 observe다. Core에 DB/네트워크/모델 의존성을 넣지 말고, 파일 입력과 CLI로 capture revision → 후보·근거 → 수동 선택 이력 → evidence pack을 완성하라. 합성 fixture는 계약 검증용으로 표시하고 실제 사용자 품질을 주장하지 말라. 지원하지 않는 단계의 package/stub를 미리 만들지 말라. 가중치와 threshold를 하드코딩한 정답처럼 취급하지 말고 config hash를 남겨라. 실패 사례를 숨기지 말고 baseline을 측정한 다음 M2에서 시험할 가설을 보고하라.
+> README, AGENTS, 제품 목적, 내부 앱·발행 경계, Core 구조, 도메인, retrieval/scoring, 이 계획서를 읽고 M0+M1만 구현하라. 이음 전체는 내부 관리 웹·앱이며 판단 Core는 일부 기능이라는 제품 경계를 유지하되, 첫 실험에는 제품 UI·DB·발행 API를 선행 구현하지 말라. baseline은 lexical이고 mode는 observe다. Core에 DB/네트워크/모델 의존성을 넣지 말고 파일 입력과 CLI로 capture revision → 후보·근거 → 수동 선택 이력 → evidence pack을 완성하라. 합성 fixture는 계약 검증용으로 표시하고 실제 사용자 품질을 주장하지 말라. 지원하지 않는 단계의 package/stub를 미리 만들지 말라. 가중치와 threshold를 하드코딩한 정답처럼 취급하지 말고 config hash를 남겨라. 실패 사례를 숨기지 말고 baseline을 측정한 다음 M2에서 시험할 가설을 보고하라.
 
-M0/M1 완료 시 실제 구현한 lint/typecheck/test/build/replay 명령과 결과를 보고한다. DB가 없으므로 DB integration test를 성공했다고 쓰지 않는다. M3부터 migration/제약/트랜잭션 검사와 필요한 UI E2E를 추가한다.
+M0/M1 완료 시 실제 구현한 lint/typecheck/test/build/replay 명령과 결과를 보고한다. DB가 없으므로 DB integration test를 성공했다고 쓰지 않는다. M3부터 migration/제약/트랜잭션 검사와 내부 UI E2E를, M5부터 발행 경계·Delivery 계약 검사를 추가한다.
 
 ## 11. 완료의 의미
 
-문서 작성 완료, fixture 테스트 통과, 실제 품질 검증, 성능 목표 달성, 사용자 효용 확인은 서로 다른 상태다. 어느 상태인지 결과마다 명시한다. 이음의 다음 단계는 문서의 양이 아니라 가장 큰 불확실성을 줄인 실험 결과로 결정한다.
+문서 작성 완료, fixture 테스트 통과, 실제 판단 품질 검증, 성능 목표 달성, 개인 관리 앱 구현, 사용자 효용 확인, 발행 API 계약 검증은 서로 다른 상태다. 어느 상태인지 결과마다 명시한다.
+
+Core Lab을 통과했다고 이음 제품이 완성된 것은 아니다. 반대로 코어 자동화 품질이 미달이라는 이유로 수동 일정·할일·위키와 문서 관리 자체를 실패라고 판단하지 않는다. 실험은 보조 판단의 도입을 결정하고, 제품은 사용자에게 완결된 관리·정제·발행 경험을 제공하는 방향으로 발전시킨다.
