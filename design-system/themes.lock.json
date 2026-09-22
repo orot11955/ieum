@@ -1,0 +1,10 @@
+{
+  "version": "1.1.0",
+  "approval": "2026-09-22 user requested dark mode; base 1.0.0 remains frozen; theme extension and shared product recipes reviewed together",
+  "files": {
+    "design-system/themes.json": "fef15176320aa9bfeea44d73054952ac84f31facd44d774ba0d46931f0ea7399",
+    "design-system/app.css": "e4f5a3b3e90f04a3686cae37873ddd367b4b4441c25115de490ce92159bf17fc",
+    "scripts/design/themes.mjs": "9ddffdc5ae8312ec0605dc13339210904332727b2d2607d360604cb83462145a",
+    "apps/web/public/theme-init.js": "6234c0b67c8739cc8bbace42523d333ff1acfe543a8be71bd3eba5bff2497ef3"
+  }
+}
