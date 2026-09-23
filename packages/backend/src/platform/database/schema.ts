@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  foreignKey,
   integer,
   jsonb,
   pgSchema,
@@ -202,6 +203,191 @@ export const commandOutbox = business.table("command_outbox", {
     .notNull()
     .defaultNow(),
 });
+
+export const capture = business.table(
+  "capture",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    createdById: text("created_by_id").notNull(),
+    title: text("title").notNull(),
+    sourceKind: text("source_kind").notNull(),
+    sourceKey: text("source_key"),
+    originKey: text("origin_key").notNull(),
+    state: text("state").notNull().default("ACTIVE"),
+    version: integer("version").notNull().default(1),
+    currentRevision: integer("current_revision").notNull().default(1),
+    unitSetVersion: integer("unit_set_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("capture_workspace_id_unique").on(table.workspaceId, table.id),
+    uniqueIndex("capture_source_key_unique")
+      .on(table.workspaceId, table.sourceKind, table.sourceKey)
+      .where(sql`${table.sourceKey} IS NOT NULL`),
+    check(
+      "capture_title_nonempty",
+      sql`length(trim(${table.title})) BETWEEN 1 AND 300`,
+    ),
+    check(
+      "capture_source_kind_check",
+      sql`${table.sourceKind} IN ('manual', 'import')`,
+    ),
+    check(
+      "capture_source_key_nonempty",
+      sql`${table.sourceKey} IS NULL OR length(${table.sourceKey}) BETWEEN 1 AND 300`,
+    ),
+    check(
+      "capture_import_key_required",
+      sql`${table.sourceKind} <> 'import' OR ${table.sourceKey} IS NOT NULL`,
+    ),
+    check(
+      "capture_origin_key_nonempty",
+      sql`length(${table.originKey}) BETWEEN 1 AND 400`,
+    ),
+    check("capture_state_check", sql`${table.state} IN ('ACTIVE', 'ARCHIVED')`),
+    check(
+      "capture_versions_positive",
+      sql`${table.version} > 0 AND ${table.currentRevision} > 0 AND ${table.unitSetVersion} > 0`,
+    ),
+  ],
+);
+
+export const captureRevision = business.table(
+  "capture_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    captureId: uuid("capture_id").notNull(),
+    revision: integer("revision").notNull(),
+    title: text("title").notNull(),
+    rawBody: text("raw_body").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "capture_revision_pk",
+      columns: [table.workspaceId, table.captureId, table.revision],
+    }),
+    foreignKey({
+      name: "capture_revision_capture_fk",
+      columns: [table.workspaceId, table.captureId],
+      foreignColumns: [capture.workspaceId, capture.id],
+    }),
+    check("capture_revision_positive", sql`${table.revision} > 0`),
+    check(
+      "capture_revision_title_nonempty",
+      sql`length(trim(${table.title})) BETWEEN 1 AND 300`,
+    ),
+    check(
+      "capture_revision_body_nonempty",
+      sql`length(${table.rawBody}) BETWEEN 1 AND 1000000`,
+    ),
+  ],
+);
+
+export const thoughtUnit = business.table(
+  "thought_unit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    captureId: uuid("capture_id").notNull(),
+    captureRevision: integer("capture_revision").notNull(),
+    originKey: text("origin_key").notNull(),
+    state: text("state").notNull().default("ACTIVE"),
+    currentRevision: integer("current_revision").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("thought_unit_workspace_id_unique").on(table.workspaceId, table.id),
+    unique("thought_unit_identity_origin_unique").on(
+      table.workspaceId,
+      table.id,
+      table.captureId,
+      table.captureRevision,
+    ),
+    foreignKey({
+      name: "thought_unit_capture_revision_fk",
+      columns: [table.workspaceId, table.captureId, table.captureRevision],
+      foreignColumns: [
+        captureRevision.workspaceId,
+        captureRevision.captureId,
+        captureRevision.revision,
+      ],
+    }),
+    check(
+      "thought_unit_state_check",
+      sql`${table.state} IN ('ACTIVE', 'SUPERSEDED')`,
+    ),
+    check("thought_unit_revision_positive", sql`${table.currentRevision} > 0`),
+  ],
+);
+
+export const thoughtUnitRevision = business.table(
+  "thought_unit_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    unitId: uuid("unit_id").notNull(),
+    revision: integer("revision").notNull(),
+    captureId: uuid("capture_id").notNull(),
+    captureRevision: integer("capture_revision").notNull(),
+    sourceStart: integer("source_start").notNull(),
+    sourceEnd: integer("source_end").notNull(),
+    contentKind: text("content_kind").notNull().default("quote"),
+    contentText: text("content_text").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "thought_unit_revision_pk",
+      columns: [table.workspaceId, table.unitId, table.revision],
+    }),
+    foreignKey({
+      name: "thought_unit_revision_unit_fk",
+      columns: [
+        table.workspaceId,
+        table.unitId,
+        table.captureId,
+        table.captureRevision,
+      ],
+      foreignColumns: [
+        thoughtUnit.workspaceId,
+        thoughtUnit.id,
+        thoughtUnit.captureId,
+        thoughtUnit.captureRevision,
+      ],
+    }),
+    foreignKey({
+      name: "thought_unit_revision_capture_fk",
+      columns: [table.workspaceId, table.captureId, table.captureRevision],
+      foreignColumns: [
+        captureRevision.workspaceId,
+        captureRevision.captureId,
+        captureRevision.revision,
+      ],
+    }),
+    check("thought_unit_revision_positive", sql`${table.revision} > 0`),
+    check(
+      "thought_unit_span_valid",
+      sql`${table.sourceStart} >= 0 AND ${table.sourceEnd} > ${table.sourceStart}`,
+    ),
+    check(
+      "thought_unit_content_kind_check",
+      sql`${table.contentKind} IN ('quote', 'paraphrase')`,
+    ),
+  ],
+);
 
 export const invitation = business.table(
   "invitation",

@@ -16,6 +16,10 @@
       "types": "./dist/preferences.d.ts",
       "default": "./dist/preferences.js"
     },
+    "./captures": {
+      "types": "./dist/captures.d.ts",
+      "default": "./dist/captures.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"
@@ -37,7 +41,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:db": "vitest run test/database.integration.test.ts"
+    "test:db": "vitest run test/*.integration.test.ts"
   },
   "dependencies": {
     "drizzle-orm": "0.45.3",
