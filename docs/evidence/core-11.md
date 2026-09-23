@@ -1,7 +1,8 @@
 # CORE-11 · 자유 기록에서 관리 항목 추출 계약
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료, 원격 Linux CI 대기; 사용자 ACCEPTED 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI 성공; 사용자 ACCEPTED 전.
 - 선행: CORE-08·CORE-10 VERIFIED. 작업 기준 main `8ee07f6`.
+- 기능 커밋: `a129b68`; [GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35865808881) `completed success` (Linux).
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 실제 사용자 기록·모델 provider·DB를 사용하지 않았다.
 
 ## 구현·계약
