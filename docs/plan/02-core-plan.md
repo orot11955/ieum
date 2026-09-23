@@ -126,7 +126,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-07 · 평가 데이터·라벨·메트릭·반례
 
-**구간:** P1 · **상태:** IMPLEMENTED · **선행:** CORE-06
+**구간:** P1 · **상태:** VERIFIED · **선행:** CORE-06
 
 **구현 범위:** 합성 fixture와 실제 허용 데이터 평가를 분리한다. match/no_match/ambiguous/insufficient 및 미검토 pair를 표현한다. 시간·원본 계열 기준 split, holdout, slices를 지원한다.
 

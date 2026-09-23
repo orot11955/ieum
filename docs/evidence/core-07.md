@@ -1,7 +1,8 @@
 # CORE-07 · 평가 데이터·라벨·메트릭·반례
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료; 원격 Linux CI 검증 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI 성공; 사용자 ACCEPTED 전.
 - 선행: CORE-06 VERIFIED. 작업 기준 main `dab1faafe63178738a2e1274797efb598e55b308`.
+- 기능 커밋: `d29d7fb296f246290f2b187a6012a964b0ca74da`; [GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35858084895) `completed success` (Linux).
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 실제 사용자 자료는 읽거나 평가하지 않았다.
 
 ## 구현·계약
