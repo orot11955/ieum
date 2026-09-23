@@ -39,7 +39,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-02 · 인증 adapter의 실제 호환성 검증
 
-**구간:** P0 · **상태:** PLANNED · **선행:** BE-01, BASE-03
+**구간:** P0 · **상태:** IMPLEMENTED · **선행:** BE-01, BASE-03
 
 **구현 범위:** Better Auth+Drizzle+Fastify의 native handler 연동을 먼저 시험한다. Nest community wrapper는 기본 채택하지 않는다. 여러 Set-Cookie, body parsing, session 조회, 초대 제한, MFA 전후, cache-off 철회를 검증한다.
 

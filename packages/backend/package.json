@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./identity": {
+      "types": "./dist/identity.d.ts",
+      "default": "./dist/identity.js"
+    },
     "./system": {
       "types": "./dist/system.d.ts",
       "default": "./dist/system.js"

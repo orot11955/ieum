@@ -68,4 +68,44 @@ jobs:
       - name: Verify tracked sources remain unchanged
         run: git diff --exit-code
 
-# Product auth, database, browser and end-to-end checks are added with their cards.
+  auth-integration:
+    name: BE-02 auth adapter with PostgreSQL
+    needs: preparation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+        env:
+          POSTGRES_PASSWORD: ieum_be02_fixture_only
+          POSTGRES_DB: ieum_be02
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ieum_be02"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      AUTH_DATABASE_URL: postgres://postgres:ieum_be02_fixture_only@127.0.0.1:55432/ieum_be02
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+      - name: Install pinned pnpm
+        run: npm install --global pnpm@11.24.0
+      - name: Install locked workspace dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build backend use cases
+        run: pnpm --filter @ieum/backend build
+      - name: Apply auth migration to isolated PostgreSQL
+        run: pnpm --filter @ieum/api exec drizzle-kit migrate --config drizzle.config.ts
+      - name: Verify native auth adapter against PostgreSQL
+        run: pnpm --filter @ieum/api test:auth
+      - name: Verify tracked sources remain unchanged
+        run: git diff --exit-code
+
+# Further product database, browser and end-to-end checks are added with their cards.
