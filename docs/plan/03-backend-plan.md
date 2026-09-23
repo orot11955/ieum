@@ -71,7 +71,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-04 · 계정·개인 공간·초대·세션·복구
 
-**구간:** P2 · **상태:** PLANNED · **선행:** BE-03
+**구간:** P2 · **상태:** IMPLEMENTED · **선행:** BE-03
 
 **구현 범위:** 일회성 bootstrap, User/Workspace/Owner/Operator, 초대 수락, 로그인·로그아웃·세션 철회·복구·MFA·시간대 설정을 구현한다. 공개 signup은 끄고 초대받은 사람에게 별도 개인 공간을 만든다.
 

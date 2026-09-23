@@ -110,7 +110,7 @@ jobs:
         run: git diff --exit-code
 
   business-database:
-    name: BE-03 workspace RLS with Testcontainers
+    name: BE-03/04 workspace and identity PostgreSQL
     needs: preparation
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -125,8 +125,12 @@ jobs:
         run: npm install --global pnpm@11.24.0
       - name: Install locked workspace dependencies
         run: pnpm install --frozen-lockfile
+      - name: Build backend application boundary
+        run: pnpm --filter @ieum/backend build
       - name: Verify workspace migrations and RLS on PostgreSQL
         run: pnpm --filter @ieum/backend test:db
+      - name: Verify identity HTTP with separate database roles
+        run: pnpm --filter @ieum/api test:identity
       - name: Verify tracked sources remain unchanged
         run: git diff --exit-code
 

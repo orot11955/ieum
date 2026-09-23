@@ -349,7 +349,7 @@
       "dependencies": [
         "BE-03"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "일회성 bootstrap, User/Workspace/Owner/Operator, 초대 수락, 로그인·로그아웃·세션 철회·복구·MFA·시간대 설정을 구현한다. 공개 signup은 끄고 초대받은 사람에게 별도 개인 공간을 만든다.",
       "contract": "모듈: identity/workspace. /me, /me/sessions, /me/preferences, 필요한 인증 endpoint. 공개 회원 가입·협업 grant는 제공하지 않는다. 기본 설정에서 외부 모델 전송을 끈다.",
       "tests": "bootstrap 동시 실행, 초대 만료/재사용, 마지막 owner/operator 보호, 정지 직후 접근 차단, 메일 없는 복구 정책, 비밀값 로그/응답 금지.",
