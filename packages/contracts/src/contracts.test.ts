@@ -56,17 +56,34 @@ describe("management contract round trip", () => {
         expect(CreateCaptureRequestSchema.parse(await request.json())).toEqual(
           body,
         );
-        return Response.json({ id: captureId, revision: 1 }, { status: 201 });
+        return Response.json(
+          {
+            id: captureId,
+            revision: 1,
+            version: 1,
+            unitId: captureId,
+            commandId: captureId,
+            replayed: false,
+          },
+          { status: 201 },
+        );
       },
     });
     const result = await client.POST(createCapturePath, {
-      params: { path: { wid: "w1" } },
-      body,
+      params: {
+        path: { wid: "w1" },
+        header: { "Idempotency-Key": "capture-key-001" },
+      },
+      body: { title: body.title, rawBody: body.rawBody },
     });
     expect(result.error).toBeUndefined();
     expect(CreateCaptureResponseSchema.parse(result.data)).toEqual({
       id: captureId,
       revision: 1,
+      version: 1,
+      unitId: captureId,
+      commandId: captureId,
+      replayed: false,
     });
   });
 });

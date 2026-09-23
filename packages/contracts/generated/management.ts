@@ -134,9 +134,89 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["listCaptures"];
         put?: never;
         post: operations["createCapture"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/captures/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCapture"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/captures/{id}/revisions/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCaptureRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/captures/{id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reviseCapture"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/captures/{id}/units/split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["splitCaptureUnits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/captures/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archiveCapture"];
         delete?: never;
         options?: never;
         head?: never;
@@ -388,10 +468,50 @@ export interface operations {
             };
         };
     };
+    listCaptures: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Capture list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        captures: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "ACTIVE" | "ARCHIVED";
+                            version: number;
+                            currentRevision: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+        };
+    };
     createCapture: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 wid: string;
             };
@@ -402,6 +522,15 @@ export interface operations {
                 "application/json": {
                     title: string;
                     rawBody: string;
+                    source?: {
+                        /** @enum {string} */
+                        kind: "manual";
+                        key?: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "import";
+                        key: string;
+                    };
                 };
             };
         };
@@ -416,6 +545,277 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         revision: number;
+                        version: number;
+                        /** Format: uuid */
+                        unitId: string;
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    getCapture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current capture and units */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        workspaceId: string;
+                        title: string;
+                        source: {
+                            /** @enum {string} */
+                            kind: "manual" | "import";
+                            key: string | null;
+                            originKey: string;
+                        };
+                        /** @enum {string} */
+                        state: "ACTIVE" | "ARCHIVED";
+                        version: number;
+                        currentRevision: number;
+                        unitSetVersion: number;
+                        revision: number;
+                        rawBody: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        units: {
+                            /** Format: uuid */
+                            id: string;
+                            revision: number;
+                            captureRevision: number;
+                            originKey: string;
+                            /** @enum {string} */
+                            state: "ACTIVE" | "SUPERSEDED";
+                            sourceSpan: {
+                                start: number;
+                                end: number;
+                                /** @enum {string} */
+                                encoding: "utf16";
+                            };
+                            content: {
+                                /** @enum {string} */
+                                kind: "quote";
+                                text: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    getCaptureRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable capture revision and units */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        workspaceId: string;
+                        title: string;
+                        source: {
+                            /** @enum {string} */
+                            kind: "manual" | "import";
+                            key: string | null;
+                            originKey: string;
+                        };
+                        /** @enum {string} */
+                        state: "ACTIVE" | "ARCHIVED";
+                        version: number;
+                        currentRevision: number;
+                        unitSetVersion: number;
+                        revision: number;
+                        rawBody: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        units: {
+                            /** Format: uuid */
+                            id: string;
+                            revision: number;
+                            captureRevision: number;
+                            originKey: string;
+                            /** @enum {string} */
+                            state: "ACTIVE" | "SUPERSEDED";
+                            sourceSpan: {
+                                start: number;
+                                end: number;
+                                /** @enum {string} */
+                                encoding: "utf16";
+                            };
+                            content: {
+                                /** @enum {string} */
+                                kind: "quote";
+                                text: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    reviseCapture: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                    title: string;
+                    rawBody: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Capture revised */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        version: number;
+                        unitSetVersion: number;
+                        /** Format: uuid */
+                        unitId: string;
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    splitCaptureUnits: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                    captureRevision: number;
+                    spans: {
+                        start: number;
+                        end: number;
+                        /** @enum {string} */
+                        encoding: "utf16";
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Units split */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        version: number;
+                        unitSetVersion: number;
+                        unitIds: string[];
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    archiveCapture: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Capture archived */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        state: "ARCHIVED";
+                        version: number;
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
                     };
                 };
             };

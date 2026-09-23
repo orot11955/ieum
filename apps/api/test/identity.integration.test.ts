@@ -7,6 +7,7 @@ import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { IdentityService } from "@ieum/backend/identity-service";
 import { CommandCoordinator } from "@ieum/backend/command-coordinator";
 import { PreferenceCommands } from "@ieum/backend/preferences";
+import { CaptureService } from "@ieum/backend/captures";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -126,12 +127,14 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       administration.sessions,
       authLockPool,
     );
+    const commands = new CommandCoordinator(identity);
     app = await createApiApp({
       auth: auth.auth,
       baseUrl: origin,
       identity: {
         service: identity,
-        preferences: new PreferenceCommands(new CommandCoordinator(identity)),
+        preferences: new PreferenceCommands(commands),
+        captures: new CaptureService(identity, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -330,6 +333,135 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       workspace: { id: invitedWorkspaceId },
       operator: false,
     });
+    const captureUrl = `/api/v1/workspaces/${operator.workspaceId}/captures`;
+    const captureHeaders = {
+      host: "127.0.0.1:3000",
+      origin,
+      cookie: operatorCookie,
+      "idempotency-key": "be07-http-create-01",
+    };
+    const capturePayload = { title: "비공개 기록", rawBody: "A😀B" };
+    const captureCreated = await app.inject({
+      method: "POST",
+      url: captureUrl,
+      headers: captureHeaders,
+      payload: capturePayload,
+    });
+    expect(captureCreated.statusCode).toBe(201);
+    const captureId = captureCreated.json<{ id: string }>().id;
+    expect(captureCreated.json()).toMatchObject({
+      revision: 1,
+      version: 1,
+      replayed: false,
+    });
+    const captureReplay = await app.inject({
+      method: "POST",
+      url: captureUrl,
+      headers: captureHeaders,
+      payload: capturePayload,
+    });
+    expect(captureReplay.statusCode).toBe(201);
+    expect(captureReplay.json()).toMatchObject({
+      id: captureId,
+      replayed: true,
+    });
+    const captureKeyConflict = await app.inject({
+      method: "POST",
+      url: captureUrl,
+      headers: captureHeaders,
+      payload: { ...capturePayload, rawBody: "changed" },
+    });
+    expect(captureKeyConflict.statusCode).toBe(409);
+    expect(captureKeyConflict.body).not.toContain("changed");
+    const captureNoKey = await app.inject({
+      method: "POST",
+      url: captureUrl,
+      headers: { host: "127.0.0.1:3000", origin, cookie: operatorCookie },
+      payload: capturePayload,
+    });
+    expect(captureNoKey.statusCode).toBe(422);
+    const captureRead = await app.inject({
+      method: "GET",
+      url: `${captureUrl}/${captureId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(captureRead.statusCode).toBe(200);
+    expect(captureRead.headers["cache-control"]).toBe("no-store");
+    expect(captureRead.json()).toMatchObject({
+      rawBody: "A😀B",
+      units: [{ sourceSpan: { start: 0, end: 4 } }],
+    });
+    const otherRead = await app.inject({
+      method: "GET",
+      url: `${captureUrl}/${captureId}`,
+      headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+    });
+    expect(otherRead.statusCode).toBe(404);
+    expect(otherRead.body).not.toContain("A😀B");
+    const wrongCaptureOrigin = await app.inject({
+      method: "POST",
+      url: captureUrl,
+      headers: {
+        ...captureHeaders,
+        origin: "https://attacker.example",
+        "idempotency-key": "be07-http-create-02",
+      },
+      payload: capturePayload,
+    });
+    expect(wrongCaptureOrigin.statusCode).toBe(403);
+    const splitCapture = await app.inject({
+      method: "POST",
+      url: `${captureUrl}/${captureId}/units/split`,
+      headers: { ...captureHeaders, "idempotency-key": "be07-http-split-001" },
+      payload: {
+        baseVersion: 1,
+        captureRevision: 1,
+        spans: [
+          { start: 0, end: 1, encoding: "utf16" },
+          { start: 1, end: 3, encoding: "utf16" },
+          { start: 3, end: 4, encoding: "utf16" },
+        ],
+      },
+    });
+    expect(splitCapture.statusCode).toBe(201);
+    expect(splitCapture.json()).toMatchObject({
+      version: 2,
+      unitIds: expect.any(Array),
+    });
+    const revisedCapture = await app.inject({
+      method: "POST",
+      url: `${captureUrl}/${captureId}/revisions`,
+      headers: { ...captureHeaders, "idempotency-key": "be07-http-revise-01" },
+      payload: { baseVersion: 2, title: "개정 기록", rawBody: "C😀D" },
+    });
+    expect(revisedCapture.statusCode).toBe(201);
+    expect(revisedCapture.json()).toMatchObject({ revision: 2, version: 3 });
+    const oldCapture = await app.inject({
+      method: "GET",
+      url: `${captureUrl}/${captureId}/revisions/1`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(oldCapture.statusCode).toBe(200);
+    expect(oldCapture.json()).toMatchObject({
+      title: "비공개 기록",
+      rawBody: "A😀B",
+    });
+    const archiveCapture = await app.inject({
+      method: "POST",
+      url: `${captureUrl}/${captureId}/archive`,
+      headers: { ...captureHeaders, "idempotency-key": "be07-http-archive-1" },
+      payload: { baseVersion: 3 },
+    });
+    expect(archiveCapture.statusCode).toBe(201);
+    const visibleCaptures = await app.inject({
+      method: "GET",
+      url: captureUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(visibleCaptures.statusCode).toBe(200);
+    expect(
+      visibleCaptures.json<{ captures: unknown[] }>().captures,
+    ).toHaveLength(0);
     const denied = await app.inject({
       method: "POST",
       url: "/api/v1/ops/invitations",

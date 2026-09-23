@@ -3,6 +3,7 @@ import type { ArgumentsHost, ExceptionFilter } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { IdentityError } from "@ieum/backend/identity-service";
 import { CommandError } from "@ieum/backend/command-coordinator";
+import { CaptureError } from "@ieum/backend/captures";
 
 type FieldErrors = Record<string, string[]>;
 
@@ -43,17 +44,23 @@ export class ProblemFilter implements ExceptionFilter {
         ? exception.code === "INVALID_COMMAND"
           ? 422
           : 409
-        : exception instanceof IdentityError
-          ? exception.code === "INVALID_INPUT"
-            ? 422
-            : exception.code === "INVITATION_INVALID"
-              ? 404
-              : exception.code === "ACCESS_DENIED"
-                ? 403
-                : 409
-          : exception instanceof HttpException
-            ? exception.getStatus()
-            : HttpStatus.INTERNAL_SERVER_ERROR;
+        : exception instanceof CaptureError
+          ? exception.code === "CAPTURE_NOT_FOUND"
+            ? 404
+            : exception.code === "INVALID_SPANS"
+              ? 422
+              : 409
+          : exception instanceof IdentityError
+            ? exception.code === "INVALID_INPUT"
+              ? 422
+              : exception.code === "INVITATION_INVALID"
+                ? 404
+                : exception.code === "ACCESS_DENIED"
+                  ? 403
+                  : 409
+            : exception instanceof HttpException
+              ? exception.getStatus()
+              : HttpStatus.INTERNAL_SERVER_ERROR;
     const title =
       status === 422
         ? "Unprocessable Content"
@@ -63,15 +70,17 @@ export class ProblemFilter implements ExceptionFilter {
     const code =
       exception instanceof CommandError
         ? exception.code
-        : exception instanceof IdentityError
+        : exception instanceof CaptureError
           ? exception.code
-          : status === 422
-            ? "VALIDATION_ERROR"
-            : status === 404
-              ? "NOT_FOUND"
-              : status >= 500
-                ? "INTERNAL_ERROR"
-                : "HTTP_ERROR";
+          : exception instanceof IdentityError
+            ? exception.code
+            : status === 422
+              ? "VALIDATION_ERROR"
+              : status === 404
+                ? "NOT_FOUND"
+                : status >= 500
+                  ? "INTERNAL_ERROR"
+                  : "HTTP_ERROR";
     const fieldErrors =
       exception instanceof HttpException
         ? fieldErrorsFor(exception)
