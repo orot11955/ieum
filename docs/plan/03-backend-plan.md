@@ -247,7 +247,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-15 · 구조 변경의 원자적 적용과 역변경
 
-**구간:** P5 · **상태:** PLANNED · **선행:** BE-13, BE-08, CORE-13
+**구간:** P5 · **상태:** IMPLEMENTED · **선행:** BE-13, BE-08, CORE-13
 
 **구현 범위:** 분리·병합·parent/link 변경 preview와 승인 transaction을 구현한다. 영향을 받는 entity를 안정된 순서로 잠그고 전체 baseRevisions를 검사한다. 기존 context는 superseded로 남긴다. 원본에 소속이 남는 분리는 ACTIVE를 유지하고, 완전 분리·병합은 원본을 SUPERSEDED로 보존한다. 복수 후속 Context는 별도 이력으로 남긴다.
 
