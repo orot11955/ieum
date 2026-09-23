@@ -35,7 +35,7 @@
 | BE-10 | P3 | VERIFIED | 일정·시간대·종일·변경·취소 | BE-05, BE-07 |
 | BE-11 | P3 | PLANNED | 위키·문서 공통 draft/revision 엔진 | BE-05, FE-02 |
 | BE-12 | P4 | VERIFIED | snapshot builder·profile·판단 job 연결 | BE-06, BE-07, BE-08, CORE-06 |
-| BE-13 | P4 | IMPLEMENTED | 제안·노출·피드백·승인 적용 | BE-12, BE-05, CORE-05 |
+| BE-13 | P4 | VERIFIED | 제안·노출·피드백·승인 적용 | BE-12, BE-05, CORE-05 |
 | BE-14 | P4 | PLANNED | 추출 후보 승인→업무 항목 생성 | BE-13, BE-09, BE-10, CORE-11 |
 | BE-15 | P5 | PLANNED | 구조 변경의 원자적 적용과 역변경 | BE-13, BE-08, CORE-13 |
 | BE-16 | P6 | PLANNED | 자료 묶음·출처 고정·문서 작업실 | BE-11, BE-07, BE-08, CORE-14 |

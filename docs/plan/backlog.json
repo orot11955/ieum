@@ -494,7 +494,7 @@
         "BE-05",
         "CORE-05"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "후보 조회와 영속 Proposal을 구분한다. 제안 노출, 수락/거절/닫기, stale, expire를 구현한다. exact unit revision과 context version을 대상으로 승인한 membership 변경만 적용한다.",
       "contract": "모듈: judgement/proposals. POST proposals/{id}/accept|reject|dismiss. pending→accepted/rejected/dismissed/expired/superseded. stale는 409와 최신 preview 필요 상태; 작업 receipt와 함께 반환.",
       "tests": "캡처의 첫 unit 임의 선택 금지, 중복 승인, 수정된 대상, 노출되지 않은 피드백, primary 변경≠관련성 거절, 승인 중 대상 삭제.",
