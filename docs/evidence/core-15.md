@@ -1,7 +1,8 @@
 # CORE-15 · 모델 초안·claim map 검증
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료, 원격 Linux CI 대기; 사용자 ACCEPTED 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI 성공; 사용자 ACCEPTED 전.
 - 선행: CORE-11·CORE-14 VERIFIED. 작업 기준 main `10c18f3`.
+- 기능 커밋: `e89a0f2`; [GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35867644335) `completed success` (Linux).
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 실제 모델/provider·사용자 자료·DB를 사용하지 않았다.
 
 ## 구현·계약
