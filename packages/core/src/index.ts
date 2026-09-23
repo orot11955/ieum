@@ -12,6 +12,19 @@ export type {
   PackSource,
 } from "./derivation/evidence-pack/index.js";
 export {
+  DOCUMENT_CHECKLISTS,
+  planDocument,
+} from "./derivation/planning/index.js";
+export type {
+  DocumentPlan,
+  DocumentPlanRequest,
+  DocumentPurpose,
+  OutlineCitation,
+  OutlineEntryRequest,
+  PlannedOutlineEntry,
+  SourceRole,
+} from "./derivation/planning/index.js";
+export {
   computeLexicalFeatures,
   LEXICAL_CONFIG,
   normalizeLexicalText,
