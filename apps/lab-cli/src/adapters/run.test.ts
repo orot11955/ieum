@@ -14,6 +14,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { compareRuns, inspectRun, replayRun, runFromFile } from "./run.js";
+import { packFromRun } from "./evidence-pack.js";
 
 function fixture() {
   const captures = [
@@ -150,6 +151,105 @@ test("run is immutable, inspectable and replays a stored decision without recomp
         "PRIVATE_QUERY",
       ),
       true,
+    );
+  });
+});
+
+test("direct selection creates a private immutable evidence pack from stored run input", () => {
+  withFixture((directory, input) => {
+    const feedback = path.join(directory, "feedback.json");
+    writeFileSync(
+      feedback,
+      JSON.stringify([
+        { commandId: "select-1", kind: "direct_selection", contextId: "c1" },
+      ]),
+    );
+    const run = path.join(directory, "run");
+    runFromFile(input, { output: run, feedback });
+    const requestFile = path.join(directory, "pack-request.json");
+    const request = {
+      selectionCommandId: "select-1",
+      selectedContextId: "c1",
+      title: "여행",
+      purpose: "기록 정리",
+      sections: {
+        question: [
+          { unitId: "uq", revision: 1, quote: "여행 기록 PRIVATE_QUERY" },
+        ],
+        observation: [
+          { unitId: "ua", revision: 1, quote: "여행 기록 PRIVATE_SOURCE" },
+        ],
+        counterargument: [],
+        decision: [],
+        unknown: [],
+      },
+    };
+    writeFileSync(requestFile, JSON.stringify(request));
+    const output = path.join(directory, "pack");
+    const result = packFromRun(run, requestFile, output);
+    assert.equal(result.directory, output);
+    assert.deepEqual(result.missingSections, [
+      "counterargument",
+      "decision",
+      "unknown",
+    ]);
+    assert.match(
+      readFileSync(path.join(output, "pack.md"), "utf8"),
+      /PRIVATE_SOURCE/,
+    );
+    const manifest = JSON.parse(
+      readFileSync(path.join(output, "manifest.json"), "utf8"),
+    );
+    assert.equal(manifest.selectionCommandId, "select-1");
+    assert.equal(manifest.originFamilies.length, 2);
+    assert.match(manifest.sourceHashes[0].sha256, /^[a-f0-9]{64}$/);
+    assert.throws(
+      () => packFromRun(run, requestFile, output),
+      /already exists/,
+    );
+    writeFileSync(input, "changed original fixture");
+    assert.match(
+      readFileSync(path.join(output, "pack.md"), "utf8"),
+      /PRIVATE_SOURCE/,
+    );
+    request.selectionCommandId = "wrong";
+    writeFileSync(requestFile, JSON.stringify(request));
+    assert.throws(
+      () => packFromRun(run, requestFile, path.join(directory, "wrong")),
+      /matching stored direct selection/,
+    );
+    request.selectionCommandId = "select-1";
+    request.sections.observation[0]!.quote = "invented";
+    writeFileSync(requestFile, JSON.stringify(request));
+    assert.throws(
+      () => packFromRun(run, requestFile, path.join(directory, "mismatch")),
+      /original source span/,
+    );
+    request.sections.observation[0]!.quote = "여행 기록 PRIVATE_SOURCE";
+    writeFileSync(requestFile, JSON.stringify(request));
+    const privateHome = path.join(directory, "private-home");
+    mkdirSync(privateHome);
+    const cli = spawnSync(
+      process.execPath,
+      [
+        fileURLToPath(new URL("../main.js", import.meta.url)),
+        "pack",
+        run,
+        requestFile,
+      ],
+      { encoding: "utf8", env: { ...process.env, HOME: privateHome } },
+    );
+    assert.equal(cli.status, 0, cli.stderr);
+    const cliResult = JSON.parse(cli.stdout);
+    assert.ok(
+      cliResult.directory.startsWith(
+        path.join(privateHome, ".local", "share", "ieum-lab", "packs"),
+      ),
+    );
+    assert.equal(cli.stdout.includes("PRIVATE_SOURCE"), false);
+    assert.match(
+      readFileSync(path.join(cliResult.directory, "pack.md"), "utf8"),
+      /PRIVATE_SOURCE/,
     );
   });
 });

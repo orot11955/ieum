@@ -1,6 +1,17 @@
 /** Pure Core contracts and validation. */
 export const CORE_PACKAGE_ID = "@ieum/core" as const;
 export {
+  createEvidencePack,
+  PACK_SECTIONS,
+} from "./derivation/evidence-pack/index.js";
+export type {
+  EvidencePack,
+  EvidencePackRequest,
+  PackSection,
+  PackSelection,
+  PackSource,
+} from "./derivation/evidence-pack/index.js";
+export {
   computeLexicalFeatures,
   LEXICAL_CONFIG,
   normalizeLexicalText,

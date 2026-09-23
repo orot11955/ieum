@@ -409,7 +409,7 @@ export function runFromFile(
   };
 }
 
-function readRun(directory: string) {
+export function readRun(directory: string) {
   const root = path.resolve(directory);
   const rawManifest = parseObject(
     readFileSync(path.join(root, "manifest.json"), "utf8"),

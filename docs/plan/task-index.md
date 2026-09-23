@@ -14,7 +14,7 @@
 | CORE-05 | P1 | VERIFIED | 점수·가용성·보류·설명 엔진 | CORE-04 |
 | CORE-06 | P1 | VERIFIED | 파일 Replay·실행 이력·수동 피드백 | CORE-05 |
 | CORE-07 | P1 | VERIFIED | 평가 데이터·라벨·메트릭·반례 | CORE-06 |
-| CORE-08 | P1 | PLANNED | 모델 없는 evidence pack | CORE-01, CORE-06 |
+| CORE-08 | P1 | IMPLEMENTED | 모델 없는 evidence pack | CORE-01, CORE-06 |
 | CORE-09 | P4 | PLANNED | 고정 embedding과 exact semantic 검색 | CORE-07 |
 | CORE-10 | P4 | PLANNED | hybrid·정책 보정·추천 활성화 | CORE-09, CORE-05 |
 | CORE-11 | P4 | PLANNED | 자유 기록에서 관리 항목 추출 계약 | CORE-08, CORE-10 |
