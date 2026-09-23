@@ -4,6 +4,7 @@ import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { AppModule } from "./app.module.js";
+import type { IdentityRuntime } from "./identity/identity.runtime.js";
 import type { IeumAuth } from "./auth/auth.js";
 import { registerAuthRoutes } from "./auth/fastify.js";
 
@@ -11,9 +12,12 @@ export async function createApiApp(authConfig?: {
   auth: IeumAuth;
   baseUrl: string;
   close?: () => Promise<void>;
+  identity?: IdentityRuntime;
+  loginAllowed?: (email: string) => Promise<boolean>;
+  withAuthMutationLock?: <T>(operation: () => Promise<T>) => Promise<T>;
 }): Promise<NestFastifyApplication> {
   const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
+    AppModule.register(authConfig?.identity),
     new FastifyAdapter({
       requestIdHeader: false,
       genReqId: () => randomUUID(),
@@ -23,7 +27,13 @@ export async function createApiApp(authConfig?: {
   await app.register(helmet);
   if (authConfig) {
     const fastify = app.getHttpAdapter().getInstance();
-    registerAuthRoutes(fastify, authConfig.auth, authConfig.baseUrl);
+    registerAuthRoutes(
+      fastify,
+      authConfig.auth,
+      authConfig.baseUrl,
+      authConfig.loginAllowed,
+      authConfig.withAuthMutationLock,
+    );
     if (authConfig.close) fastify.addHook("onClose", authConfig.close);
   }
   app

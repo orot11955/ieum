@@ -5,6 +5,7 @@ import { twoFactor } from "better-auth/plugins";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema.js";
+import { ABSOLUTE_SESSION_SECONDS } from "./session-policy.js";
 
 export interface AuthConfiguration {
   databaseUrl: string;
@@ -19,7 +20,10 @@ export interface AuthConfiguration {
 
 export type IeumAuth = ReturnType<typeof betterAuth>;
 
-export function createAuth(config: AuthConfiguration): {
+function createConfiguredAuth(
+  config: AuthConfiguration,
+  privateRegistration: boolean,
+): {
   auth: IeumAuth;
   close: () => Promise<void>;
 } {
@@ -42,7 +46,8 @@ export function createAuth(config: AuthConfiguration): {
     }),
     emailAndPassword: {
       enabled: true,
-      disableSignUp: true,
+      disableSignUp: !privateRegistration,
+      autoSignIn: !privateRegistration,
       revokeSessionsOnPasswordReset: true,
       ...(resetSender
         ? {
@@ -53,6 +58,10 @@ export function createAuth(config: AuthConfiguration): {
     },
     session: {
       cookieCache: { enabled: false },
+      expiresIn: ABSOLUTE_SESSION_SECONDS,
+      // A server-checked activity timestamp controls idle expiry. Do not let
+      // background session reads slide the vendor's expiry or activity time.
+      updateAge: ABSOLUTE_SESSION_SECONDS,
     },
     advanced: {
       ipAddress: { ipAddressHeaders: ["x-ieum-client-ip"] },
@@ -62,4 +71,17 @@ export function createAuth(config: AuthConfiguration): {
   };
   const auth = betterAuth(options);
   return { auth, close: () => pool.end() };
+}
+
+export function createAuth(
+  config: AuthConfiguration,
+): ReturnType<typeof createConfiguredAuth> {
+  return createConfiguredAuth(config, false);
+}
+
+/** Never mount this instance on the public Fastify auth route. */
+export function createPrivateRegistrationAuth(
+  config: AuthConfiguration,
+): ReturnType<typeof createConfiguredAuth> {
+  return createConfiguredAuth(config, true);
 }

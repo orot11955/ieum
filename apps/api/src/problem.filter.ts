@@ -1,6 +1,7 @@
 import { Catch, HttpException, HttpStatus } from "@nestjs/common";
 import type { ArgumentsHost, ExceptionFilter } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { IdentityError } from "@ieum/backend/identity-service";
 
 type FieldErrors = Record<string, string[]>;
 
@@ -37,9 +38,17 @@ export class ProblemFilter implements ExceptionFilter {
     const request = host.switchToHttp().getRequest<FastifyRequest>();
     const reply = host.switchToHttp().getResponse<FastifyReply>();
     const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+      exception instanceof IdentityError
+        ? exception.code === "INVALID_INPUT"
+          ? 422
+          : exception.code === "INVITATION_INVALID"
+            ? 404
+            : exception.code === "ACCESS_DENIED"
+              ? 403
+              : 409
+        : exception instanceof HttpException
+          ? exception.getStatus()
+          : HttpStatus.INTERNAL_SERVER_ERROR;
     const title =
       status === 422
         ? "Unprocessable Content"
@@ -47,13 +56,15 @@ export class ProblemFilter implements ExceptionFilter {
           ? "Internal Server Error"
           : "Request Error";
     const code =
-      status === 422
-        ? "VALIDATION_ERROR"
-        : status === 404
-          ? "NOT_FOUND"
-          : status >= 500
-            ? "INTERNAL_ERROR"
-            : "HTTP_ERROR";
+      exception instanceof IdentityError
+        ? exception.code
+        : status === 422
+          ? "VALIDATION_ERROR"
+          : status === 404
+            ? "NOT_FOUND"
+            : status >= 500
+              ? "INTERNAL_ERROR"
+              : "HTTP_ERROR";
     const fieldErrors =
       exception instanceof HttpException
         ? fieldErrorsFor(exception)

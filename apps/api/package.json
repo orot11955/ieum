@@ -8,12 +8,16 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
     "test:auth": "vitest run test/auth.integration.test.ts",
+    "test:identity": "vitest run test/identity.integration.test.ts",
+    "bootstrap": "node dist/cli/bootstrap.js",
+    "recover": "node dist/cli/recover.js",
     "start": "node dist/main.js"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.5",
     "@fastify/helmet": "13.1.1",
     "@ieum/backend": "workspace:*",
+    "@ieum/contracts": "workspace:*",
     "@nestjs/common": "12.0.3",
     "@nestjs/core": "12.0.3",
     "@nestjs/platform-fastify": "12.0.3",
@@ -22,10 +26,12 @@
     "fastify": "5.12.4",
     "pg": "8.23.0",
     "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "rxjs": "7.8.2",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@nestjs/testing": "12.0.3",
+    "@testcontainers/postgresql": "12.1.0",
     "@types/pg": "8.23.1",
     "auth": "1.7.5",
     "drizzle-kit": "0.31.11"

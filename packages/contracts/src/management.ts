@@ -1,5 +1,6 @@
 import * as z from "zod";
 import type { CoreCaptureSnapshot, Utf16Span } from "@ieum/core";
+import { identityOpenApiPaths } from "./identity.js";
 
 export const createCapturePath = "/api/v1/workspaces/{wid}/captures" as const;
 
@@ -67,6 +68,7 @@ export const managementOpenApi = {
   openapi: "3.0.3",
   info: { title: "IEUM management contract example", version: "0.1.0" },
   paths: {
+    ...identityOpenApiPaths,
     [createCapturePath]: {
       post: {
         operationId: "createCapture",
