@@ -17,7 +17,7 @@
 | CORE-08 | P1 | VERIFIED | 모델 없는 evidence pack | CORE-01, CORE-06 |
 | CORE-09 | P4 | VERIFIED | 고정 embedding과 exact semantic 검색 | CORE-07 |
 | CORE-10 | P4 | VERIFIED | hybrid·정책 보정·추천 활성화 | CORE-09, CORE-05 |
-| CORE-11 | P4 | PLANNED | 자유 기록에서 관리 항목 추출 계약 | CORE-08, CORE-10 |
+| CORE-11 | P4 | IMPLEMENTED | 자유 기록에서 관리 항목 추출 계약 | CORE-08, CORE-10 |
 | CORE-12 | P5 | PLANNED | 맥락의 구조 진단 | CORE-09 |
 | CORE-13 | P5 | PLANNED | 분리·병합·상위 묶음 변경안 | CORE-12 |
 | CORE-14 | P6 | VERIFIED | 문서 목적·관점·개요·readiness | CORE-08 |

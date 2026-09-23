@@ -25,6 +25,17 @@ export type {
   SourceRole,
 } from "./derivation/planning/index.js";
 export {
+  prepareExtractCommand,
+  validateExtractProposals,
+} from "./extraction/validation.js";
+export type {
+  ConfirmedExtractCommand,
+  ExtractDecision,
+  ExtractProposal,
+  ExtractionTargetKind,
+  RawExtractCandidate,
+} from "./extraction/validation.js";
+export {
   computeLexicalFeatures,
   LEXICAL_CONFIG,
   normalizeLexicalText,
