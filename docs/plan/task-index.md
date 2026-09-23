@@ -5,7 +5,7 @@
 | ID | 구간 | 상태 | 기능 | 선행 |
 |---|---|---|---|---|
 | BASE-01 | P0 | VERIFIED | 기준선·문서 우선순위·재사용 판정 확정 | 없음 |
-| BASE-02 | P0 | PLANNED | 최소 workspace·실행·검사 기반 | BASE-01 |
+| BASE-02 | P0 | IMPLEMENTED | 최소 workspace·실행·검사 기반 | BASE-01 |
 | BASE-03 | P0 | PLANNED | 도메인·HTTP·편집기 계약과 의존 방향 | BASE-02 |
 | CORE-01 | P1 | PLANNED | 원본·단위·맥락·근거 타입과 불변식 | BASE-03 |
 | CORE-02 | P1 | PLANNED | 시점·권한 범위가 고정된 snapshot | CORE-01 |
@@ -70,9 +70,9 @@
 | FE-19 | P8 | PLANNED | 이식·휴지통·삭제 영향 | FE-03, BE-21, BE-22 |
 | FE-20 | P8 | PLANNED | 회원·권한·로그·작업·운영·설정 | FE-03, BE-23, BE-24 |
 | FE-21 | P9 | PLANNED | 전체 화면 상태·접근성·한글 회귀 | FE-10, FE-11, FE-13, FE-14, FE-16, FE-18, FE-19, FE-20 |
-| QA-01 | P0 | PLANNED | 의존성·계약·디자인 CI 차단 | BASE-03, BE-01, FE-01 |
+| QA-01 | P0 | PLANNED | 의존성·계약·디자인 CI 차단 | BASE-03, BE-02, FE-02 |
 | QA-02 | P1 | PLANNED | Core Lab 재현성·누수 반례 gate | CORE-06, CORE-07, CORE-08 |
-| QA-03 | P2 | PLANNED | 인증·두 사용자·transaction gate | BE-03, BE-04, BE-05, FE-04 |
+| QA-03 | P2 | PLANNED | 인증·두 사용자·transaction gate | QA-01, BE-03, BE-04, BE-05, FE-04 |
 | QA-04 | P3 | PLANNED | Core OFF 기본 개인 관리 E2E | FE-10, BE-09, BE-10, BE-11, QA-03 |
 | QA-05 | P4 | PLANNED | 비동기 판단·추출·오류 격리 gate | BE-06, BE-12, BE-13, BE-14, FE-12, FE-13 |
 | QA-06 | P6 | PLANNED | 구조·근거·문서 정제 gate | BE-15, BE-16, BE-17, FE-14, FE-15, FE-16 |

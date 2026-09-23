@@ -317,7 +317,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 **입출력·데이터·코드 계약:** 모듈: publishing. publication identity와 immutable public revisions, current pointer, slug/alias namespace, review record. draft 변경은 공개본을 수정하지 않으며 새 발행 명령으로만 current를 이동한다.
 
-**필수 반례·검증:** 검토 뒤 본문/출처/asset 변경, 중복 발행, slug 동시 충돌, 발행과 철회 경쟁, private 필드·내부 ID·source pack 유입, stale READY.
+**필수 반례·검증:** 검토 뒤 본문/출처/asset 변경, 중복 발행, slug 동시 충돌, 발행과 철회 경쟁, private 필드·내부 ID·source pack 유입, stale READY, Core/worker 불가 중 명시적 발행.
 
 **완료 기준:** 미리 검토한 것만 발행되고 철회한 revision/alias/asset의 제공 중단 규칙이 원자적으로 적용된다.
 

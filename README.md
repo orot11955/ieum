@@ -4,9 +4,9 @@
 
 ## 현재 상태 · 2026-09-23 KST
 
-**main 단일 브랜치 · 계획 채택 및 정리 완료 · 제품 구현 지시 대기.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. 새 브랜치·PR·제품 API/Core/업무 웹 구현·DB 변경·배포는 하지 않는다.
+**main 단일 브랜치 · BASE-02 최소 workspace와 CI 구현 · 원격 CI 미확인.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. 판단 Core·제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
 
-현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스가 있다는 이유로 제품 React 앱이 실행된다고 설명하지 않는다.
+현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 최소 빌드 기반, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 판단 기능이 실행된다고 설명하지 않는다.
 
 ## 구현의 시작점
 
@@ -17,18 +17,31 @@
 | [Core](docs/plan/02-core-plan.md) · [Backend](docs/plan/03-backend-plan.md) · [Web](docs/plan/04-web-plan.md) | 영역별 상세 기능·반례·완료 기준 |
 | [실행 지시](docs/plan/07-codex-execution-playbook.md) · [AGENTS](AGENTS.md) | 구현 시작 지시와 main 직접 작업 규칙 |
 | [BASE-01 증거](docs/evidence/base-01.md) | 실제 실행 검사와 미검증 범위 |
+| [BASE-02 증거](docs/evidence/base-02.md) | workspace·CI 작성과 로컬 검증 범위 |
 
-다음 구현은 **BASE-02 → BASE-03 → CORE-01–08**이다. 계획 파일을 올렸다는 이유로 제품 구현까지 자동 시작하지 않는다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
+BASE-02는 IMPLEMENTED이며 원격 CI 결과는 아직 확인하지 못했다. 검증 근거를 확인해 VERIFIED로 올린 뒤 **BASE-03 → CORE-01–08**을 진행한다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
 
 ## 현재 실행 가능한 검사
 
-Node 24를 사용한다. 이 준비 단계는 외부 패키지 설치가 필요 없다.
+Node 24.18.0을 사용한다. 계획·디자인 준비 검사는 외부 패키지 설치가 필요 없다.
 
 ```sh
 npm run prep:check
 ```
 
-개별 명령:
+BASE-02 workspace 검사는 의존성 설치 후 실행한다.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm format:check
+pnpm typecheck
+pnpm test:unit
+pnpm build
+pnpm lab:smoke
+```
+
+준비 검사 개별 명령:
 
 ```sh
 node scripts/plan/render.mjs --check
@@ -40,7 +53,7 @@ node scripts/design/check.mjs
 node scripts/design/themes.mjs --check
 ```
 
-검사 성공은 계획/디자인 기준선의 검사다. 제품 typecheck·build·DB integration·브라우저 E2E·Core 품질·운영 복원 성공이 아니다. 이 명령들은 실제 기능이 생기는 카드에서 추가한다.
+준비 검사 성공은 계획/디자인 기준선의 검사다. workspace typecheck·unit·build·smoke 성공은 core/lab 기반의 검사이며 판단 품질·DB integration·브라우저 E2E·운영 복원 성공이 아니다.
 
 ## 아키텍처 기준
 

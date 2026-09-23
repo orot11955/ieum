@@ -3,8 +3,8 @@
 ## 현재 작업 정책
 
 - **main에서 직접 작업한다. 새 브랜치·PR을 만들지 않는다.** 원격 main을 force 이동하거나 hard reset, 사용자 미커밋 변경 덮어쓰기, 과거 제품 패치 전체 재적용을 하지 않는다.
-- 현재는 계획 채택·정리가 끝난 **구현 지시 대기** 상태다. 문서/정리 요청만으로 제품 기능을 구현하거나 DB/배포를 변경하지 않는다.
-- 구현 지시가 오면 git status·원격 main·현재 prep 검사를 확인한 뒤 **BASE-02**부터 진행한다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
+- 사용자의 구현 지시로 BASE-02 최소 workspace와 CI를 작성했다. 현재 상태는 IMPLEMENTED이며 원격 CI와 새 기기 재현은 미확인이다. 문서/정리 요청만으로 추가 제품 기능이나 DB/배포를 변경하지 않는다.
+- 다음 카드 전 git status·원격 main·현재 prep 검사와 BASE-02 증거를 확인한다. **BASE-02가 VERIFIED/ACCEPTED가 된 뒤 BASE-03**으로 진행한다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
 
 ## 반드시 읽을 정본
 
@@ -53,4 +53,4 @@ Web: app은 조립, pages는 화면 조합, features는 사용자 동작·미저
 
 실제 명령/exit code/환경/결과/미검증/데이터 영향을 docs/evidence/<id>.md에 기록한다. IMPLEMENTED와 VERIFIED와 사용자 ACCEPTED를 구분한다. 없는 테스트를 passWithNoTests로 성공 처리하지 않는다. 실제 데이터 품질과 합성 fixture 결과를 구분한다.
 
-현재 검사: `npm run prep:check`. 제품 lint/typecheck/build/DB/E2E/lab 명령은 BASE-02 이후 실제 생긴 범위만 추가한다. 버전/인증/MFA/CSRF/RLS/restore는 통합 gate 전 완료로 표시하지 않는다. private 원문·embedding·secret·token·prompt·export는 공개 Git/로그에 넣지 않는다.
+현재 검사: `npm run prep:check`와 BASE-02의 `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm lab:smoke`. 제품 DB/E2E/판단 Lab 명령은 해당 카드에서 실제 생긴 범위만 추가한다. 버전/인증/MFA/CSRF/RLS/restore는 통합 gate 전 완료로 표시하지 않는다. private 원문·embedding·secret·token·prompt·export는 공개 Git/로그에 넣지 않는다.

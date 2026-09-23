@@ -25,7 +25,7 @@
       "dependencies": [
         "BASE-01"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "pnpm workspace, TS strict, 패키지 exports, core/lab 최소 빌드, Vitest, formatter/linter를 준비한다. web/API harness는 실제 spike가 생길 때 추가한다. Node 24 계열의 선택 버전과 패키지 호환성을 확인하고 lockfile을 고정한다.",
       "contract": "산출물: pnpm-workspace.yaml, tsconfig 공통 설정, 패키지별 scripts, CI 기본 파이프라인. production start는 개발용 tsx 실행과 구분하여 빌드 산출물을 실행한다.",
       "tests": "깨끗한 설치→typecheck→test→build; 잘못된 import/타입을 의도적으로 넣으면 CI 실패; core 테스트는 DB·모델 없이 실행.",
@@ -601,7 +601,7 @@
       "status": "PLANNED",
       "scope": "문서 seal→공개 manifest→검토 READY→Publish를 구현한다. READY는 정확한 body/source/public-asset/policy hash에 묶고 발행 순간 권한과 유효성을 재검사한다. 공개본은 별도 immutable projection으로 만든다.",
       "contract": "모듈: publishing. publication identity와 immutable public revisions, current pointer, slug/alias namespace, review record. draft 변경은 공개본을 수정하지 않으며 새 발행 명령으로만 current를 이동한다.",
-      "tests": "검토 뒤 본문/출처/asset 변경, 중복 발행, slug 동시 충돌, 발행과 철회 경쟁, private 필드·내부 ID·source pack 유입, stale READY.",
+      "tests": "검토 뒤 본문/출처/asset 변경, 중복 발행, slug 동시 충돌, 발행과 철회 경쟁, private 필드·내부 ID·source pack 유입, stale READY, Core/worker 불가 중 명시적 발행.",
       "acceptance": "미리 검토한 것만 발행되고 철회한 revision/alias/asset의 제공 중단 규칙이 원자적으로 적용된다.",
       "out_of_scope": "이 카드가 요구하지 않는 후속 기능과 빈 모듈을 미리 만들지 않는다.",
       "screens": []
@@ -1151,14 +1151,14 @@
       "title": "의존성·계약·디자인 CI 차단",
       "dependencies": [
         "BASE-03",
-        "BE-01",
-        "FE-01"
+        "BE-02",
+        "FE-02"
       ],
       "status": "PLANNED",
       "scope": "import graph, schema generation, design source/lock, build scripts의 실패 조건을 실제 CI에서 연결한다. rule을 꺼서 통과시키지 않는다.",
-      "contract": "산출물: architecture-boundaries.spec, contract-drift check, design check와 CI required-check 설정 안내. 저장소 설정 권한은 실행자가 확인한다.",
+      "contract": "산출물: architecture-boundaries.spec, contract-drift check, design check와 CI 실행 결과. required-check 설정은 별도 저장소 권한과 확인이 필요하며, 설정 전에는 main push 차단을 보장하지 않는다.",
       "tests": "의도적인 core→DB import, controller SQL, page arbitrary token, public DTO private field, regenerated artifact mismatch가 실패하는지 검사.",
-      "acceptance": "파일 위치뿐 아니라 실제 의존 방향을 위반하면 merge 검증이 실패한다.",
+      "acceptance": "파일 위치뿐 아니라 실제 의존 방향을 위반하면 로컬 검사와 CI job이 실패한다. 브랜치 보호가 확인되지 않았다면 main 반영 차단으로 보고하지 않는다.",
       "out_of_scope": "이 카드가 요구하지 않는 후속 기능과 빈 모듈을 미리 만들지 않는다.",
       "screens": []
     },
@@ -1184,6 +1184,7 @@
       "phase": "P2",
       "title": "인증·두 사용자·transaction gate",
       "dependencies": [
+        "QA-01",
         "BE-03",
         "BE-04",
         "BE-05",
@@ -1268,7 +1269,7 @@
       "status": "PLANNED",
       "scope": "별도 작은 Delivery 소비자를 만들어 DB/내부 타입 없이 공개 목록/상세/개정/철회를 시험한다. 관리와 public role의 접근 경계를 검사한다.",
       "contract": "gate G7: private canary 없음, projection schema allowlist, consumer contract tests, cache/alias/assets/key revocation matrix.",
-      "tests": "draft 수정, READY stale, 미발행 원문, public asset만 노출, 이전 revision/alias로 우회, cached 304, key 폐기, 정적 사본 철회 한계.",
+      "tests": "draft 수정, READY stale, 미발행 원문, public asset만 노출, 이전 revision/alias로 우회, cached 304, key 폐기, 정적 사본 철회 한계, Core/worker 불가 중 발행·Delivery 조회.",
       "acceptance": "발행 API를 통해 공개하도록 검토한 데이터만 제공된다. 외부 블로그 제품 전체를 만드는 단계는 아니다.",
       "out_of_scope": "이 카드가 요구하지 않는 후속 기능과 빈 모듈을 미리 만들지 않는다.",
       "screens": []

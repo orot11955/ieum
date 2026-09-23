@@ -21,6 +21,8 @@
 
 G5 실행 증거는 CORE-13/BE-15/FE-14 완료 때 남기고 QA-06에서 G6와 함께 다시 검토한다. 한 검증 카드가 두 영역을 다뤄도 보고서는 구조/문서로 구분한다.
 
+QA-01은 BE-02와 FE-02의 실제 spike 뒤 G0의 import/contract/design CI 실패 조건을 확인한다. 저장소 브랜치 보호 설정은 별도 확인 대상이며 CI job 성공만으로 main push 차단이 설정됐다고 주장하지 않는다. QA-05는 판단·추출의 G4이고, 통합 검색 BE-26/FE-11은 별도 반례까지 VERIFIED여야 P4 전체를 마친다. QA-07은 공개 기능의 G7이며 실제 공개 운영 판정은 복원·운영 G8과 종단 G9 뒤에 한다.
+
 ## 3. 테스트 피라미드가 아니라 책임별 검증
 
 | 영역 | 도구/환경 | 핵심 검증 |
@@ -101,15 +103,15 @@ worker를 죽이고 모델을 끊은 상태에서 수동 저장을 확인한다.
 
 ### QA-01 · 의존성·계약·디자인 CI 차단
 
-**구간:** P0 · **상태:** PLANNED · **선행:** BASE-03, BE-01, FE-01
+**구간:** P0 · **상태:** PLANNED · **선행:** BASE-03, BE-02, FE-02
 
 **구현 범위:** import graph, schema generation, design source/lock, build scripts의 실패 조건을 실제 CI에서 연결한다. rule을 꺼서 통과시키지 않는다.
 
-**입출력·데이터·코드 계약:** 산출물: architecture-boundaries.spec, contract-drift check, design check와 CI required-check 설정 안내. 저장소 설정 권한은 실행자가 확인한다.
+**입출력·데이터·코드 계약:** 산출물: architecture-boundaries.spec, contract-drift check, design check와 CI 실행 결과. required-check 설정은 별도 저장소 권한과 확인이 필요하며, 설정 전에는 main push 차단을 보장하지 않는다.
 
 **필수 반례·검증:** 의도적인 core→DB import, controller SQL, page arbitrary token, public DTO private field, regenerated artifact mismatch가 실패하는지 검사.
 
-**완료 기준:** 파일 위치뿐 아니라 실제 의존 방향을 위반하면 merge 검증이 실패한다.
+**완료 기준:** 파일 위치뿐 아니라 실제 의존 방향을 위반하면 로컬 검사와 CI job이 실패한다. 브랜치 보호가 확인되지 않았다면 main 반영 차단으로 보고하지 않는다.
 
 **이번 카드 제외:** 이 카드가 요구하지 않는 후속 기능과 빈 모듈을 미리 만들지 않는다.
 
@@ -133,7 +135,7 @@ worker를 죽이고 모델을 끊은 상태에서 수동 저장을 확인한다.
 
 ### QA-03 · 인증·두 사용자·transaction gate
 
-**구간:** P2 · **상태:** PLANNED · **선행:** BE-03, BE-04, BE-05, FE-04
+**구간:** P2 · **상태:** PLANNED · **선행:** QA-01, BE-03, BE-04, BE-05, FE-04
 
 **구현 범위:** 실제 PG와 browser/API 조합으로 인증·session·workspace·idempotency·audit 실패를 검증한다.
 
@@ -203,7 +205,7 @@ worker를 죽이고 모델을 끊은 상태에서 수동 저장을 확인한다.
 
 **입출력·데이터·코드 계약:** gate G7: private canary 없음, projection schema allowlist, consumer contract tests, cache/alias/assets/key revocation matrix.
 
-**필수 반례·검증:** draft 수정, READY stale, 미발행 원문, public asset만 노출, 이전 revision/alias로 우회, cached 304, key 폐기, 정적 사본 철회 한계.
+**필수 반례·검증:** draft 수정, READY stale, 미발행 원문, public asset만 노출, 이전 revision/alias로 우회, cached 304, key 폐기, 정적 사본 철회 한계, Core/worker 불가 중 발행·Delivery 조회.
 
 **완료 기준:** 발행 API를 통해 공개하도록 검토한 데이터만 제공된다. 외부 블로그 제품 전체를 만드는 단계는 아니다.
 
