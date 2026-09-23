@@ -1,7 +1,8 @@
 # CORE-13 · 분리·병합·상위 묶음 변경안
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료, 원격 Linux CI 대기; 사용자 ACCEPTED 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI 성공; 사용자 ACCEPTED 전.
 - 선행: CORE-12 VERIFIED. 작업 기준 main `7d78e18`.
+- 기능 커밋: `5d386e3`, 보완 `75e233b`·`2f41b25`; [최종 GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35868981078) `completed success` (Linux).
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 실제 사용자 기록·DB를 사용하지 않았다.
 
 ## 구현·계약
