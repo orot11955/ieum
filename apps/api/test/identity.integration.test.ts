@@ -11,6 +11,7 @@ import { CaptureService } from "@ieum/backend/captures";
 import { KnowledgeService } from "@ieum/backend/knowledge";
 import { TaskService } from "@ieum/backend/tasks";
 import { CalendarService } from "@ieum/backend/calendar";
+import { JudgementService } from "@ieum/backend/judgement/judgement-service";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -141,6 +142,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         knowledge: new KnowledgeService(identity, commands),
         tasks: new TaskService(identity, commands),
         calendar: new CalendarService(identity, commands),
+        judgement: new JudgementService(appPool, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -397,6 +399,60 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       rawBody: "A😀B",
       units: [{ sourceSpan: { start: 0, end: 4 } }],
     });
+    const judgementUrl = `/api/v1/workspaces/${operator.workspaceId}/judgements`;
+    const judgementHeaders = {
+      host: "127.0.0.1:3000",
+      origin,
+      cookie: operatorCookie,
+      "idempotency-key": "be12-http-request-01",
+    };
+    const judgementPayload = {
+      unitId: captureRead.json<{ units: { id: string }[] }>().units[0]!.id,
+      unitRevision: 1,
+    };
+    const judgementAccepted = await app.inject({
+      method: "POST",
+      url: judgementUrl,
+      headers: judgementHeaders,
+      payload: judgementPayload,
+    });
+    expect(judgementAccepted.statusCode).toBe(202);
+    const judgementRequestId = judgementAccepted.json<{ requestId: string }>()
+      .requestId;
+    expect(judgementAccepted.json()).toMatchObject({
+      state: "QUEUED",
+      replayed: false,
+    });
+    const judgementStatus = await app.inject({
+      method: "GET",
+      url: `${judgementUrl}/${judgementRequestId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(judgementStatus.statusCode).toBe(200);
+    expect(judgementStatus.headers["cache-control"]).toBe("no-store");
+    expect(judgementStatus.json()).toMatchObject({
+      state: "QUEUED",
+      inputHash: null,
+    });
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: judgementUrl,
+          headers: { ...judgementHeaders, origin: "http://other.example" },
+          payload: judgementPayload,
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: `${judgementUrl}/${judgementRequestId}`,
+          headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+        })
+      ).statusCode,
+    ).toBe(404);
     const otherRead = await app.inject({
       method: "GET",
       url: `${captureUrl}/${captureId}`,

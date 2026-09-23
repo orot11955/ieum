@@ -110,7 +110,7 @@ jobs:
         run: git diff --exit-code
 
   business-database:
-    name: BE-03/06/10 workspace, identity, jobs, capture, context, task and calendar PostgreSQL
+    name: BE-03/06/12 workspace, identity, jobs and judgement PostgreSQL
     needs: preparation
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -1,6 +1,6 @@
 # PostgreSQL migration과 role 경계
 
-현재 DB 파일은 인증 vendor의 `auth` schema와 `business`의 workspace/member, BE-04 계정·초대·설정, BE-05 명령 receipt·감사·outbox, BE-06 dispatch·Context profile 무효화, BE-07 원문·unit revision, BE-08 Context, BE-09 Task, BE-10 Calendar 테이블을 만든다. 운영 DB에는 아직 적용하지 않았다.
+현재 DB 파일은 인증 vendor의 `auth` schema와 `business`의 workspace/member, BE-04 계정·초대·설정, BE-05 명령 receipt·감사·outbox, BE-06 dispatch·Context profile 무효화, BE-07 원문·unit revision, BE-08 Context, BE-09 Task, BE-10 Calendar, BE-12 판단 요청·불변 run 테이블을 만든다. 운영 DB에는 아직 적용하지 않았다.
 
 ## 적용 순서
 
@@ -24,4 +24,4 @@ BE-02 auth migration journal과 BE-03–05/07 business migration journal은 각�
 
 auth-only DB에서 auth 사용자 row를 남긴 채 업무 migration을 적용하고, 별도 빈 DB에서 두 migration을 순서대로 적용하는 Testcontainers 시험이 있다. 두 공간의 교차 SELECT/INSERT/UPDATE/owner 연결, 빈 scope, 한 연결 pool의 scope 잔류, role 격리, BE-04 bootstrap/초대/정지, BE-05 명령·감사, BE-07 원문 revision/분할과 인증 HTTP를 실제 PostgreSQL 18.4에서 검사한다. PGlite 결과로 대체하지 않는다.
 
-업무 migration은 기존 auth row를 변환/삭제하지 않는 추가형이다. BE-05 명령은 권한 확인과 설정 version 잠금 뒤 변경·receipt·audit·outbox를 한 transaction에 저장한다. BE-07은 원문 개정 시 새 revision과 기본 unit을 추가하고, 분할 시 기존 unit을 supersede하되 원문과 옛 unit revision은 보존한다. BE-06 relay는 지원하는 outbox event만 한 transaction에서 pg-boss job과 dispatch receipt로 함께 기록하며, 재시작 후 미전달 event를 다시 찾는다. worker는 `JOB_RELAY_DATABASE_URL`과 `APPLICATION_DATABASE_URL`을 각각 요구한다. queue schema/role grant를 먼저 준비하고 worker를 띄워야 한다. 앱 코드만 되돌릴 때는 새 테이블을 사용하지 않아도 되지만, 이전 API는 설정 version을 증가시키지 않으므로 BE-05 클라이언트와 함께 운영하지 않는다. 운영에서 schema를 되돌리거나 DB를 복원하려면 사전 inventory·backup·허가를 확인한 뒤 별도 절차를 만든다. 여기에는 파괴적 down migration을 제공하지 않는다.
+업무 migration은 기존 auth row를 변환/삭제하지 않는 추가형이다. BE-05 명령은 권한 확인과 설정 version 잠금 뒤 변경·receipt·audit·outbox를 한 transaction에 저장한다. BE-07은 원문 개정 시 새 revision과 기본 unit을 추가하고, 분할 시 기존 unit을 supersede하되 원문과 옛 unit revision은 보존한다. BE-06 relay는 지원하는 outbox event만 한 transaction에서 pg-boss job과 dispatch receipt로 함께 기록하며, 재시작 후 미전달 event를 다시 찾는다. worker는 `JOB_RELAY_DATABASE_URL`과 `APPLICATION_DATABASE_URL`을 각각 요구한다. BE-12는 관리자 credential로 0008 migration을 적용하고 `judgement-run` queue를 생성한 뒤 API·worker를 함께 배포해야 한다. worker가 먼저 새 event를 처리하기 전에 두 runtime이 새 schema와 계약을 사용해야 한다. queue schema/role grant를 먼저 준비하고 worker를 띄워야 한다. 앱 코드만 되돌릴 때는 새 테이블을 사용하지 않아도 되지만, 이전 API는 설정 version을 증가시키지 않으므로 BE-05 클라이언트와 함께 운영하지 않는다. 운영에서 schema를 되돌리거나 DB를 복원하려면 사전 inventory·backup·허가를 확인한 뒤 별도 절차를 만든다. 여기에는 파괴적 down migration을 제공하지 않는다.

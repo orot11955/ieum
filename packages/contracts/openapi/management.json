@@ -3840,6 +3840,196 @@
         }
       }
     },
+    "/api/v1/workspaces/{wid}/judgements": {
+      "post": {
+        "operationId": "requestJudgement",
+        "parameters": [
+          {
+            "name": "wid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "unitId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "unitRevision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "unitId",
+                  "unitRevision"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Judgement queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "QUEUED"
+                      ]
+                    },
+                    "commandId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "replayed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "requestId",
+                    "state",
+                    "commandId",
+                    "replayed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{wid}/judgements/{id}": {
+      "get": {
+        "operationId": "getJudgementStatus",
+        "parameters": [
+          {
+            "name": "wid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped judgement status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "QUEUED",
+                        "RUNNING",
+                        "SUCCEEDED",
+                        "FAILED",
+                        "CANCELED"
+                      ]
+                    },
+                    "retryCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "inputHash": {
+                      "nullable": true,
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "profileState": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "FRESH",
+                        "LAGGING"
+                      ]
+                    },
+                    "eligibleContextCount": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "returnedContextCount": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "truncated": {
+                      "nullable": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "requestId",
+                    "state",
+                    "retryCount",
+                    "inputHash",
+                    "profileState",
+                    "eligibleContextCount",
+                    "returnedContextCount",
+                    "truncated"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{wid}/captures": {
       "post": {
         "operationId": "createCapture",

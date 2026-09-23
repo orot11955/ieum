@@ -218,6 +218,68 @@ export const commandDispatch = business.table("command_dispatch", {
     .defaultNow(),
 });
 
+export const judgementRequest = business.table(
+  "judgement_request",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    unitId: uuid("unit_id").notNull(),
+    unitRevision: integer("unit_revision").notNull(),
+    state: text("state").notNull().default("QUEUED"),
+    retryCount: integer("retry_count").notNull().default(0),
+    requestedAt: timestamp("requested_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("judgement_request_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    check("judgement_request_revision_positive", sql`${table.unitRevision}>0`),
+    check(
+      "judgement_request_state_check",
+      sql`${table.state} IN ('QUEUED','RUNNING','SUCCEEDED','FAILED','CANCELED')`,
+    ),
+    check("judgement_request_retry_nonnegative", sql`${table.retryCount}>=0`),
+  ],
+);
+
+/** Private, immutable run input and measured output for exact replay. */
+export const judgementRun = business.table(
+  "judgement_run",
+  {
+    requestId: uuid("request_id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    inputHash: text("input_hash").notNull(),
+    rawSnapshot: jsonb("raw_snapshot").notNull(),
+    retrieval: jsonb("retrieval").notNull(),
+    measurements: jsonb("measurements").notNull(),
+    result: jsonb("result").notNull(),
+    stageLatency: jsonb("stage_latency").notNull(),
+    profileState: text("profile_state").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: "judgement_run_request_fk",
+      columns: [table.workspaceId, table.requestId],
+      foreignColumns: [judgementRequest.workspaceId, judgementRequest.id],
+    }),
+    check(
+      "judgement_run_input_hash_length",
+      sql`length(${table.inputHash})=64`,
+    ),
+    check(
+      "judgement_run_profile_state_check",
+      sql`${table.profileState} IN ('FRESH','LAGGING')`,
+    ),
+  ],
+);
+
 export const capture = business.table(
   "capture",
   {

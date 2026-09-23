@@ -40,6 +40,14 @@
       "types": "./dist/platform/jobs/outbox.d.ts",
       "default": "./dist/platform/jobs/outbox.js"
     },
+    "./platform/jobs/judgement": {
+      "types": "./dist/platform/jobs/judgement.d.ts",
+      "default": "./dist/platform/jobs/judgement.js"
+    },
+    "./judgement/judgement-service": {
+      "types": "./dist/judgement/judgement-service.d.ts",
+      "default": "./dist/judgement/judgement-service.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"
@@ -64,6 +72,7 @@
     "test:db": "vitest run test/*.integration.test.ts"
   },
   "dependencies": {
+    "@ieum/core": "workspace:*",
     "drizzle-orm": "0.45.3",
     "pg": "8.23.0",
     "pg-boss": "12.32.0"

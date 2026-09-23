@@ -6,6 +6,7 @@ import {
   registerContextMembershipWorker,
   relayOutboxOnce,
 } from "@ieum/backend/platform/jobs/outbox";
+import { registerJudgementWorker } from "@ieum/backend/platform/jobs/judgement";
 import { NestFactory } from "@nestjs/core";
 import { PgBoss } from "pg-boss";
 import { Pool } from "pg";
@@ -43,6 +44,7 @@ if (!relayUrl && !applicationUrl) {
     await assertApplicationDatabaseRole(applicationPool);
     await boss.start();
     await registerContextMembershipWorker(boss, applicationPool);
+    await registerJudgementWorker(boss, applicationPool);
     let relayPass: Promise<void> | undefined;
     const timer = setInterval(() => {
       if (relayPass) return;

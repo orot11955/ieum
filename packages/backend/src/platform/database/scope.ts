@@ -70,11 +70,12 @@ export async function withWorkspaceTransaction<T>(
   pool: Pool,
   workspaceId: string,
   operation: (client: PoolClient) => Promise<T>,
+  isolation: "READ COMMITTED" | "REPEATABLE READ" = "READ COMMITTED",
 ): Promise<T> {
   if (!UUID.test(workspaceId)) throw new Error("Invalid workspace ID");
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await client.query(`BEGIN ISOLATION LEVEL ${isolation}`);
     await client.query("SELECT set_config('ieum.workspace_id', $1, true)", [
       workspaceId,
     ]);

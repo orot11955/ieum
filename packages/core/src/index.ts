@@ -82,6 +82,12 @@ export type {
   FeatureTrace,
 } from "./explanation/index.js";
 export { runObserveJudgement } from "./judgement/index.js";
+export {
+  findExactLexicalSources,
+  retrieveExactLexicalCandidates,
+  measureExactCandidates,
+  runExactObserve,
+} from "./judgement/exact-observe.js";
 export type {
   CandidateJudgement,
   ObserveJudgement,

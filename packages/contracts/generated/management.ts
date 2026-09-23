@@ -415,6 +415,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/judgements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestJudgement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/judgements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getJudgementStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -1884,6 +1916,81 @@ export interface operations {
                         version: number;
                         /** @enum {string} */
                         state: "CONFIRMED" | "CANCELED";
+                    };
+                };
+            };
+        };
+    };
+    requestJudgement: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    unitId: string;
+                    unitRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Judgement queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        requestId: string;
+                        /** @enum {string} */
+                        state: "QUEUED";
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    getJudgementStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped judgement status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        requestId: string;
+                        /** @enum {string} */
+                        state: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELED";
+                        retryCount: number;
+                        inputHash: string | null;
+                        /** @enum {string|null} */
+                        profileState: "FRESH" | "LAGGING" | null;
+                        eligibleContextCount: number | null;
+                        returnedContextCount: number | null;
+                        truncated: boolean | null;
                     };
                 };
             };
