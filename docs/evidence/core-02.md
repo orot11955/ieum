@@ -1,6 +1,6 @@
 # CORE-02 · 시점·권한 범위가 고정된 snapshot
 
-- 상태: **IMPLEMENTED**. 로컬 검증 통과. 원격 Linux CI는 구현 커밋 push 후 확인한다.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI가 통과했다.
 - 기준: main `ac9400bde0d5624fed576492e0a2b77a46b56a01`, macOS arm64, Node 24.18.0, pnpm 11.24.0. 선행 CORE-01은 VERIFIED.
 
 ## 구현·계약 결정
@@ -23,8 +23,9 @@ Manifest는 입력 hash, query ID/revision/origin, profile watermark, 선택한 
 | `pnpm lint` | 0 | 사용하지 않은 type import 제거 후 통과 |
 | `pnpm contracts:check`, `pnpm typecheck`, `pnpm build`, `pnpm lab:smoke` | 모두 0 | 계약 생성물·경계, workspace 타입·빌드, 기존 smoke 유지 |
 | `git diff --check` | 0 | 공백 오류 없음 |
+| [GitHub Actions run 35847173662](https://github.com/orot11955/ieum/actions/runs/35847173662), commit `7c250077e77d61eb87434f53000320a7f66843d8` | success | Linux 준비 job과 workspace job 모두 성공. frozen install, lint, 계약 검사, format, typecheck, unit, build, smoke, tracked diff 포함 |
 
-첫 전체 lint는 `CaptureRevision`의 사용하지 않은 type import 때문에 exit 1이었다. 해당 import를 제거하고 재실행해 exit 0을 확인했다. 원격 CI 결과는 push 후 갱신한다.
+첫 전체 lint는 `CaptureRevision`의 사용하지 않은 type import 때문에 exit 1이었다. 해당 import를 제거하고 재실행해 exit 0을 확인했다.
 
 ## 미검증·데이터 영향
 
