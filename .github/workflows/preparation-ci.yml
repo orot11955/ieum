@@ -34,7 +34,7 @@ jobs:
         run: git diff --exit-code
 
   workspace:
-    name: Core and lab workspace
+    name: Core, lab and API workspace
     needs: preparation
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -63,6 +63,8 @@ jobs:
         run: pnpm build
       - name: Run built lab smoke entry
         run: pnpm lab:smoke
+      - name: Run built API and worker smoke entry
+        run: pnpm api:smoke
       - name: Verify tracked sources remain unchanged
         run: git diff --exit-code
 

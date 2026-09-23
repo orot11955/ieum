@@ -1,7 +1,10 @@
 packages:
   - packages/core
   - packages/contracts
+  - packages/backend
   - apps/lab-cli
+  - apps/api
+  - apps/worker
 storeDir: .pnpm-store
 allowBuilds:
   esbuild: false
