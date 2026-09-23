@@ -1,0 +1,1 @@
+export const CALENDAR_RUNTIME = Symbol("CALENDAR_RUNTIME");

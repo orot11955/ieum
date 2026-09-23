@@ -6,6 +6,8 @@ import { CommandError } from "@ieum/backend/command-coordinator";
 import { CaptureError } from "@ieum/backend/captures";
 import { KnowledgeError } from "@ieum/backend/knowledge";
 import { TaskError } from "@ieum/backend/tasks";
+import { CalendarError } from "@ieum/backend/calendar";
+import { CalendarTimeError } from "@ieum/backend/calendar-time";
 
 type FieldErrors = Record<string, string[]>;
 
@@ -52,33 +54,41 @@ export class ProblemFilter implements ExceptionFilter {
             exception.code === "TASK_CONTEXT_INVALID"
             ? 404
             : 409
-          : exception instanceof KnowledgeError
-            ? [
-                "CONTEXT_NOT_FOUND",
-                "UNIT_NOT_FOUND",
-                "RELATION_NOT_FOUND",
-              ].includes(exception.code)
+          : exception instanceof CalendarError
+            ? exception.code === "EVENT_NOT_FOUND"
               ? 404
-              : exception.code === "MEMBERSHIP_DUPLICATE"
+              : exception.code === "PERIOD_TOO_LARGE"
                 ? 422
                 : 409
-            : exception instanceof CaptureError
-              ? exception.code === "CAPTURE_NOT_FOUND"
-                ? 404
-                : exception.code === "INVALID_SPANS"
-                  ? 422
-                  : 409
-              : exception instanceof IdentityError
-                ? exception.code === "INVALID_INPUT"
-                  ? 422
-                  : exception.code === "INVITATION_INVALID"
+            : exception instanceof CalendarTimeError
+              ? 422
+              : exception instanceof KnowledgeError
+                ? [
+                    "CONTEXT_NOT_FOUND",
+                    "UNIT_NOT_FOUND",
+                    "RELATION_NOT_FOUND",
+                  ].includes(exception.code)
+                  ? 404
+                  : exception.code === "MEMBERSHIP_DUPLICATE"
+                    ? 422
+                    : 409
+                : exception instanceof CaptureError
+                  ? exception.code === "CAPTURE_NOT_FOUND"
                     ? 404
-                    : exception.code === "ACCESS_DENIED"
-                      ? 403
+                    : exception.code === "INVALID_SPANS"
+                      ? 422
                       : 409
-                : exception instanceof HttpException
-                  ? exception.getStatus()
-                  : HttpStatus.INTERNAL_SERVER_ERROR;
+                  : exception instanceof IdentityError
+                    ? exception.code === "INVALID_INPUT"
+                      ? 422
+                      : exception.code === "INVITATION_INVALID"
+                        ? 404
+                        : exception.code === "ACCESS_DENIED"
+                          ? 403
+                          : 409
+                    : exception instanceof HttpException
+                      ? exception.getStatus()
+                      : HttpStatus.INTERNAL_SERVER_ERROR;
     const title =
       status === 422
         ? "Unprocessable Content"
@@ -90,19 +100,23 @@ export class ProblemFilter implements ExceptionFilter {
         ? exception.code
         : exception instanceof TaskError
           ? exception.code
-          : exception instanceof KnowledgeError
+          : exception instanceof CalendarError
             ? exception.code
-            : exception instanceof CaptureError
+            : exception instanceof CalendarTimeError
               ? exception.code
-              : exception instanceof IdentityError
+              : exception instanceof KnowledgeError
                 ? exception.code
-                : status === 422
-                  ? "VALIDATION_ERROR"
-                  : status === 404
-                    ? "NOT_FOUND"
-                    : status >= 500
-                      ? "INTERNAL_ERROR"
-                      : "HTTP_ERROR";
+                : exception instanceof CaptureError
+                  ? exception.code
+                  : exception instanceof IdentityError
+                    ? exception.code
+                    : status === 422
+                      ? "VALIDATION_ERROR"
+                      : status === 404
+                        ? "NOT_FOUND"
+                        : status >= 500
+                          ? "INTERNAL_ERROR"
+                          : "HTTP_ERROR";
     const fieldErrors =
       exception instanceof HttpException
         ? fieldErrorsFor(exception)

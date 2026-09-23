@@ -351,6 +351,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listEvents"];
+        put?: never;
+        post: operations["createEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/events/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/events/{id}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["editEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/events/{id}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["setEventState"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -1532,6 +1596,294 @@ export interface operations {
                         captureId: string;
                         /** Format: uuid */
                         unitId: string;
+                    };
+                };
+            };
+        };
+    };
+    listEvents: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDateExclusive: string;
+                viewTimeZone: string;
+                includeCanceled?: boolean;
+            };
+            header?: never;
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Events in the requested period */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        fromDate: string;
+                        /** Format: date */
+                        toDateExclusive: string;
+                        viewTimeZone: string;
+                        events: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            description: string;
+                            /** @enum {string} */
+                            state: "CONFIRMED" | "CANCELED";
+                            version: number;
+                            schedule: {
+                                /** @enum {string} */
+                                kind: "TIMED";
+                                timeZone: string;
+                                startLocal: string;
+                                endLocal: string;
+                                startOffsetMinutes: number;
+                                endOffsetMinutes: number;
+                                /** Format: date-time */
+                                startAt: string;
+                                /** Format: date-time */
+                                endAt: string;
+                                displayStartLocal?: string;
+                                displayEndLocal?: string;
+                            } | {
+                                /** @enum {string} */
+                                kind: "ALL_DAY";
+                                timeZone: string;
+                                /** Format: date */
+                                startDate: string;
+                                /** Format: date */
+                                endDateExclusive: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            overlappingEventIds: string[];
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    createEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    description?: string;
+                    schedule: {
+                        /** @enum {string} */
+                        kind: "TIMED";
+                        timeZone: string;
+                        startLocal: string;
+                        endLocal: string;
+                        startOffsetMinutes?: number;
+                        endOffsetMinutes?: number;
+                    } | {
+                        /** @enum {string} */
+                        kind: "ALL_DAY";
+                        timeZone: string;
+                        /** Format: date */
+                        startDate: string;
+                        /** Format: date */
+                        endDateExclusive: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Event created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        state: "CONFIRMED" | "CANCELED";
+                    };
+                };
+            };
+        };
+    };
+    getEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        description: string;
+                        /** @enum {string} */
+                        state: "CONFIRMED" | "CANCELED";
+                        version: number;
+                        schedule: {
+                            /** @enum {string} */
+                            kind: "TIMED";
+                            timeZone: string;
+                            startLocal: string;
+                            endLocal: string;
+                            startOffsetMinutes: number;
+                            endOffsetMinutes: number;
+                            /** Format: date-time */
+                            startAt: string;
+                            /** Format: date-time */
+                            endAt: string;
+                            displayStartLocal?: string;
+                            displayEndLocal?: string;
+                        } | {
+                            /** @enum {string} */
+                            kind: "ALL_DAY";
+                            timeZone: string;
+                            /** Format: date */
+                            startDate: string;
+                            /** Format: date */
+                            endDateExclusive: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: uuid */
+                        workspaceId: string;
+                    };
+                };
+            };
+        };
+    };
+    editEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                    title?: string;
+                    description?: string;
+                    schedule?: {
+                        /** @enum {string} */
+                        kind: "TIMED";
+                        timeZone: string;
+                        startLocal: string;
+                        endLocal: string;
+                        startOffsetMinutes?: number;
+                        endOffsetMinutes?: number;
+                    } | {
+                        /** @enum {string} */
+                        kind: "ALL_DAY";
+                        timeZone: string;
+                        /** Format: date */
+                        startDate: string;
+                        /** Format: date */
+                        endDateExclusive: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Event edited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        state: "CONFIRMED" | "CANCELED";
+                    };
+                };
+            };
+        };
+    };
+    setEventState: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                    /** @enum {string} */
+                    targetState: "CONFIRMED" | "CANCELED";
+                };
+            };
+        };
+        responses: {
+            /** @description Event state changed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        state: "CONFIRMED" | "CANCELED";
                     };
                 };
             };

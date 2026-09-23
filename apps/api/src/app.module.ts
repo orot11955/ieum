@@ -5,6 +5,7 @@ import { IdentityModule } from "./identity/identity.module.js";
 import { CaptureModule } from "./captures/capture.module.js";
 import { KnowledgeModule } from "./knowledge/knowledge.module.js";
 import { TaskModule } from "./tasks/task.module.js";
+import { CalendarModule } from "./calendar/calendar.module.js";
 import type { IdentityRuntime } from "./identity/identity.runtime.js";
 import { ProblemFilter } from "./problem.filter.js";
 import { SystemModule } from "./system/system.module.js";
@@ -23,6 +24,7 @@ export class AppModule {
             CaptureModule.register(identity),
             KnowledgeModule.register(identity),
             TaskModule.register(identity),
+            CalendarModule.register(identity),
           ]
         : [],
     };

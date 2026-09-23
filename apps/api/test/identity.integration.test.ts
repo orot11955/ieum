@@ -10,6 +10,7 @@ import { PreferenceCommands } from "@ieum/backend/preferences";
 import { CaptureService } from "@ieum/backend/captures";
 import { KnowledgeService } from "@ieum/backend/knowledge";
 import { TaskService } from "@ieum/backend/tasks";
+import { CalendarService } from "@ieum/backend/calendar";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -139,6 +140,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         captures: new CaptureService(identity, commands),
         knowledge: new KnowledgeService(identity, commands),
         tasks: new TaskService(identity, commands),
+        calendar: new CalendarService(identity, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -613,6 +615,109 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
     });
     expect(taskCrossWorkspace.statusCode).toBe(404);
+    const eventUrl = `/api/v1/workspaces/${operator.workspaceId}/events`;
+    const eventCreated = await app.inject({
+      method: "POST",
+      url: eventUrl,
+      headers: { ...captureHeaders, "idempotency-key": "be10-http-event-001" },
+      payload: {
+        title: "서울 회의",
+        schedule: {
+          kind: "TIMED",
+          timeZone: "Asia/Seoul",
+          startLocal: "2024-06-01T09:30:00",
+          endLocal: "2024-06-01T10:30:00",
+        },
+      },
+    });
+    expect(eventCreated.statusCode).toBe(201);
+    const eventId = eventCreated.json<{ id: string }>().id;
+    const eventList = await app.inject({
+      method: "GET",
+      url: `${eventUrl}?fromDate=2024-05-31&toDateExclusive=2024-06-01&viewTimeZone=America%2FNew_York`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(eventList.statusCode).toBe(200);
+    expect(eventList.json()).toMatchObject({
+      events: [
+        { id: eventId, schedule: { displayStartLocal: "2024-05-31T20:30:00" } },
+      ],
+    });
+    const eventGap = await app.inject({
+      method: "POST",
+      url: eventUrl,
+      headers: { ...captureHeaders, "idempotency-key": "be10-http-gap-0001" },
+      payload: {
+        title: "DST gap",
+        schedule: {
+          kind: "TIMED",
+          timeZone: "America/New_York",
+          startLocal: "2024-03-10T02:30:00",
+          endLocal: "2024-03-10T03:30:00",
+        },
+      },
+    });
+    expect(eventGap.statusCode).toBe(422);
+    expect(eventGap.json()).toMatchObject({ code: "NONEXISTENT_LOCAL_TIME" });
+    const eventCanceled = await app.inject({
+      method: "POST",
+      url: `${eventUrl}/${eventId}/state`,
+      headers: { ...captureHeaders, "idempotency-key": "be10-http-cancel-001" },
+      payload: { baseVersion: 1, targetState: "CANCELED" },
+    });
+    expect(eventCanceled.statusCode).toBe(201);
+    expect(eventCanceled.json()).toMatchObject({
+      version: 2,
+      state: "CANCELED",
+    });
+    const eventRead = await app.inject({
+      method: "GET",
+      url: `${eventUrl}/${eventId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(eventRead.statusCode).toBe(200);
+    expect(eventRead.json()).toMatchObject({
+      state: "CANCELED",
+      schedule: { startAt: "2024-06-01T00:30:00.000Z" },
+    });
+    const eventUnauthenticated = await app.inject({
+      method: "GET",
+      url: `${eventUrl}/${eventId}`,
+      headers: { host: "127.0.0.1:3000" },
+    });
+    expect(eventUnauthenticated.statusCode).toBe(401);
+    const eventBadOrigin = await app.inject({
+      method: "POST",
+      url: `${eventUrl}/${eventId}/state`,
+      headers: {
+        ...captureHeaders,
+        origin: "http://other.example",
+        "idempotency-key": "be10-http-origin-01",
+      },
+      payload: { baseVersion: 2, targetState: "CONFIRMED" },
+    });
+    expect(eventBadOrigin.statusCode).toBe(403);
+    const eventCrossWorkspace = await app.inject({
+      method: "POST",
+      url: `${eventUrl}/${eventId}/state`.replace(
+        operator.workspaceId,
+        invitedWorkspaceId,
+      ),
+      headers: {
+        host: "127.0.0.1:3000",
+        origin,
+        cookie: inviteeCookie,
+        "idempotency-key": "be10-http-cross-001",
+      },
+      payload: { baseVersion: 2, targetState: "CONFIRMED" },
+    });
+    expect(eventCrossWorkspace.statusCode).toBe(404);
+    const eventTooLongPeriod = await app.inject({
+      method: "GET",
+      url: `${eventUrl}?fromDate=2024-01-01&toDateExclusive=2025-01-03&viewTimeZone=UTC`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(eventTooLongPeriod.statusCode).toBe(422);
     const badOrigin = await app.inject({
       method: "POST",
       url: contextUrl,

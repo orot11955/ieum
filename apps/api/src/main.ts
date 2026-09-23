@@ -6,6 +6,7 @@ import { PreferenceCommands } from "@ieum/backend/preferences";
 import { CaptureService } from "@ieum/backend/captures";
 import { KnowledgeService } from "@ieum/backend/knowledge";
 import { TaskService } from "@ieum/backend/tasks";
+import { CalendarService } from "@ieum/backend/calendar";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { createApiApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
@@ -56,6 +57,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
         captures: new CaptureService(service, commands),
         knowledge: new KnowledgeService(service, commands),
         tasks: new TaskService(service, commands),
+        calendar: new CalendarService(service, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin: new URL(baseUrl).origin,
