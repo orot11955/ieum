@@ -39,8 +39,11 @@
 | [BE-04 증거](docs/evidence/be-04.md) | 계정·초대·세션·복구의 실제 PostgreSQL·Linux CI 검증 |
 | [BE-05 증거](docs/evidence/be-05.md) | 명령 멱등성·감사·outbox의 실제 PostgreSQL·HTTP 검증 |
 | [BE-07 증거](docs/evidence/be-07.md) | 원문·unit 불변 revision과 분할의 실제 PostgreSQL·HTTP 검증 |
+| [BE-08 증거](docs/evidence/be-08.md) | 다중 Context 소속·관계의 실제 PostgreSQL·HTTP 검증 |
+| [BE-09 증거](docs/evidence/be-09.md) | Task 상태·기한·결과 원문의 실제 PostgreSQL·HTTP 검증 |
+| [BE-10 증거](docs/evidence/be-10.md) | 일정의 시간대·종일·DST·취소의 실제 PostgreSQL·HTTP 검증 |
 
-CORE-01–15와 BE-01–04가 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-05다. FE-01과 QA-02도 별도 착수 가능하다.
+CORE-01–15와 BE-01–05·07–10이 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** BE-11은 FE-01→FE-02 선행 검증을 기다린다. 다음 독립 서버 카드는 BE-06이다. FE-01과 QA-02도 별도 착수 가능하다.
 
 ## 현재 실행 가능한 검사
 

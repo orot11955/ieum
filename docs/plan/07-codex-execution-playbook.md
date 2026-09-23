@@ -2,7 +2,7 @@
 
 ## 현재 상태와 권한
 
-계획 1.1은 main에 채택됐다. CORE-01–15는 로컬/Linux 실행으로 VERIFIED다. CORE-16은 FE-14·FE-16과 허용된 실제 자료·holdout이 없어 BLOCKED다. 실제 사용자 품질과 활성 제안 정책, API·업무 Web 및 운영 DB/배포는 미구현·미검증이다. 다음 카드의 착수는 선행 작업의 VERIFIED/ACCEPTED 증거를 따른다.
+계획 1.1은 main에 채택됐다. CORE-01–15와 BE-01–05·07–10은 로컬/Linux 실행으로 VERIFIED다. CORE-16은 FE-14·FE-16과 허용된 실제 자료·holdout이 없어 BLOCKED다. 실제 사용자 품질과 활성 제안 정책, 업무 Web 및 운영 DB/배포는 미구현·미검증이다. 다음 카드의 착수는 선행 작업의 VERIFIED/ACCEPTED 증거를 따른다.
 
 문서 우선순위: 사용자 최신 지시 → AGENTS.md → ADR 0012 → docs/plan/backlog.json 및 00–09 → 보존된 제품/도메인/화면 계약. 과거 M/S/I 번호·다크 후속·별도 브랜치 지시는 현재 실행 규칙이 아니다.
 
