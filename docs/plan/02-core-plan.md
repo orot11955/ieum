@@ -78,7 +78,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-04 · 후보 검색·원본별 중복 제거·예산
 
-**구간:** P1 · **상태:** PLANNED · **선행:** CORE-03
+**구간:** P1 · **상태:** IMPLEMENTED · **선행:** CORE-03
 
 **구현 범위:** 맥락 identity와 member 검색 결과를 union한다. 같은 origin의 member는 먼저 각각 비교한 뒤 대표 근거를 정해 임의 마지막 member를 선택하지 않는다. context별 quota와 전체 budget, stable tie-break, source별 순위와 잘림을 남긴다.
 

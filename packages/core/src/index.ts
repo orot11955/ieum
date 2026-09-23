@@ -4,13 +4,31 @@ export {
   computeLexicalFeatures,
   LEXICAL_CONFIG,
   normalizeLexicalText,
+  scoreLexicalText,
   tokenizeLexicalText,
 } from "./features/lexical/index.js";
 export type {
   LexicalCandidateFeature,
   LexicalConfig,
+  LexicalCorpus,
   LexicalFeatures,
 } from "./features/lexical/index.js";
+export {
+  RETRIEVAL_CONFIG,
+  resolveExplicitContext,
+  retrieveCandidates,
+} from "./retrieval/index.js";
+export type {
+  IdentityHit,
+  MemberEvidence,
+  MemberHit,
+  RetrievalBudget,
+  RetrievalResult,
+  RetrievalSources,
+  RetrievedCandidate,
+  SourceReport,
+  SourceResult,
+} from "./retrieval/index.js";
 export { sliceRawSpan } from "./snapshot.js";
 export type { CoreCaptureSnapshot, Utf16Span } from "./snapshot.js";
 export {

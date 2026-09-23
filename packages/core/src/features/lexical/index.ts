@@ -25,6 +25,11 @@ export type LexicalFeatures = Readonly<{
   candidates: readonly LexicalCandidateFeature[];
 }>;
 
+export type LexicalCorpus = Pick<
+  LexicalFeatures,
+  "corpusOriginCount" | "documentFrequency"
+>;
+
 function frequency(tokens: readonly string[]): Map<string, number> {
   const result = new Map<string, number>();
   for (const token of tokens) result.set(token, (result.get(token) ?? 0) + 1);
@@ -68,7 +73,32 @@ function cosine(
     const weight = candidate.get(token)!;
     candidateSquare += weight * weight;
   }
-  return dot / Math.sqrt(querySquare * candidateSquare);
+  return Math.min(
+    1,
+    Math.max(0, dot / Math.sqrt(querySquare * candidateSquare)),
+  );
+}
+
+/** Score another search text with the same fixed snapshot IDF corpus. */
+export function scoreLexicalText(
+  queryText: string,
+  candidateText: string,
+  corpus: LexicalCorpus,
+): number | null {
+  const df = new Map(
+    corpus.documentFrequency.map(({ token, origins }) => [token, origins]),
+  );
+  const query = weightedVector(
+    tokenizeLexicalText(queryText),
+    corpus.corpusOriginCount,
+    df,
+  );
+  const candidate = weightedVector(
+    tokenizeLexicalText(candidateText),
+    corpus.corpusOriginCount,
+    df,
+  );
+  return query.size && candidate.size ? cosine(query, candidate) : null;
 }
 
 /** Compute unit-level features over the already validated, fixed candidate set. */
