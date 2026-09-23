@@ -85,6 +85,42 @@ async function createPersonalRows(
   );
 }
 
+/** Shared owner check for HTTP commands and worker jobs, with transaction-local RLS scope. */
+export async function withActivePersonalWorkspace<T>(
+  pool: Pool,
+  userId: string,
+  operation: (client: PoolClient, access: PersonalAccess) => Promise<T>,
+): Promise<T> {
+  const lookup = await pool.query<{ personal_workspace_id: string }>(
+    "SELECT personal_workspace_id FROM business.user_access WHERE user_id = $1",
+    [userId],
+  );
+  const workspaceId = lookup.rows[0]?.personal_workspace_id;
+  if (!workspaceId) throw new IdentityError("ACCESS_DENIED");
+  return withWorkspaceTransaction(pool, workspaceId, async (client) => {
+    const access = await client.query<{ operator: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM business.instance_operator io
+         WHERE io.user_id = ua.user_id AND io.active
+       ) AS operator
+       FROM business.user_access ua
+       JOIN business.workspace w ON w.id = ua.personal_workspace_id
+       JOIN business.workspace_member wm
+         ON wm.workspace_id = w.id AND wm.user_id = ua.user_id
+       WHERE ua.user_id = $1 AND ua.state = 'ACTIVE'
+         AND w.state = 'ACTIVE' AND wm.state = 'ACTIVE' AND wm.role = 'OWNER'
+       FOR SHARE OF ua, w, wm`,
+      [userId],
+    );
+    if (!access.rows[0]) throw new IdentityError("ACCESS_DENIED");
+    return operation(client, {
+      userId,
+      workspaceId,
+      operator: access.rows[0].operator,
+    });
+  });
+}
+
 export class IdentityService {
   constructor(
     private readonly pool: Pool,
@@ -170,34 +206,7 @@ export class IdentityService {
     userId: string,
     operation: (client: PoolClient, access: PersonalAccess) => Promise<T>,
   ): Promise<T> {
-    const lookup = await this.pool.query<{ personal_workspace_id: string }>(
-      "SELECT personal_workspace_id FROM business.user_access WHERE user_id = $1",
-      [userId],
-    );
-    const workspaceId = lookup.rows[0]?.personal_workspace_id;
-    if (!workspaceId) throw new IdentityError("ACCESS_DENIED");
-    return withWorkspaceTransaction(this.pool, workspaceId, async (client) => {
-      const access = await client.query<{ operator: boolean }>(
-        `SELECT EXISTS (
-           SELECT 1 FROM business.instance_operator io
-           WHERE io.user_id = ua.user_id AND io.active
-         ) AS operator
-         FROM business.user_access ua
-         JOIN business.workspace w ON w.id = ua.personal_workspace_id
-         JOIN business.workspace_member wm
-           ON wm.workspace_id = w.id AND wm.user_id = ua.user_id
-         WHERE ua.user_id = $1 AND ua.state = 'ACTIVE'
-           AND w.state = 'ACTIVE' AND wm.state = 'ACTIVE' AND wm.role = 'OWNER'
-         FOR SHARE OF ua, w, wm`,
-        [userId],
-      );
-      if (!access.rows[0]) throw new IdentityError("ACCESS_DENIED");
-      return operation(client, {
-        userId,
-        workspaceId,
-        operator: access.rows[0].operator,
-      });
-    });
+    return withActivePersonalWorkspace(this.pool, userId, operation);
   }
 
   async getMe(
@@ -219,7 +228,6 @@ export class IdentityService {
       };
     });
   }
-
   async isActiveUser(userId: string): Promise<boolean> {
     try {
       await this.getMe(userId);

@@ -36,6 +36,10 @@
       "types": "./dist/calendar-time.d.ts",
       "default": "./dist/calendar-time.js"
     },
+    "./platform/jobs/outbox": {
+      "types": "./dist/platform/jobs/outbox.d.ts",
+      "default": "./dist/platform/jobs/outbox.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"
@@ -61,7 +65,8 @@
   },
   "dependencies": {
     "drizzle-orm": "0.45.3",
-    "pg": "8.23.0"
+    "pg": "8.23.0",
+    "pg-boss": "12.32.0"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "12.1.0",

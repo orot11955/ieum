@@ -206,6 +206,18 @@ export const commandOutbox = business.table("command_outbox", {
     .defaultNow(),
 });
 
+/** Relay receipt; its insert commits with pg-boss send in the same DB transaction. */
+export const commandDispatch = business.table("command_dispatch", {
+  outboxId: uuid("outbox_id")
+    .primaryKey()
+    .references(() => commandOutbox.id),
+  workspaceId: uuid("workspace_id").notNull(),
+  jobId: uuid("job_id").notNull(),
+  dispatchedAt: timestamp("dispatched_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const capture = business.table(
   "capture",
   {
@@ -449,6 +461,35 @@ export const knowledgeContext = business.table(
     check(
       "context_not_self_superseded",
       sql`${table.supersededById} IS NULL OR ${table.id} <> ${table.supersededById}`,
+    ),
+  ],
+);
+
+/** A real invalidation signal consumed by BE-12's profile builder. */
+export const contextProfileInvalidation = business.table(
+  "context_profile_invalidation",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    contextId: uuid("context_id").notNull(),
+    membershipRevision: integer("membership_revision").notNull(),
+    lastOutboxId: uuid("last_outbox_id").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "context_profile_invalidation_pk",
+      columns: [table.workspaceId, table.contextId],
+    }),
+    foreignKey({
+      name: "context_profile_invalidation_context_fk",
+      columns: [table.workspaceId, table.contextId],
+      foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
+    }),
+    check(
+      "context_profile_invalidation_revision_positive",
+      sql`${table.membershipRevision}>0`,
     ),
   ],
 );

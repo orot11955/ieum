@@ -14,18 +14,23 @@ export async function assertApplicationDatabaseRole(pool: Pool): Promise<void> {
     application_member: boolean;
     migrator_member: boolean;
     auth_member: boolean;
+    relay_member: boolean;
     owns_business: boolean;
     auth_usage: boolean;
+    queue_usage: boolean;
     can_set_dangerous_role: boolean;
   }>(`SELECT r.rolsuper, r.rolbypassrls, r.rolcreatedb, r.rolcreaterole, r.rolreplication,
        pg_has_role(current_user, 'ieum_application', 'USAGE') AS application_member,
        pg_has_role(current_user, 'ieum_migrator', 'MEMBER') AS migrator_member,
        pg_has_role(current_user, 'ieum_auth_runtime', 'MEMBER') AS auth_member,
+       pg_has_role(current_user, 'ieum_job_relay', 'MEMBER') AS relay_member,
        EXISTS (
          SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
          WHERE n.nspname = 'business' AND c.relkind = 'r' AND c.relowner = r.oid
        ) AS owns_business,
        has_schema_privilege(current_user, 'auth', 'USAGE') AS auth_usage,
+       CASE WHEN to_regnamespace('pgboss') IS NULL THEN false
+            ELSE has_schema_privilege(current_user, 'pgboss', 'USAGE') END AS queue_usage,
        EXISTS (
          SELECT 1 FROM pg_roles target
          WHERE pg_has_role(current_user, target.oid, 'SET')
@@ -34,7 +39,7 @@ export async function assertApplicationDatabaseRole(pool: Pool): Promise<void> {
              OR target.rolcreaterole OR target.rolreplication
              OR EXISTS (
                SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-               WHERE n.nspname = 'business' AND c.relkind = 'r' AND c.relowner = target.oid
+               WHERE n.nspname IN ('business', 'pgboss') AND c.relkind = 'r' AND c.relowner = target.oid
              )
            )
        ) AS can_set_dangerous_role
@@ -50,8 +55,10 @@ export async function assertApplicationDatabaseRole(pool: Pool): Promise<void> {
     !role.application_member ||
     role.migrator_member ||
     role.auth_member ||
+    role.relay_member ||
     role.owns_business ||
     role.auth_usage ||
+    role.queue_usage ||
     role.can_set_dangerous_role
   ) {
     throw new Error("Application database role is not isolated");

@@ -8,7 +8,8 @@ BEGIN
     'ieum_migrator',
     'ieum_auth_runtime',
     'ieum_application',
-    'ieum_delivery'
+    'ieum_delivery',
+    'ieum_job_relay'
   ] LOOP
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
       EXECUTE format(
