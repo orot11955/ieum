@@ -1,7 +1,8 @@
 # CORE-04 · 후보 검색·원본별 중복 제거·예산
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료; 원격 Linux CI 검증 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI가 통과했다.
 - 선행: CORE-03 VERIFIED. 작업 기준 main `bfc4a49b93946bbea1fa43a628868869b75ae1f7`.
+- 기능 커밋: `05f74311567610dc455dffa98d24dfb2a8339328`.
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 테스트 입력은 합성 fixture이며 사용자 자료가 아니다.
 
 ## 구현·계약
@@ -24,6 +25,7 @@ Core의 `retrieveCandidates`는 이미 시점·범위가 검증된 snapshot과 i
 | `pnpm lint`, `pnpm format:check` | 각각 0 | lint·포맷 통과 |
 | `pnpm contracts:check`, `pnpm typecheck`, `pnpm build`, `pnpm lab:smoke` | 모두 0 | 계약 경계·workspace 타입·빌드·기존 smoke 통과 |
 | `git diff --check` | 0 | 공백 오류 없음 |
+| [GitHub Actions run 35850330789](https://github.com/orot11955/ieum/actions/runs/35850330789) | success | Linux 준비 job과 Core/Lab workspace job 모두 성공 |
 
 초기 Core 타입 검사는 `matchStatus` 리터럴 타입이 넓어져 exit 2였고, 초기 포맷 검사는 새 파일의 포맷 차이로 exit 1이었다. 반환 타입을 명시하고 포맷한 뒤 위 명령이 통과했다.
 

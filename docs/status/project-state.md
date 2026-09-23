@@ -1,9 +1,9 @@
-# IEUM 프로젝트 상태 · CORE-03 VERIFIED, CORE-04 다음
+# IEUM 프로젝트 상태 · CORE-04 VERIFIED, CORE-05 다음
 
-- 검증 기준: main `0bac1e71bb426ebda564702fabcba6cdcf5c7467` (2026-09-23 KST, GitHub Actions 성공)
+- 검증 기준: main `05f74311567610dc455dffa98d24dfb2a8339328` (2026-09-23 KST, GitHub Actions 성공)
 - 실행 정본: [계획 1.1](../plan/README.md), [backlog](../plan/backlog.json)
-- 완료 범위: **BASE-01–03 준비·계약과 CORE-01–03 원본·근거 모델/시점 snapshot/lexical 기준선**. 여섯 카드 모두 VERIFIED
-- 다음 구현: **CORE-04–08**; BE-01·FE-01도 선행 조건 충족
+- 완료 범위: **BASE-01–03 준비·계약과 CORE-01–04 원본·근거 모델/시점 snapshot/lexical·후보 검색 기준선**. 일곱 카드 모두 VERIFIED
+- 다음 구현: **CORE-05–08**; BE-01·FE-01도 선행 조건 충족
 - 브랜치 정책: main 직접 작업, 새 브랜치/PR/force push 없음
 
 ## 실제 현재 상태
@@ -13,10 +13,10 @@
 | 원본 제품 목적·권한·도메인·화면/ERD 계약 | 보존된 설계; 새 실행 정본 아래 참고 | 해당 BASE/CORE/BE/FE 카드 |
 | Paper/Dark 토큰·recipe·lock·생성/검사 스크립트 | 보존, 준비 검사 대상 | FE-01 |
 | 공통 React UI·theme-init·theme unit test | 보존한 소스 표본; runtime/브라우저 미검증 | FE-01 |
-| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03, CORE-01–03 VERIFIED; 나머지 PLANNED | CORE-04 |
-| pnpm workspace·strict TS·Vitest·lint/format·core/lab build와 CI 정의 | Node 24.18.0 로컬 검사와 Linux GitHub Actions 통과 | CORE-04 후보 검색 |
-| 관리/Delivery Zod·OpenAPI·client 타입, Core 원본·근거 검증/시점 snapshot/lexical 기준선 | 합성 예제와 Linux CI 통과; 실제 HTTP/DB 없음 | CORE-04, BE-01, FE-01 |
-| 판단 Core·Lab·실제 판단 품질 | 입력 snapshot과 lexical 계산까지 구현; 후보·판단 정책과 실제 품질 미구현/미평가 | CORE-04–16 |
+| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03, CORE-01–04 VERIFIED; 나머지 PLANNED | CORE-05 |
+| pnpm workspace·strict TS·Vitest·lint/format·core/lab build와 CI 정의 | Node 24.18.0 로컬 검사와 Linux GitHub Actions 통과 | CORE-05 판단 정책 |
+| 관리/Delivery Zod·OpenAPI·client 타입, Core 원본·근거 검증/시점 snapshot/lexical·후보 검색 기준선 | 합성 예제와 Linux CI 통과; 실제 HTTP/DB 없음 | CORE-05, BE-01, FE-01 |
+| 판단 Core·Lab·실제 판단 품질 | 입력 snapshot과 lexical·후보 계산까지 구현; 제안/보류 정책과 실제 품질 미구현/미평가 | CORE-05–16 |
 | Nest API·인증·DB·worker·업무 기능 | 미구현 | BE-01–26 |
 | 내부 업무 웹·편집기·브라우저 E2E | 미구현 | FE-01–21 |
 | Delivery·운영 복원·개인 데이터 migration | 미구현/미검증 | P7–P9 |
@@ -32,9 +32,9 @@ BASE-01에서 삭제된 제품 경로를 실행하는 npm scripts·의존성/loc
 
 ## 준비 검증과 다음 행동
 
-실제 실행 결과는 [BASE-01 증거](../evidence/base-01.md), [BASE-02 증거](../evidence/base-02.md), [BASE-03 증거](../evidence/base-03.md), [CORE-01 증거](../evidence/core-01.md), [CORE-02 증거](../evidence/core-02.md), [CORE-03 증거](../evidence/core-03.md)를 따른다. plan/design 검사 통과를 제품 typecheck/build/DB/E2E 통과로 해석하지 않고, core/lab 빌드를 완성된 판단 기능 검증으로 확대하지 않는다. workflow는 원격 Linux에서 통과했지만 브랜치 보호 설정은 확인하지 못했으므로 main 반영 차단이 설정됐다고 주장하지 않는다.
+실제 실행 결과는 [BASE-01 증거](../evidence/base-01.md), [BASE-02 증거](../evidence/base-02.md), [BASE-03 증거](../evidence/base-03.md), [CORE-01 증거](../evidence/core-01.md), [CORE-02 증거](../evidence/core-02.md), [CORE-03 증거](../evidence/core-03.md), [CORE-04 증거](../evidence/core-04.md)를 따른다. plan/design 검사 통과를 제품 typecheck/build/DB/E2E 통과로 해석하지 않고, core/lab 빌드를 완성된 판단 기능 검증으로 확대하지 않는다. workflow는 원격 Linux에서 통과했지만 브랜치 보호 설정은 확인하지 못했으므로 main 반영 차단이 설정됐다고 주장하지 않는다.
 
-다음 카드로 넘어가기 전 [실행 지시문](../plan/07-codex-execution-playbook.md)을 적용한다. 원격 main과 로컬 변경, CORE-03 검증 상태를 먼저 확인한다. 운영 DB가 있는지 알 수 없으므로 새 격리된 개발 DB 외에는 연결하지 않는다.
+다음 카드로 넘어가기 전 [실행 지시문](../plan/07-codex-execution-playbook.md)을 적용한다. 원격 main과 로컬 변경, CORE-04 검증 상태를 먼저 확인한다. 운영 DB가 있는지 알 수 없으므로 새 격리된 개발 DB 외에는 연결하지 않는다.
 
 ## 과거 검토 기록
 

@@ -4,9 +4,9 @@
 
 ## 현재 상태 · 2026-09-23 KST
 
-**main 단일 브랜치 · BASE-01–03과 CORE-01–03 검증 완료 · 다음 권장 카드 CORE-04.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. 후보 검색·판단 정책, 제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
+**main 단일 브랜치 · BASE-01–03과 CORE-01–04 검증 완료 · 다음 권장 카드 CORE-05.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. 판단 정책, 제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
 
-현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 빌드와 Core 원문·근거 검증/시점 snapshot/lexical 기준선, 관리/Delivery 계약 예제와 생성 client 타입, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 완성된 판단 기능이 실행된다고 설명하지 않는다.
+현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 빌드와 Core 원문·근거 검증/시점 snapshot/lexical·후보 검색 기준선, 관리/Delivery 계약 예제와 생성 client 타입, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 완성된 판단 기능이 실행된다고 설명하지 않는다.
 
 ## 구현의 시작점
 
@@ -21,8 +21,9 @@
 | [BASE-03 증거](docs/evidence/base-03.md) · [계약 예제](docs/plan/contracts.md) | 계약 생성·경계 검사와 로컬/Linux 검증 범위 |
 | [CORE-01 증거](docs/evidence/core-01.md) · [CORE-02 증거](docs/evidence/core-02.md) | 원본 근거 모델·시점 snapshot 검증 범위 |
 | [CORE-03 증거](docs/evidence/core-03.md) | 검색용 lexical 기준선과 합성 반례 검증 범위 |
+| [CORE-04 증거](docs/evidence/core-04.md) | 후보 검색·원본별 대표·예산과 합성 반례 검증 범위 |
 
-CORE-03까지 Linux CI에서 VERIFIED다. **CORE-04–08**을 선행 조건에 맞춰 진행한다. BE-01·FE-01도 착수 가능하다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
+CORE-04까지 Linux CI에서 VERIFIED다. **CORE-05–08**을 선행 조건에 맞춰 진행한다. BE-01·FE-01도 착수 가능하다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
 
 ## 현재 실행 가능한 검사
 

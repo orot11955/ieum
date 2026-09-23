@@ -100,7 +100,7 @@
       "dependencies": [
         "CORE-03"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "맥락 identity와 member 검색 결과를 union한다. 같은 origin의 member는 먼저 각각 비교한 뒤 대표 근거를 정해 임의 마지막 member를 선택하지 않는다. context별 quota와 전체 budget, stable tie-break, source별 순위와 잘림을 남긴다.",
       "contract": "위치: core/retrieval + lab의 exact finder adapter. 기본 K=32는 실험값이며 16/32/64 및 전수 대조가 가능하다. 명시적 context 지정은 자동 추천과 다른 사용자 명령이다.",
       "tests": "정답이 identity에는 없고 member에만 있는 사례, 하나의 origin이 후보를 독점하는 사례, budget 초과, 동점, 후보 없음, 배열 순서 변경.",

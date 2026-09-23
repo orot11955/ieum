@@ -10,7 +10,7 @@
 | CORE-01 | P1 | VERIFIED | 원본·단위·맥락·근거 타입과 불변식 | BASE-03 |
 | CORE-02 | P1 | VERIFIED | 시점·권한 범위가 고정된 snapshot | CORE-01 |
 | CORE-03 | P1 | VERIFIED | 한국어·식별자 lexical 기준선 | CORE-02 |
-| CORE-04 | P1 | IMPLEMENTED | 후보 검색·원본별 중복 제거·예산 | CORE-03 |
+| CORE-04 | P1 | VERIFIED | 후보 검색·원본별 중복 제거·예산 | CORE-03 |
 | CORE-05 | P1 | PLANNED | 점수·가용성·보류·설명 엔진 | CORE-04 |
 | CORE-06 | P1 | PLANNED | 파일 Replay·실행 이력·수동 피드백 | CORE-05 |
 | CORE-07 | P1 | PLANNED | 평가 데이터·라벨·메트릭·반례 | CORE-06 |
