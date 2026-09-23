@@ -3,8 +3,8 @@
 ## 현재 작업 정책
 
 - **main에서 직접 작업한다. 새 브랜치·PR을 만들지 않는다.** 원격 main을 force 이동하거나 hard reset, 사용자 미커밋 변경 덮어쓰기, 과거 제품 패치 전체 재적용을 하지 않는다.
-- BASE-02 최소 workspace와 CI는 Linux 원격 CI와 격리 설치까지 VERIFIED다. 다음 카드의 선행·완료 기준을 지키며 구현한다. 문서/정리 요청만으로 제품 기능이나 DB/배포를 변경하지 않는다.
-- 다음 카드 전 git status·원격 main·현재 prep 검사와 선행 카드 증거를 확인한다. **다음 카드는 BASE-03**이다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
+- BASE-02 최소 workspace/CI와 BASE-03 계약 예제는 Linux 원격 CI와 로컬 검증까지 VERIFIED다. 다음 카드의 선행·완료 기준을 지키며 구현한다. 문서/정리 요청만으로 제품 기능이나 DB/배포를 변경하지 않는다.
+- 다음 카드 전 git status·원격 main·현재 prep 검사와 선행 카드 증거를 확인한다. **다음 권장 카드는 CORE-01**이다. BE-01·FE-01도 각 선행 조건에 따라 착수할 수 있다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
 
 ## 반드시 읽을 정본
 
@@ -55,4 +55,4 @@ Web: app은 조립, pages는 화면 조합, features는 사용자 동작·미저
 
 실제 명령/exit code/환경/결과/미검증/데이터 영향을 docs/evidence/<id>.md에 기록한다. IMPLEMENTED와 VERIFIED와 사용자 ACCEPTED를 구분한다. 없는 테스트를 passWithNoTests로 성공 처리하지 않는다. 실제 데이터 품질과 합성 fixture 결과를 구분한다.
 
-현재 검사: `npm run prep:check`와 BASE-02의 `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm lab:smoke`. 제품 DB/E2E/판단 Lab 명령은 해당 카드에서 실제 생긴 범위만 추가한다. 버전/인증/MFA/CSRF/RLS/restore는 통합 gate 전 완료로 표시하지 않는다. private 원문·embedding·secret·token·prompt·export는 공개 Git/로그에 넣지 않는다.
+현재 검사: `npm run prep:check`와 `pnpm contracts:check`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm lab:smoke`. 제품 DB/E2E/판단 Lab 명령은 해당 카드에서 실제 생긴 범위만 추가한다. 버전/인증/MFA/CSRF/RLS/restore는 통합 gate 전 완료로 표시하지 않는다. private 원문·embedding·secret·token·prompt·export는 공개 Git/로그에 넣지 않는다.

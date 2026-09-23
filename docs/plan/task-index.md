@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | BASE-01 | P0 | VERIFIED | 기준선·문서 우선순위·재사용 판정 확정 | 없음 |
 | BASE-02 | P0 | VERIFIED | 최소 workspace·실행·검사 기반 | BASE-01 |
-| BASE-03 | P0 | IMPLEMENTED | 도메인·HTTP·편집기 계약과 의존 방향 | BASE-02 |
+| BASE-03 | P0 | VERIFIED | 도메인·HTTP·편집기 계약과 의존 방향 | BASE-02 |
 | CORE-01 | P1 | PLANNED | 원본·단위·맥락·근거 타입과 불변식 | BASE-03 |
 | CORE-02 | P1 | PLANNED | 시점·권한 범위가 고정된 snapshot | CORE-01 |
 | CORE-03 | P1 | PLANNED | 한국어·식별자 lexical 기준선 | CORE-02 |

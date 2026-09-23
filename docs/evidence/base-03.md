@@ -1,6 +1,6 @@
 # BASE-03 · 도메인·HTTP·편집기 계약과 의존 방향
 
-- 상태: **IMPLEMENTED**, 로컬 검증 통과. 원격 Linux CI 실행은 아직 확인하지 않았다.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux GitHub Actions가 통과했다.
 - 기준: main `513b855`에서 착수. macOS arm64, Node v24.18.0과 v26.7.0, pnpm v11.24.0.
 - 사용 패키지: Zod 4.6.5, openapi-typescript 7.13.0, openapi-fetch 0.17.0. 선택 버전은 `pnpm-lock.yaml`에 고정했다.
 
@@ -25,6 +25,7 @@ architecture 검사에는 Core의 외부 package import, web의 backend/DB impor
 | `pnpm build`, `pnpm lab:smoke` | 모두 0 | core/contracts/lab 빌드와 기존 smoke 유지 |
 | `pnpm audit --audit-level high` | 0 | 조회 시점 알려진 high 이상 공지 없음 |
 | Node 24.18.0에서 `pnpm install --frozen-lockfile --offline`, `pnpm contracts:check`, `pnpm build`, `pnpm lab:smoke` | 모두 0 | 프로젝트 지정 런타임에서 고정 설치·경계·빌드·smoke 재확인 |
+| [GitHub Actions run 35842760556](https://github.com/orot11955/ieum/actions/runs/35842760556), commit `744bd6bcefee427908dbf93efdb50df6919a8a7b` | success | Linux의 준비 job과 workspace job 모두 성공. frozen install, lint, 계약 검사, format, typecheck, unit, build, smoke, tracked diff 검사 포함 |
 
 첫 architecture 검사에서 테스트 파일의 Vitest import를 Core 제품 코드로 잘못 분류해 exit 1이었다. 제품 소스만 검사하도록 범위를 조정했다. 첫 typecheck는 `openapi-fetch` 주입 fetch의 실제 단일 `Request` 시그니처와 테스트 코드가 달라 exit 2였고 테스트 adapter를 수정했다. 수정 후 위 명령이 통과했다.
 
@@ -32,4 +33,4 @@ architecture 검사에는 Core의 외부 package import, web의 backend/DB impor
 
 ## 미검증·데이터 영향
 
-실제 HTTP 서버, 인증·권한, DB row/transaction, 편집기 IME, 공개 projection·철회, 브라우저와 실데이터는 BASE-03의 실행 예제에 없다. 이들 계약의 통합·보안 판정은 해당 BE/FE/QA 카드에 남는다. 생성 OpenAPI/client 파일은 원본 Zod에서 재생성하며 DB migration·운영 데이터·배포 변경은 없다. 원격 CI 결과를 확인한 뒤 VERIFIED 여부를 판정한다.
+실제 HTTP 서버, 인증·권한, DB row/transaction, 편집기 IME, 공개 projection·철회, 브라우저와 실데이터는 BASE-03의 실행 예제에 없다. 이들 계약의 통합·보안 판정은 해당 BE/FE/QA 카드에 남는다. 생성 OpenAPI/client 파일은 원본 Zod에서 재생성하며 DB migration·운영 데이터·배포 변경은 없다.

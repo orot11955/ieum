@@ -4,9 +4,9 @@
 
 ## 현재 상태 · 2026-09-23 KST
 
-**main 단일 브랜치 · BASE-02 최소 workspace와 CI 검증 완료 · 다음 카드 BASE-03.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. 판단 Core·제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
+**main 단일 브랜치 · BASE-01–03 검증 완료 · 다음 권장 카드 CORE-01.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. 판단 Core 로직·제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
 
-현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 최소 빌드 기반, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 판단 기능이 실행된다고 설명하지 않는다.
+현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 최소 빌드 기반, 관리/Delivery 계약 예제와 생성 client 타입, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 판단 기능이 실행된다고 설명하지 않는다.
 
 ## 구현의 시작점
 
@@ -18,8 +18,9 @@
 | [실행 지시](docs/plan/07-codex-execution-playbook.md) · [AGENTS](AGENTS.md) | 구현 시작 지시와 main 직접 작업 규칙 |
 | [BASE-01 증거](docs/evidence/base-01.md) | 실제 실행 검사와 미검증 범위 |
 | [BASE-02 증거](docs/evidence/base-02.md) | workspace·CI의 로컬/Linux 검증 범위 |
+| [BASE-03 증거](docs/evidence/base-03.md) · [계약 예제](docs/plan/contracts.md) | 계약 생성·경계 검사와 로컬/Linux 검증 범위 |
 
-BASE-02는 Linux CI까지 VERIFIED다. **BASE-03 → CORE-01–08**을 선행 조건에 맞춰 진행한다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
+BASE-03까지 Linux CI에서 VERIFIED다. **CORE-01–08**을 선행 조건에 맞춰 진행한다. BE-01·FE-01도 착수 가능하다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
 
 ## 현재 실행 가능한 검사
 
@@ -29,10 +30,11 @@ Node 24.18.0을 사용한다. 계획·디자인 준비 검사는 외부 패키�
 npm run prep:check
 ```
 
-BASE-02 workspace 검사는 의존성 설치 후 실행한다.
+Workspace와 BASE-03 계약 검사는 의존성 설치 후 실행한다.
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm contracts:check
 pnpm lint
 pnpm format:check
 pnpm typecheck
@@ -53,7 +55,7 @@ node scripts/design/check.mjs
 node scripts/design/themes.mjs --check
 ```
 
-준비 검사 성공은 계획/디자인 기준선의 검사다. workspace typecheck·unit·build·smoke 성공은 core/lab 기반의 검사이며 판단 품질·DB integration·브라우저 E2E·운영 복원 성공이 아니다.
+준비 검사 성공은 계획/디자인 기준선의 검사다. workspace 계약·typecheck·unit·build·smoke 성공은 core/lab 및 계약 예제의 검사이며 판단 품질·DB integration·브라우저 E2E·운영 복원 성공이 아니다.
 
 ## 아키텍처 기준
 

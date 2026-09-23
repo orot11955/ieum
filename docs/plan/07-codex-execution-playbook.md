@@ -2,7 +2,7 @@
 
 ## 현재 상태와 권한
 
-계획 1.1은 main에 채택됐다. BASE-02 최소 workspace와 CI는 Linux 실행까지 VERIFIED다. 판단 Core·API·업무 Web 및 운영 DB/배포는 미구현·미접근이다. 다음 카드의 착수는 선행 작업의 VERIFIED/ACCEPTED 증거를 따른다.
+계획 1.1은 main에 채택됐다. BASE-03 계약 예제까지 Linux 실행으로 VERIFIED다. 판단 Core 로직·API·업무 Web 및 운영 DB/배포는 미구현·미접근이다. 다음 카드의 착수는 선행 작업의 VERIFIED/ACCEPTED 증거를 따른다.
 
 문서 우선순위: 사용자 최신 지시 → AGENTS.md → ADR 0012 → docs/plan/backlog.json 및 00–09 → 보존된 제품/도메인/화면 계약. 과거 M/S/I 번호·다크 후속·별도 브랜치 지시는 현재 실행 규칙이 아니다.
 
@@ -111,7 +111,7 @@ PLANNED → IN_PROGRESS → IMPLEMENTED → VERIFIED → ACCEPTED로 구분한�
 
 ### BASE-03 · 도메인·HTTP·편집기 계약과 의존 방향
 
-**구간:** P0 · **상태:** IMPLEMENTED · **선행:** BASE-02
+**구간:** P0 · **상태:** VERIFIED · **선행:** BASE-02
 
 **구현 범위:** core snapshot과 관리 HTTP DTO, 공개 Delivery DTO를 분리한다. Zod 런타임 schema를 HTTP 정본으로 삼고 OpenAPI 및 client 생성 경로를 작은 왕복 예제로 검증한다. editor JSON schemaVersion과 원문 UTF-16 span을 별개 계약으로 정한다.
 
