@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.24.0",
   "engines": {
     "node": ">=24 <25"
   },
@@ -12,6 +13,21 @@
     "design:build": "node scripts/design/build.mjs && node scripts/design/themes.mjs",
     "design:test": "node --test scripts/design/test.mjs",
     "design:check": "node scripts/design/check.mjs && node scripts/design/themes.mjs --check",
-    "prep:check": "npm run design:build && npm run plan:check && npm run design:test && npm run design:check"
+    "prep:check": "npm run design:build && npm run plan:check && npm run design:test && npm run design:check",
+    "lint": "eslint packages/core/src apps/lab-cli/src",
+    "format:check": "prettier --check package.json pnpm-workspace.yaml tsconfig.base.json eslint.config.mjs .github/workflows/preparation-ci.yml 'packages/core/{package.json,tsconfig*.json,src/**/*.ts}' 'apps/lab-cli/{package.json,tsconfig*.json,src/**/*.ts}'",
+    "typecheck": "pnpm --filter @ieum/core build && pnpm --filter @ieum/lab-cli typecheck && pnpm --filter @ieum/core typecheck",
+    "test:unit": "pnpm --filter @ieum/core build && pnpm --filter @ieum/core test",
+    "build": "pnpm --filter @ieum/core build && pnpm --filter @ieum/lab-cli build",
+    "lab:smoke": "node apps/lab-cli/dist/main.js --smoke"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "eslint": "10.10.0",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.66.0",
+    "vite": "7.3.6",
+    "vitest": "4.1.11"
   }
 }

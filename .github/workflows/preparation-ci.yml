@@ -1,4 +1,4 @@
-name: Preparation checks
+name: Preparation and workspace checks
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: '24'
+          node-version-file: .nvmrc
       - name: Check preparation scripts
         run: |
           node --check scripts/plan/render.mjs
@@ -33,6 +33,35 @@ jobs:
       - name: Verify tracked sources remain unchanged
         run: git diff --exit-code
 
-# No installs, product migrations, deployment or automatic commits.
-# Product lint/typecheck/test/build/E2E checks are added only with the
-# corresponding BASE-02/BASE-03 and implementation tasks.
+  workspace:
+    name: Core and lab workspace
+    needs: preparation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+      - name: Install pinned pnpm
+        run: npm install --global pnpm@11.24.0
+      - name: Install locked workspace dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Check formatting
+        run: pnpm format:check
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test:unit
+      - name: Build
+        run: pnpm build
+      - name: Run built lab smoke entry
+        run: pnpm lab:smoke
+      - name: Verify tracked sources remain unchanged
+        run: git diff --exit-code
+
+# Product auth, database, browser and end-to-end checks are added with their cards.

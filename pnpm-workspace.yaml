@@ -1,0 +1,6 @@
+packages:
+  - packages/core
+  - apps/lab-cli
+storeDir: .pnpm-store
+allowBuilds:
+  esbuild: false
