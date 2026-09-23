@@ -111,11 +111,11 @@ PLANNED → IN_PROGRESS → IMPLEMENTED → VERIFIED → ACCEPTED로 구분한�
 
 ### BASE-03 · 도메인·HTTP·편집기 계약과 의존 방향
 
-**구간:** P0 · **상태:** PLANNED · **선행:** BASE-02
+**구간:** P0 · **상태:** IMPLEMENTED · **선행:** BASE-02
 
 **구현 범위:** core snapshot과 관리 HTTP DTO, 공개 Delivery DTO를 분리한다. Zod 런타임 schema를 HTTP 정본으로 삼고 OpenAPI 및 client 생성 경로를 작은 왕복 예제로 검증한다. editor JSON schemaVersion과 원문 UTF-16 span을 별개 계약으로 정한다.
 
-**입출력·데이터·코드 계약:** 산출물: packages/contracts/{management,delivery}, docs/plan/contracts.md, architecture import rules. 관리 요청 DTO→application command→core input/DB model 간 명시적 mapper를 둔다.
+**입출력·데이터·코드 계약:** 산출물: packages/contracts/{management,delivery}, docs/plan/contracts.md, architecture import rules. 관리 요청 DTO→application command→Core input/저장 입력 간 명시적 mapper를 둔다. 실제 ORM row mapper는 저장 schema가 생기는 BE-07에서 연결한다.
 
 **필수 반례·검증:** 요청/응답 schema·OpenAPI·생성 client의 동일 예제 왕복; 공개 DTO에 private 필드 추가 시 실패; core→backend, web→backend/DB import 실패.
 

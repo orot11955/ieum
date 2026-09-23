@@ -1,5 +1,6 @@
 packages:
   - packages/core
+  - packages/contracts
   - apps/lab-cli
 storeDir: .pnpm-store
 allowBuilds:

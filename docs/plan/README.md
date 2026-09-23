@@ -20,6 +20,7 @@
 | [07 · 실행 지시](07-codex-execution-playbook.md) | main 전용 시작 지시, 커밋·보고 |
 | [08 · 출처/추적](08-sources-and-traceability.md) | 기존 계획의 출처·요구/화면 매핑 |
 | [09 · 단계별 구현 순서](09-implementation-sequence.md) | 카드 선행관계에 따른 실행 묶음·gate·문서 충돌 정리 |
+| [최소 계약 예제](contracts.md) | BASE-03의 관리/Delivery·편집기·Core 경계와 생성 경로 |
 
 BASE-01과 BASE-02는 VERIFIED다. 다음은 **BASE-03 → CORE-01–08**을 진행한다. 라이브러리 호환성 spike는 카드의 선행관계가 충족될 때만 진행한다. main 이외 브랜치·PR을 만들지 않는다.
 

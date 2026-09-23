@@ -1,0 +1,32 @@
+{
+  "name": "@ieum/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./management": {
+      "types": "./dist/management.d.ts",
+      "default": "./dist/management.js"
+    },
+    "./delivery": {
+      "types": "./dist/delivery.d.ts",
+      "default": "./dist/delivery.js"
+    },
+    "./editor": {
+      "types": "./dist/editor.d.ts",
+      "default": "./dist/editor.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ieum/core": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "openapi-fetch": "0.17.0"
+  }
+}

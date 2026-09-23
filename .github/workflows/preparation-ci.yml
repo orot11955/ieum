@@ -51,6 +51,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm lint
+      - name: Check contract generation and import boundaries
+        run: pnpm contracts:check
       - name: Check formatting
         run: pnpm format:check
       - name: Typecheck
