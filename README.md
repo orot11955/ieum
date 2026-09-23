@@ -4,9 +4,9 @@
 
 ## 현재 상태 · 2026-09-23 KST
 
-**main 단일 브랜치 · BASE-01–03과 CORE-01–09·14 검증 완료 · 다음 권장 카드 CORE-10.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. Core의 관찰용 후보·보류 정책, 파일 Lab 실행·재생, 합성 B0/B1 평가, 모델 없는 근거 묶음과 문서 계획 계약을 구현했다. 실제 사용자 품질, 제안 정책, 제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
+**main 단일 브랜치 · BASE-01–03과 CORE-01–15 VERIFIED · CORE-16 BLOCKED.** Core의 원본·snapshot·관찰 판단, 파일 Lab 실행·재생, 합성 B0/B1/B2/B3 비교, 근거 묶음, 추출·구조 변경 미리보기·문서 claim 검증 계약을 구현했다. 실제 사용자 품질과 활성 제안 정책은 검증하지 않았으며 제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
 
-현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 빌드와 Core 원문·근거 검증/시점 snapshot/lexical·semantic 후보 검색·관찰 판단 기준선, 파일 run/replay/inspect/compare/evaluate/pack/semantic/compare-semantic CLI와 합성 데이터, 관리/Delivery 계약 예제와 생성 client 타입, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 완성된 판단 기능이 실행된다고 설명하지 않는다.
+현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 빌드와 Core 원문·근거 검증/시점 snapshot/lexical·semantic·hybrid 후보 검색·관찰 판단 기준선, 파일 run/replay/inspect/compare/evaluate/pack/semantic/compare-semantic/compare-hybrid CLI와 합성 데이터, 관리/Delivery 계약 예제와 생성 client 타입, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 완성된 판단 기능이 실행된다고 설명하지 않는다.
 
 ## 구현의 시작점
 
@@ -27,9 +27,14 @@
 | [CORE-07 증거](docs/evidence/core-07.md) | 합성 40개 맥락·60개 질의의 B0 평가와 누수·분모 반례 |
 | [CORE-08 증거](docs/evidence/core-08.md) | 직접 선택한 원문에서 모델 없이 private 근거 묶음 생성 |
 | [CORE-09 증거](docs/evidence/core-09.md) | 고정 벡터 exact 검색과 합성 B0/B1 비교·한계 |
+| [CORE-10 증거](docs/evidence/core-10.md) | B2/B3 hybrid 비교와 validation 전용 제안 게이트 |
+| [CORE-11 증거](docs/evidence/core-11.md) | 자유 기록 추출 후보·원문 revision·시간 확인 계약 |
+| [CORE-12 증거](docs/evidence/core-12.md) · [CORE-13 증거](docs/evidence/core-13.md) | 승인 snapshot의 구조 진단과 변경안별 영향 미리보기 |
 | [CORE-14 증거](docs/evidence/core-14.md) | 목적별 checklist·관점·출처 기반 개요와 readiness 계약 |
+| [CORE-15 증거](docs/evidence/core-15.md) | 모델 초안의 출처·claim map 검증 계약 |
+| [CORE-16 차단 근거](docs/evidence/core-16.md) | 실제 효용 평가의 미충족 선행과 재개 조건 |
 
-CORE-01–09와 CORE-14가 Linux CI에서 VERIFIED다. **CORE-10**을 선행 조건에 맞춰 진행한다. CORE-12·BE-01·FE-01도 착수 가능하다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
+CORE-01–15가 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 현재 제품 구현 착수 가능 카드는 BE-01·FE-01이고 QA-02도 선행을 충족한다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
 
 ## 현재 실행 가능한 검사
 
@@ -59,6 +64,8 @@ Lab CLI는 빌드 뒤 `node apps/lab-cli/dist/main.js run <snapshot.json>`으로
 모델 없는 근거 묶음은 직접 선택 이벤트가 저장된 run에 대해 `node apps/lab-cli/dist/main.js pack <run-directory> <request.json>`으로 만든다. 기본 private 경로는 `~/.local/share/ieum-lab/packs/`이며 요청 형식과 검증 범위는 [CORE-08 증거](docs/evidence/core-08.md)를 따른다.
 
 고정 embedding artifact는 `node apps/lab-cli/dist/main.js semantic <snapshot.json> <artifact.json>`으로 한 snapshot에서 검색하고 `compare-semantic <dataset.json> <artifact.json>`으로 B0/B1을 비교한다. 합성 예제 벡터는 `node scripts/experiments/generate-synthetic-embeddings.mjs`로 재생성할 수 있으며, 모델 품질 근거가 아니라 검색 경로 검증용이다.
+
+`node apps/lab-cli/dist/main.js compare-hybrid <dataset.json> <embedding.json> [--aux <auxiliary.json>] [--out <directory>]`는 같은 합성 dataset에서 B2/B3 순위와 fallback을 비교한다. 출력은 private 경로에 두며 합성 결과로 추천 모드를 활성화하지 않는다.
 
 준비 검사 개별 명령:
 
