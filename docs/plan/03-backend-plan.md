@@ -215,7 +215,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-13 · 제안·노출·피드백·승인 적용
 
-**구간:** P4 · **상태:** PLANNED · **선행:** BE-12, BE-05, CORE-05
+**구간:** P4 · **상태:** IMPLEMENTED · **선행:** BE-12, BE-05, CORE-05
 
 **구현 범위:** 후보 조회와 영속 Proposal을 구분한다. 제안 노출, 수락/거절/닫기, stale, expire를 구현한다. exact unit revision과 context version을 대상으로 승인한 membership 변경만 적용한다.
 
