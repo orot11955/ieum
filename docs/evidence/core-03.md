@@ -1,7 +1,8 @@
 # CORE-03 · 한국어·식별자 lexical 기준선
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료; 원격 Linux CI 검증 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI가 통과했다.
 - 선행: CORE-02 VERIFIED. 작업 기준 main `5274bbe36538cee67cad7d144c6bda94b01297cd`.
+- 기능 커밋: `0bac1e71bb426ebda564702fabcba6cdcf5c7467`.
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 테스트 입력은 합성 문자열이며 사용자 자료가 아니다.
 
 ## 구현·계약
@@ -22,6 +23,7 @@ IDF corpus는 query를 제외한 후보 Unit을 원본 `originKey`별로 묶은 
 | `npm run plan:check`, `pnpm contracts:check` | 각각 0 | 75개 카드 정합성·생성 계약·Core 경계 검사 통과 |
 | `pnpm typecheck`, `pnpm build`, `pnpm lab:smoke` | 모두 0 | workspace 타입·빌드와 기존 smoke 통과 |
 | `git diff --check` | 0 | 공백 오류 없음 |
+| [GitHub Actions run 35848735819](https://github.com/orot11955/ieum/actions/runs/35848735819) | success | Linux 준비 job과 Core/Lab workspace job 모두 성공 |
 
 첫 Core 테스트와 타입 검사는 식별자 정규식의 잘못된 반복 기호로 exit 1/2였다. 정규식을 수정한 뒤 위 명령이 통과했다.
 
