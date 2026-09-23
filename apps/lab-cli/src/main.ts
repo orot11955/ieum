@@ -10,6 +10,7 @@ import {
 } from "./adapters/run.js";
 import { evaluateFile } from "./evaluation/index.js";
 import { compareSemanticFile } from "./evaluation/index.js";
+import { compareHybridFile } from "./evaluation/hybrid.js";
 import { packFromRun } from "./adapters/evidence-pack.js";
 import { rankSemanticFile } from "./adapters/embedding-artifact.js";
 
@@ -148,9 +149,33 @@ if (process.argv.length === 3 && process.argv[2] === "--smoke") {
     );
     process.exitCode = 1;
   }
+} else if (process.argv[2] === "compare-hybrid" && process.argv.length >= 5) {
+  try {
+    const args = process.argv.slice(5);
+    let output: string | undefined;
+    let auxiliaryFile: string | undefined;
+    while (args.length) {
+      const option = args.shift();
+      const value = args.shift();
+      if (!value) throw new RangeError(`incomplete hybrid option: ${option}`);
+      if (option === "--out" && output === undefined) output = value;
+      else if (option === "--aux" && auxiliaryFile === undefined)
+        auxiliaryFile = value;
+      else
+        throw new RangeError(`unknown or duplicate hybrid option: ${option}`);
+    }
+    process.stdout.write(
+      `${JSON.stringify(compareHybridFile(process.argv[3] ?? "", process.argv[4] ?? "", { ...(output === undefined ? {} : { output }), ...(auxiliaryFile === undefined ? {} : { auxiliaryFile }) }))}\n`,
+    );
+  } catch (error) {
+    process.stderr.write(
+      `Hybrid comparison failed: ${error instanceof Error ? error.message : "unknown error"}\n`,
+    );
+    process.exitCode = 1;
+  }
 } else {
   process.stderr.write(
-    "Usage: ieum-lab --smoke | --snapshot <file> | run <file> [--out <directory>] [--feedback <file>] [--budget <16|32|64|all>] | replay <run-directory> | inspect <run-directory> | compare <run-a> <run-b> | evaluate <dataset.json> [--out <directory>] | pack <run-directory> <request.json> [--out <directory>] | semantic <snapshot.json> <artifact.json> | compare-semantic <dataset.json> <artifact.json> [--out <directory>]\n",
+    "Usage: ieum-lab --smoke | --snapshot <file> | run <file> [--out <directory>] [--feedback <file>] [--budget <16|32|64|all>] | replay <run-directory> | inspect <run-directory> | compare <run-a> <run-b> | evaluate <dataset.json> [--out <directory>] | pack <run-directory> <request.json> [--out <directory>] | semantic <snapshot.json> <artifact.json> | compare-semantic <dataset.json> <artifact.json> [--out <directory>] | compare-hybrid <dataset.json> <artifact.json> [--aux <auxiliary.json>] [--out <directory>]\n",
   );
   process.exitCode = 2;
 }

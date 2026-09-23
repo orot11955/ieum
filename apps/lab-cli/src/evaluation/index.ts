@@ -366,7 +366,7 @@ function ratio(numerator: number, denominator: number): Ratio {
   };
 }
 
-type CaseResult = Readonly<{
+export type CaseResult = Readonly<{
   id: string;
   split: Split;
   slices: readonly string[];
@@ -440,7 +440,7 @@ function summarize(rows: readonly CaseResult[], k: number): MetricSet {
   };
 }
 
-function reportRows(
+export function reportRows(
   rows: readonly CaseResult[],
   k: number,
   baseline: string,

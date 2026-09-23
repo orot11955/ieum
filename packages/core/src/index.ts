@@ -71,6 +71,21 @@ export {
   resolvePolicy,
   validatePolicyConfig,
 } from "./policy/index.js";
+export {
+  PILOT_TARGETS,
+  assessSuggestionActivation,
+  resolveSuggestionCandidates,
+  selectValidationThresholds,
+  suggestionReportBody,
+  validateSuggestionConfig,
+} from "./policy/suggestion.js";
+export type {
+  SuggestionConfig,
+  SuggestionThresholds,
+  SuggestionValidationReport,
+  TuningRow,
+  ValidationRatio,
+} from "./policy/suggestion.js";
 export type {
   PolicyConfig,
   PolicyDecision,
@@ -81,6 +96,19 @@ export {
   resolveExplicitContext,
   retrieveCandidates,
 } from "./retrieval/index.js";
+export {
+  FUSION_CONFIG,
+  fuseRankings,
+  rerankFusionWithAuxiliary,
+} from "./retrieval/fusion.js";
+export type {
+  AuxiliaryFusionResult,
+  AuxiliaryRankSignals,
+  FusedHit,
+  FusionResult,
+  RankHit,
+  SemanticRankSource,
+} from "./retrieval/fusion.js";
 export type {
   IdentityHit,
   MemberEvidence,
@@ -93,6 +121,7 @@ export type {
   SourceResult,
 } from "./retrieval/index.js";
 export {
+  HYBRID_SCORE_CONFIG,
   LEXICAL_SCORE_CONFIG,
   NO_AUXILIARY_SIGNALS,
   scoreCandidate,

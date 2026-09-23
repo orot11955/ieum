@@ -174,7 +174,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-10 · hybrid·정책 보정·추천 활성화
 
-**구간:** P4 · **상태:** PLANNED · **선행:** CORE-09, CORE-05
+**구간:** P4 · **상태:** IMPLEMENTED · **선행:** CORE-09, CORE-05
 
 **구현 범위:** B2 lexical+semantic RRF와 B3 제한된 graph/session ablation을 비교한다. 순위 결합과 suggest 임계값을 분리하고 validation에서만 content floor/coverage/threshold를 선택한다.
 

@@ -20,6 +20,12 @@ export const LEXICAL_SCORE_CONFIG: ScoreConfig = Object.freeze({
   weights: Object.freeze({ lexical: 1, semantic: 0 }),
   auxiliaryWeights: Object.freeze({ graph: 0, session: 0, recency: 0 }),
 });
+export const HYBRID_SCORE_CONFIG: ScoreConfig = Object.freeze({
+  version: "content-score-v1",
+  profileId: "hybrid-v0",
+  weights: Object.freeze({ lexical: 0.5, semantic: 0.5 }),
+  auxiliaryWeights: Object.freeze({ graph: 0, session: 0, recency: 0 }),
+});
 
 export type AuxiliarySignals = Readonly<{
   graph: number | null;

@@ -192,7 +192,7 @@
         "CORE-09",
         "CORE-05"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "B2 lexical+semantic RRF와 B3 제한된 graph/session ablation을 비교한다. 순위 결합과 suggest 임계값을 분리하고 validation에서만 content floor/coverage/threshold를 선택한다.",
       "contract": "위치: core/retrieval/fusion, configs/policies, lab/compare. feature 실패 시 run 전체 lexical-degraded profile로 전환하고 서로 다른 profile threshold를 섞지 않는다.",
       "tests": "무관 후보 추가로 absolute confidence가 부풀지 않음, semantic 전면 실패, 한국어/no-match/부정/다중 소속 slice, holdout 튜닝 금지, 제안 0건 precision=N/A.",
