@@ -12,6 +12,8 @@ import {
   withWorkspaceTransaction,
 } from "../src/platform/database/scope.js";
 import { IdentityService } from "../src/identity-service.js";
+import { CommandCoordinator } from "../src/command-coordinator.js";
+import { PreferenceCommands } from "../src/preferences.js";
 
 const authMigrations = fileURLToPath(
   new URL("../../../db/migrations/auth", import.meta.url),
@@ -343,6 +345,9 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
       },
       authLock,
     );
+    const preferences = new PreferenceCommands(
+      new CommandCoordinator(identity),
+    );
     const password = "be04 test password 1234";
     const bootstrap = { email: "owner@example.test", name: "Owner", password };
     const attempts = await Promise.allSettled([
@@ -396,12 +401,24 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
       identity.issueInvitation(invited.userId, "third@example.test"),
     ).rejects.toMatchObject({ code: "ACCESS_DENIED" });
     expect((await identity.getMe(invited.userId)).timeZone).toBe("UTC");
-    expect(await identity.setTimeZone(invited.userId, "Asia/Seoul")).toBe(
-      "Asia/Seoul",
-    );
+    expect(
+      (
+        await preferences.setTimeZone({
+          actorId: invited.userId,
+          idempotencyKey: "be04tz001",
+          baseVersion: 1,
+          timeZone: "Asia/Seoul",
+        })
+      ).response.timeZone,
+    ).toBe("Asia/Seoul");
     await expect(
-      identity.setTimeZone(invited.userId, "Not/AZone"),
-    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+      preferences.setTimeZone({
+        actorId: invited.userId,
+        idempotencyKey: "be04tz002",
+        baseVersion: 2,
+        timeZone: "Not/AZone",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_COMMAND" });
     await expect(
       withWorkspaceTransaction(app, invited.workspaceId, (client) =>
         client.query(
@@ -488,4 +505,283 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
       await concurrentPool.end();
     }
   });
+
+  it("commits command effect, receipt, audit and outbox once across retries and races", async () => {
+    const actorId = "be03-user-a";
+    await withWorkspaceTransaction(app, workspaceA, async (client) => {
+      await client.query(
+        "INSERT INTO business.user_access (user_id, personal_workspace_id) VALUES ($1, $2)",
+        [actorId, workspaceA],
+      );
+      await client.query(
+        "INSERT INTO business.user_preference (user_id) VALUES ($1)",
+        [actorId],
+      );
+    });
+    const otherPool = new Pool({
+      connectionString: roleUrl(container.getConnectionUri(), "ieum_app_test"),
+      max: 2,
+      connectionTimeoutMillis: 5_000,
+    });
+    const identityFor = (pool: Pool) =>
+      new IdentityService(
+        pool,
+        {
+          registerOrVerify: async () => {
+            throw new Error("Unused");
+          },
+        },
+        { revokeAll: async () => {} },
+        authLock,
+      );
+    const identity = identityFor(app);
+    const commands = new CommandCoordinator(identity);
+    const otherCommands = new CommandCoordinator(identityFor(otherPool));
+    const preferences = new PreferenceCommands(commands);
+    const otherPreferences = new PreferenceCommands(otherCommands);
+    try {
+      const input = {
+        actorId,
+        idempotencyKey: "timezone-unique-01",
+        baseVersion: 1,
+        timeZone: "Asia/Seoul",
+      };
+      const [first, duplicate] = await Promise.all([
+        preferences.setTimeZone(input),
+        otherPreferences.setTimeZone(input),
+      ]);
+      expect([first.replayed, duplicate.replayed].sort()).toEqual([
+        false,
+        true,
+      ]);
+      expect(first.commandId).toBe(duplicate.commandId);
+      expect(first.response).toEqual(duplicate.response);
+      expect(first.response.version).toBe(2);
+      const stored = await withWorkspaceTransaction(
+        app,
+        workspaceA,
+        async (client) => {
+          const receipt = await client.query(
+            "SELECT command_id FROM business.command_receipt WHERE command_id = $1",
+            [first.commandId],
+          );
+          const audit = await client.query(
+            "SELECT command_id FROM business.command_audit WHERE command_id = $1",
+            [first.commandId],
+          );
+          const preference = await client.query<{ version: number }>(
+            "SELECT version FROM business.user_preference WHERE user_id = $1",
+            [actorId],
+          );
+          return { receipt, audit, preference };
+        },
+      );
+      expect(stored.receipt.rowCount).toBe(1);
+      expect(stored.audit.rowCount).toBe(1);
+      expect(stored.preference.rows[0]?.version).toBe(2);
+      await expect(
+        preferences.setTimeZone({ ...input, timeZone: "Asia/Tokyo" }),
+      ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
+      await expect(
+        preferences.setTimeZone({
+          ...input,
+          idempotencyKey: "timezone-stale-02",
+        }),
+      ).rejects.toMatchObject({ code: "VERSION_CONFLICT", currentVersion: 2 });
+      const second = await preferences.setTimeZone({
+        ...input,
+        idempotencyKey: "timezone-next-03",
+        baseVersion: 2,
+        timeZone: "Asia/Tokyo",
+      });
+      expect(second.response.version).toBe(3);
+      expect((await preferences.setTimeZone(input)).response.version).toBe(2);
+
+      await expect(
+        commands.execute({
+          actorId,
+          kind: "test.audit_failure",
+          idempotencyKey: "audit-failure-01",
+          payload: { intendedVersion: 4 },
+          apply: async (client) => {
+            await client.query(
+              "UPDATE business.user_preference SET version = version + 1 WHERE user_id = $1",
+              [actorId],
+            );
+            return {
+              response: { version: 4 },
+              audit: {
+                action: "",
+                targetType: "user_preference",
+                targetId: actorId,
+                beforeVersion: 3,
+                afterVersion: 4,
+                changedFieldNames: ["version"],
+              },
+            };
+          },
+        }),
+      ).rejects.toMatchObject({ constraint: "command_audit_action_nonempty" });
+      const rolledBack = await withWorkspaceTransaction(
+        app,
+        workspaceA,
+        async (client) => {
+          const preference = await client.query<{ version: number }>(
+            "SELECT version FROM business.user_preference WHERE user_id = $1",
+            [actorId],
+          );
+          const receipt = await client.query(
+            "SELECT 1 FROM business.command_receipt WHERE idempotency_key = 'audit-failure-01'",
+          );
+          return {
+            version: preference.rows[0]?.version,
+            receiptCount: receipt.rowCount,
+          };
+        },
+      );
+      expect(rolledBack).toEqual({ version: 3, receiptCount: 0 });
+
+      const emitted = await commands.execute({
+        actorId,
+        kind: "test.outbox",
+        idempotencyKey: "outbox-success-01",
+        payload: { version: 4 },
+        apply: async (client) => {
+          await client.query(
+            "UPDATE business.user_preference SET version = version + 1 WHERE user_id = $1",
+            [actorId],
+          );
+          return {
+            response: { version: 4 },
+            audit: {
+              action: "test.outbox",
+              targetType: "user_preference",
+              targetId: actorId,
+              beforeVersion: 3,
+              afterVersion: 4,
+              changedFieldNames: ["version"],
+            },
+            outbox: [{ eventType: "test.event", payloadRef: { actorId } }],
+          };
+        },
+      });
+      const outbox = await withWorkspaceTransaction(app, workspaceA, (client) =>
+        client.query(
+          "SELECT id FROM business.command_outbox WHERE command_id = $1",
+          [emitted.commandId],
+        ),
+      );
+      expect(outbox.rowCount).toBe(1);
+      const hidden = await withWorkspaceTransaction(app, workspaceB, (client) =>
+        client.query(
+          "SELECT id FROM business.command_outbox WHERE command_id = $1",
+          [emitted.commandId],
+        ),
+      );
+      expect(hidden.rowCount).toBe(0);
+      await expect(
+        withWorkspaceTransaction(app, workspaceA, (client) =>
+          client.query(
+            "UPDATE business.command_audit SET action = 'tampered' WHERE command_id = $1",
+            [emitted.commandId],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+
+      let arrivals = 0;
+      let releaseDeadlock!: () => void;
+      const deadlockBarrier = new Promise<void>((resolve) => {
+        releaseDeadlock = resolve;
+      });
+      const makeDeadlockInput = (key: string) => ({
+        actorId,
+        kind: "test.deadlock_retry",
+        idempotencyKey: key,
+        payload: { key },
+        apply: async (client: import("pg").PoolClient) => {
+          arrivals++;
+          if (arrivals === 2) releaseDeadlock();
+          await deadlockBarrier;
+          await client.query(
+            "UPDATE business.workspace_member SET role = role WHERE workspace_id = $1 AND user_id = $2",
+            [workspaceA, actorId],
+          );
+          return {
+            response: { key },
+            audit: {
+              action: "test.deadlock_retry",
+              targetType: "workspace_member",
+              targetId: actorId,
+              beforeVersion: null,
+              afterVersion: null,
+              changedFieldNames: [],
+            },
+          };
+        },
+      });
+      const deadlockResults = await Promise.all([
+        commands.execute(makeDeadlockInput("deadlock-first-01")),
+        otherCommands.execute(makeDeadlockInput("deadlock-second-02")),
+      ]);
+      expect(deadlockResults.every((result) => !result.replayed)).toBe(true);
+      expect(arrivals).toBe(3);
+
+      let enteredEffect!: () => void;
+      const effectStarted = new Promise<void>((resolve) => {
+        enteredEffect = resolve;
+      });
+      let releaseEffect!: () => void;
+      const effectMayCommit = new Promise<void>((resolve) => {
+        releaseEffect = resolve;
+      });
+      const competingCommand = commands.execute({
+        actorId,
+        kind: "test.permission_race",
+        idempotencyKey: "permission-race-01",
+        payload: { version: 5 },
+        apply: async (client) => {
+          enteredEffect();
+          await effectMayCommit;
+          await client.query(
+            "UPDATE business.user_preference SET version = version + 1 WHERE user_id = $1",
+            [actorId],
+          );
+          return {
+            response: { version: 5 },
+            audit: {
+              action: "test.permission_race",
+              targetType: "user_preference",
+              targetId: actorId,
+              beforeVersion: 4,
+              afterVersion: 5,
+              changedFieldNames: ["version"],
+            },
+          };
+        },
+      });
+      await effectStarted;
+      let suspensionFinished = false;
+      const suspension = admin
+        .query(
+          "UPDATE business.user_access SET state = 'SUSPENDED' WHERE user_id = $1",
+          [actorId],
+        )
+        .then(() => {
+          suspensionFinished = true;
+        });
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        expect(suspensionFinished).toBe(false);
+      } finally {
+        releaseEffect();
+      }
+      expect((await competingCommand).response.version).toBe(5);
+      await suspension;
+      await expect(preferences.setTimeZone(input)).rejects.toMatchObject({
+        code: "ACCESS_DENIED",
+      });
+    } finally {
+      await otherPool.end();
+    }
+  }, 30_000);
 });

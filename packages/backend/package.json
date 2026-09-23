@@ -8,6 +8,14 @@
       "types": "./dist/identity-service.d.ts",
       "default": "./dist/identity-service.js"
     },
+    "./command-coordinator": {
+      "types": "./dist/command-coordinator.d.ts",
+      "default": "./dist/command-coordinator.js"
+    },
+    "./preferences": {
+      "types": "./dist/preferences.d.ts",
+      "default": "./dist/preferences.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"

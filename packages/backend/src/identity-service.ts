@@ -200,14 +200,23 @@ export class IdentityService {
     });
   }
 
-  async getMe(userId: string): Promise<PersonalAccess & { timeZone: string }> {
+  async getMe(
+    userId: string,
+  ): Promise<PersonalAccess & { timeZone: string; preferenceVersion: number }> {
     return this.withPersonalWorkspace(userId, async (client, access) => {
-      const preference = await client.query<{ time_zone: string }>(
-        "SELECT time_zone FROM business.user_preference WHERE user_id = $1",
+      const preference = await client.query<{
+        time_zone: string;
+        version: number;
+      }>(
+        "SELECT time_zone, version FROM business.user_preference WHERE user_id = $1",
         [userId],
       );
       if (!preference.rows[0]) throw new IdentityError("ACCESS_DENIED");
-      return { ...access, timeZone: preference.rows[0].time_zone };
+      return {
+        ...access,
+        timeZone: preference.rows[0].time_zone,
+        preferenceVersion: preference.rows[0].version,
+      };
     });
   }
 
@@ -236,23 +245,6 @@ export class IdentityService {
       "INSERT INTO business.identity_event (target_id, kind) VALUES ($1, $2)",
       [targetId, kind],
     );
-  }
-
-  async setTimeZone(userId: string, timeZone: string): Promise<string> {
-    if (timeZone.length > 100 || !timeZone.trim())
-      throw new IdentityError("INVALID_INPUT");
-    try {
-      new Intl.DateTimeFormat("en", { timeZone });
-    } catch {
-      throw new IdentityError("INVALID_INPUT");
-    }
-    return this.withPersonalWorkspace(userId, async (client) => {
-      const result = await client.query<{ time_zone: string }>(
-        "UPDATE business.user_preference SET time_zone = $2, updated_at = now() WHERE user_id = $1 RETURNING time_zone",
-        [userId, timeZone],
-      );
-      return result.rows[0]!.time_zone;
-    });
   }
 
   async issueInvitation(

@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   integer,
+  jsonb,
   pgSchema,
   primaryKey,
   text,
@@ -128,7 +129,76 @@ export const userPreference = business.table("user_preference", {
   externalModelEnabled: boolean("external_model_enabled")
     .notNull()
     .default(false),
+  version: integer("version").notNull().default(1),
   updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const commandReceipt = business.table(
+  "command_receipt",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    kind: text("kind").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    commandId: uuid("command_id").notNull().defaultRandom(),
+    payloadHash: text("payload_hash").notNull(),
+    response: jsonb("response").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "command_receipt_pk",
+      columns: [
+        table.workspaceId,
+        table.actorId,
+        table.kind,
+        table.idempotencyKey,
+      ],
+    }),
+    unique("command_receipt_command_id_unique").on(table.commandId),
+    check(
+      "command_receipt_kind_nonempty",
+      sql`length(${table.kind}) BETWEEN 1 AND 100`,
+    ),
+    check(
+      "command_receipt_key_length",
+      sql`length(${table.idempotencyKey}) BETWEEN 8 AND 128`,
+    ),
+    check(
+      "command_receipt_hash_length",
+      sql`length(${table.payloadHash}) = 64`,
+    ),
+  ],
+);
+
+export const commandAudit = business.table("command_audit", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull(),
+  commandId: uuid("command_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  beforeVersion: integer("before_version"),
+  afterVersion: integer("after_version"),
+  changedFieldNames: text("changed_field_names").array().notNull(),
+  requestId: text("request_id"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const commandOutbox = business.table("command_outbox", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull(),
+  commandId: uuid("command_id").notNull(),
+  eventType: text("event_type").notNull(),
+  payloadRef: jsonb("payload_ref").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });

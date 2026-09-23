@@ -15,6 +15,13 @@
       "when": 1790179833539,
       "tag": "0001_normal_tomas",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790183121929,
+      "tag": "0002_equal_skullbuster",
+      "breakpoints": true
     }
   ]
 }
