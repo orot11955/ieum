@@ -18,6 +18,9 @@ import {
   JudgementAcceptedSchema,
   JudgementRequestSchema,
   JudgementStatusSchema,
+  JudgementCandidatesSchema,
+  CreateProposalRequestSchema,
+  CreateProposalResponseSchema,
 } from "@ieum/contracts/judgement";
 import type { IdentityRuntime } from "../identity/identity.runtime.js";
 import { JUDGEMENT_RUNTIME } from "./judgement.runtime.js";
@@ -104,5 +107,55 @@ export class JudgementController {
     return JudgementStatusSchema.parse(
       await this.runtime.judgement.status(actorId, workspaceId, requestId),
     );
+  }
+
+  @Get(":id/candidates")
+  @Header("Cache-Control", "no-store")
+  async candidates(
+    @Req() request: FastifyRequest,
+    @Param("wid") workspaceId: string,
+    @Param("id") requestId: string,
+  ) {
+    const actorId = await this.current(request, false);
+    return JudgementCandidatesSchema.parse(
+      await this.runtime.proposals.candidates(actorId, workspaceId, requestId),
+    );
+  }
+
+  @Post(":id/proposals")
+  async createProposal(
+    @Req() request: FastifyRequest,
+    @Param("wid") workspaceId: string,
+    @Param("id") runRequestId: string,
+    @Headers("idempotency-key") key: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const actorId = await this.current(request, true);
+    const parsed = CreateProposalRequestSchema.safeParse(body);
+    if (!parsed.success)
+      throw new UnprocessableEntityException({
+        fieldErrors: Object.fromEntries(
+          parsed.error.issues.map((issue) => [
+            String(issue.path[0] ?? "body"),
+            [issue.message],
+          ]),
+        ),
+      });
+    const outcome = await this.runtime.proposals.create({
+      actorId,
+      workspaceId,
+      runRequestId,
+      unitId: parsed.data.unitId,
+      unitRevision: parsed.data.unitRevision,
+      contextId: parsed.data.contextId,
+      role: parsed.data.role,
+      idempotencyKey: key ?? "",
+      requestId: request.id,
+    });
+    return CreateProposalResponseSchema.parse({
+      ...outcome.response,
+      commandId: outcome.commandId,
+      replayed: outcome.replayed,
+    });
   }
 }

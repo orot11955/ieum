@@ -12,6 +12,9 @@ import { KnowledgeService } from "@ieum/backend/knowledge";
 import { TaskService } from "@ieum/backend/tasks";
 import { CalendarService } from "@ieum/backend/calendar";
 import { JudgementService } from "@ieum/backend/judgement/judgement-service";
+import { ProposalService } from "@ieum/backend/judgement/proposals";
+import { processJudgementJob } from "@ieum/backend/judgement/judgement-worker";
+import { withWorkspaceTransaction } from "@ieum/backend/platform/database/scope";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -143,6 +146,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         tasks: new TaskService(identity, commands),
         calendar: new CalendarService(identity, commands),
         judgement: new JudgementService(appPool, commands),
+        proposals: new ProposalService(appPool, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -574,6 +578,148 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(secondContext.statusCode).toBe(201);
     const secondContextId = secondContext.json<{ id: string }>().id;
+    const proposalQuery = await app.inject({
+      method: "POST",
+      url: captureUrl,
+      headers: {
+        ...captureHeaders,
+        "idempotency-key": "be13-http-query-capture",
+      },
+      payload: { title: "제안 질문", rawBody: "계획" },
+    });
+    expect(proposalQuery.statusCode).toBe(201);
+    const proposalUnitId = proposalQuery.json<{ unitId: string }>().unitId;
+    const proposalRun = await app.inject({
+      method: "POST",
+      url: judgementUrl,
+      headers: { ...judgementHeaders, "idempotency-key": "be13-http-observe" },
+      payload: { unitId: proposalUnitId, unitRevision: 1 },
+    });
+    expect(proposalRun.statusCode).toBe(202);
+    const proposalRunId = proposalRun.json<{ requestId: string }>().requestId;
+    const proposalOutbox = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      (client) =>
+        client.query<{ id: string }>(
+          `SELECT id FROM business.command_outbox WHERE workspace_id=$1
+           AND command_id=$2 AND event_type='judgement.requested'`,
+          [operator.workspaceId, proposalRunId],
+        ),
+    );
+    expect(
+      (
+        await processJudgementJob(appPool, {
+          workspaceId: operator.workspaceId,
+          outboxId: proposalOutbox.rows[0]!.id,
+        })
+      ).outcome,
+    ).toBe("SUCCEEDED");
+    const candidates = await app.inject({
+      method: "GET",
+      url: `${judgementUrl}/${proposalRunId}/candidates`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(candidates.statusCode).toBe(200);
+    expect(
+      candidates.json<{ candidates: { contextId: string }[] }>().candidates,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contextId,
+          identityRevision: expect.any(Number),
+          membershipRevision: expect.any(Number),
+          rank: expect.any(Number),
+          rankScore: expect.any(Number),
+          decision: "candidate",
+          reasons: expect.any(Array),
+        }),
+      ]),
+    );
+    const createdProposal = await app.inject({
+      method: "POST",
+      url: `${judgementUrl}/${proposalRunId}/proposals`,
+      headers: { ...judgementHeaders, "idempotency-key": "be13-http-proposal" },
+      payload: {
+        unitId: proposalUnitId,
+        unitRevision: 1,
+        contextId,
+        role: "SECONDARY",
+      },
+    });
+    expect(createdProposal.statusCode).toBe(201);
+    const proposalId = createdProposal.json<{ proposalId: string }>()
+      .proposalId;
+    const proposalUrl = `/api/v1/workspaces/${operator.workspaceId}/proposals/${proposalId}`;
+    const preview = await app.inject({
+      method: "GET",
+      url: proposalUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(preview.statusCode).toBe(200);
+    expect(preview.json()).toMatchObject({
+      operations: {
+        unitId: proposalUnitId,
+        after: [{ contextId, role: "SECONDARY" }],
+      },
+    });
+    const operationsHash = preview.json<{ operationsHash: string }>()
+      .operationsHash;
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: proposalUrl,
+          headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: `${proposalUrl}/expose`,
+          headers: { ...judgementHeaders, origin: "http://other.example" },
+        })
+      ).statusCode,
+    ).toBe(403);
+    const exposure = await app.inject({
+      method: "POST",
+      url: `${proposalUrl}/expose`,
+      headers: { ...judgementHeaders, "idempotency-key": "be13-http-exposure" },
+    });
+    expect(exposure.statusCode).toBe(200);
+    const exposureId = exposure.json<{ exposureId: string }>().exposureId;
+    const acceptedProposal = await app.inject({
+      method: "POST",
+      url: `${proposalUrl}/accept`,
+      headers: { ...judgementHeaders, "idempotency-key": "be13-http-accept" },
+      payload: { exposureId, operationsHash },
+    });
+    expect(acceptedProposal.statusCode).toBe(200);
+    expect(acceptedProposal.json()).toMatchObject({
+      state: "ACCEPTED",
+      memberships: [{ contextId, role: "SECONDARY" }],
+    });
+    const staleObservedCandidate = await app.inject({
+      method: "POST",
+      url: `${judgementUrl}/${proposalRunId}/proposals`,
+      headers: {
+        ...judgementHeaders,
+        "idempotency-key": "be13-http-stale-candidate",
+      },
+      payload: {
+        unitId: proposalUnitId,
+        unitRevision: 1,
+        contextId,
+        role: "PRIMARY",
+      },
+    });
+    expect(staleObservedCandidate.statusCode).toBe(409);
+    expect(staleObservedCandidate.json()).toMatchObject({
+      code: "STALE_PROPOSAL",
+      previewRequired: true,
+    });
     const relationUrl = `/api/v1/workspaces/${operator.workspaceId}/context-relations`;
     const relationCreated = await app.inject({
       method: "POST",

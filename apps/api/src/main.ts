@@ -8,6 +8,7 @@ import { KnowledgeService } from "@ieum/backend/knowledge";
 import { TaskService } from "@ieum/backend/tasks";
 import { CalendarService } from "@ieum/backend/calendar";
 import { JudgementService } from "@ieum/backend/judgement/judgement-service";
+import { ProposalService } from "@ieum/backend/judgement/proposals";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { createApiApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
@@ -60,6 +61,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
         tasks: new TaskService(service, commands),
         calendar: new CalendarService(service, commands),
         judgement: new JudgementService(businessPool, commands),
+        proposals: new ProposalService(businessPool, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin: new URL(baseUrl).origin,

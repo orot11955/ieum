@@ -447,6 +447,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/judgements/{id}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getJudgementCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/judgements/{id}/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createJudgementProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/proposals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getJudgementProposal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/proposals/{id}/expose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["exposeJudgementProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/proposals/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acceptJudgementProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/proposals/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["rejectJudgementProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/proposals/{id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["dismissJudgementProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -1991,6 +2103,398 @@ export interface operations {
                         eligibleContextCount: number | null;
                         returnedContextCount: number | null;
                         truncated: boolean | null;
+                    };
+                };
+            };
+        };
+    };
+    getJudgementCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read-only observed candidates; rankScore is not a probability */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        requestId: string;
+                        /** Format: uuid */
+                        unitId: string;
+                        unitRevision: number;
+                        candidates: {
+                            /** Format: uuid */
+                            contextId: string;
+                            identityRevision: number;
+                            membershipRevision: number;
+                            rank: number;
+                            rankScore: number | null;
+                            /** @enum {string} */
+                            decision: "candidate" | "abstain";
+                            reasons: string[];
+                        }[];
+                        truncated: boolean;
+                    };
+                };
+            };
+        };
+    };
+    createJudgementProposal: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    unitId: string;
+                    unitRevision: number;
+                    /** Format: uuid */
+                    contextId: string;
+                    /** @enum {string} */
+                    role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                };
+            };
+        };
+        responses: {
+            /** @description User-selected proposal */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "PENDING";
+                        operationsHash: string;
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    getJudgementProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exact membership preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** Format: uuid */
+                        runRequestId: string;
+                        /** Format: uuid */
+                        unitId: string;
+                        unitRevision: number;
+                        /** Format: uuid */
+                        contextId: string;
+                        /** @enum {string} */
+                        role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                        operations: {
+                            /** Format: uuid */
+                            unitId: string;
+                            unitRevision: number;
+                            source: {
+                                /** Format: uuid */
+                                captureId: string;
+                                captureRevision: number;
+                                currentCaptureRevision: number;
+                                captureVersion: number;
+                            };
+                            baseMembershipVersion: number;
+                            before: {
+                                /** Format: uuid */
+                                contextId: string;
+                                /** @enum {string} */
+                                role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                            }[];
+                            after: {
+                                /** Format: uuid */
+                                contextId: string;
+                                /** @enum {string} */
+                                role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                            }[];
+                            contexts: {
+                                /** Format: uuid */
+                                contextId: string;
+                                identityRevision: number;
+                                membershipRevision: number;
+                            }[];
+                        };
+                        operationsHash: string;
+                        sourceStale: boolean;
+                        /** @enum {string} */
+                        state: "PENDING" | "ACCEPTED" | "REJECTED" | "DISMISSED" | "EXPIRED" | "SUPERSEDED";
+                        /** Format: date-time */
+                        expiresAt: string;
+                    };
+                };
+            };
+        };
+    };
+    exposeJudgementProposal: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Client-reported exposure */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** Format: uuid */
+                        exposureId: string;
+                        /** @enum {string} */
+                        state: "PENDING";
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    acceptJudgementProposal: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    exposureId: string;
+                    operationsHash: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded proposal decision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "ACCEPTED";
+                        /** Format: uuid */
+                        unitId: string;
+                        membershipVersion: number;
+                        memberships: {
+                            /** Format: uuid */
+                            contextId: string;
+                            /** @enum {string} */
+                            role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                        }[];
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    } | {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "REJECTED";
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    } | {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "DISMISSED";
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    rejectJudgementProposal: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    exposureId: string;
+                    operationsHash: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded proposal decision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "ACCEPTED";
+                        /** Format: uuid */
+                        unitId: string;
+                        membershipVersion: number;
+                        memberships: {
+                            /** Format: uuid */
+                            contextId: string;
+                            /** @enum {string} */
+                            role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                        }[];
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    } | {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "REJECTED";
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    } | {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "DISMISSED";
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    dismissJudgementProposal: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    exposureId: string;
+                    operationsHash: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded proposal decision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "ACCEPTED";
+                        /** Format: uuid */
+                        unitId: string;
+                        membershipVersion: number;
+                        memberships: {
+                            /** Format: uuid */
+                            contextId: string;
+                            /** @enum {string} */
+                            role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                        }[];
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    } | {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "REJECTED";
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    } | {
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "DISMISSED";
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
                     };
                 };
             };

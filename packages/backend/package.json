@@ -48,6 +48,14 @@
       "types": "./dist/judgement/judgement-service.d.ts",
       "default": "./dist/judgement/judgement-service.js"
     },
+    "./judgement/proposals": {
+      "types": "./dist/judgement/proposals.d.ts",
+      "default": "./dist/judgement/proposals.js"
+    },
+    "./judgement/judgement-worker": {
+      "types": "./dist/judgement/judgement-worker.d.ts",
+      "default": "./dist/judgement/judgement-worker.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"

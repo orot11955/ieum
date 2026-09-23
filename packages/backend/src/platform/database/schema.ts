@@ -280,6 +280,112 @@ export const judgementRun = business.table(
   ],
 );
 
+/** A user-selected, immutable membership preview derived from one observe run. */
+export const judgementProposal = business.table(
+  "judgement_proposal",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    runRequestId: uuid("run_request_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    unitId: uuid("unit_id").notNull(),
+    unitRevision: integer("unit_revision").notNull(),
+    contextId: uuid("context_id").notNull(),
+    role: text("role").notNull(),
+    operations: jsonb("operations").notNull(),
+    operationsHash: text("operations_hash").notNull(),
+    state: text("state").notNull().default("PENDING"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("judgement_proposal_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    foreignKey({
+      name: "judgement_proposal_run_fk",
+      columns: [table.workspaceId, table.runRequestId],
+      foreignColumns: [judgementRequest.workspaceId, judgementRequest.id],
+    }),
+    check("judgement_proposal_revision_positive", sql`${table.unitRevision}>0`),
+    check(
+      "judgement_proposal_role_check",
+      sql`${table.role} IN ('PRIMARY','SECONDARY','BACKGROUND')`,
+    ),
+    check(
+      "judgement_proposal_state_check",
+      sql`${table.state} IN ('PENDING','ACCEPTED','REJECTED','DISMISSED','EXPIRED','SUPERSEDED')`,
+    ),
+    check(
+      "judgement_proposal_hash_length",
+      sql`length(${table.operationsHash})=64`,
+    ),
+  ],
+);
+
+export const judgementExposure = business.table(
+  "judgement_exposure",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    proposalId: uuid("proposal_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    exposedAt: timestamp("exposed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("judgement_exposure_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    foreignKey({
+      name: "judgement_exposure_proposal_fk",
+      columns: [table.workspaceId, table.proposalId],
+      foreignColumns: [judgementProposal.workspaceId, judgementProposal.id],
+    }),
+  ],
+);
+
+export const judgementFeedback = business.table(
+  "judgement_feedback",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    proposalId: uuid("proposal_id").notNull(),
+    exposureId: uuid("exposure_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    kind: text("kind").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("judgement_feedback_proposal_unique").on(
+      table.workspaceId,
+      table.proposalId,
+    ),
+    foreignKey({
+      name: "judgement_feedback_proposal_fk",
+      columns: [table.workspaceId, table.proposalId],
+      foreignColumns: [judgementProposal.workspaceId, judgementProposal.id],
+    }),
+    foreignKey({
+      name: "judgement_feedback_exposure_fk",
+      columns: [table.workspaceId, table.exposureId],
+      foreignColumns: [judgementExposure.workspaceId, judgementExposure.id],
+    }),
+    check(
+      "judgement_feedback_kind_check",
+      sql`${table.kind} IN ('ACCEPTED','REJECTED','DISMISSED')`,
+    ),
+  ],
+);
+
 export const capture = business.table(
   "capture",
   {

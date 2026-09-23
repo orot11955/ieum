@@ -64,6 +64,13 @@
       "when": 1790191858851,
       "tag": "0008_broken_dakota_north",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790193487289,
+      "tag": "0009_strange_roland_deschain",
+      "breakpoints": true
     }
   ]
 }
