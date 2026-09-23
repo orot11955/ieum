@@ -2,7 +2,7 @@
 
 ## 현재 상태와 권한
 
-계획 1.1은 main에 채택됐다. CORE-07 합성 B0 평가까지 Linux 실행으로 VERIFIED다. 실제 사용자 품질, 제안 정책, API·업무 Web 및 운영 DB/배포는 미구현·미접근이다. 다음 카드의 착수는 선행 작업의 VERIFIED/ACCEPTED 증거를 따른다.
+계획 1.1은 main에 채택됐다. CORE-08 모델 없는 근거 묶음까지 Linux 실행으로 VERIFIED다. 실제 사용자 품질, 제안 정책, API·업무 Web 및 운영 DB/배포는 미구현·미접근이다. 다음 카드의 착수는 선행 작업의 VERIFIED/ACCEPTED 증거를 따른다.
 
 문서 우선순위: 사용자 최신 지시 → AGENTS.md → ADR 0012 → docs/plan/backlog.json 및 00–09 → 보존된 제품/도메인/화면 계약. 과거 M/S/I 번호·다크 후속·별도 브랜치 지시는 현재 실행 규칙이 아니다.
 
@@ -21,7 +21,7 @@ BASE-01 증거를 재확인하되 이미 채택한 계획·브랜치를 다시 �
 현재 가능한 prep 검사를 먼저 실행하고 실패를 먼저 해결하라.
 
 BASE-02의 로컬/Linux 증거를 확인하라.
-CORE-08–09를 선행 조건에 맞춰 우선 구현하라.
+CORE-09를 선행 조건에 맞춰 우선 구현하라.
 선행 카드가 VERIFIED/ACCEPTED가 아니면 의존하는 카드로 넘어가지 마라.
 한 카드의 acceptance를 먼저 테스트로 표현하고 필요한 코드만 구현하라.
 규모가 크면 카드 안에서 기능 커밋으로 나누되 필수 반례를 뒤로 미루지 마라.
@@ -50,7 +50,7 @@ Paper/Dark 토큰/recipe/lock/공통 UI 원본을 임의 변경하지 마라.
 
 ## 명령의 현재/예정 구분
 
-현재는 README의 Node 기반 plan/design 검사와 BASE-02의 `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm lab:smoke`, 빌드된 `node apps/lab-cli/dist/main.js run/replay/inspect/compare/evaluate`가 실행 가능하다. `pnpm test:architecture`, `pnpm test:contracts`, `pnpm test:integration`, `pnpm test:e2e`, 모델 없는 evidence-pack CLI는 해당 카드에서 만들어 검증할 **미래 계약**이다. 없는 테스트를 `--passWithNoTests`로 성공 처리하지 않는다.
+현재는 README의 Node 기반 plan/design 검사와 BASE-02의 `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm lab:smoke`, 빌드된 `node apps/lab-cli/dist/main.js run/replay/inspect/compare/evaluate/pack`이 실행 가능하다. `pnpm test:architecture`, `pnpm test:contracts`, `pnpm test:integration`, `pnpm test:e2e`는 해당 카드에서 만들어 검증할 **미래 계약**이다. 없는 테스트를 `--passWithNoTests`로 성공 처리하지 않는다.
 
 라이브러리 버전은 실제 구현 시 공식 호환성·advisory·설정 시험 후 lock한다. 이 문서의 후보 이름이나 과거 package.json 버전을 설치 검증으로 취급하지 않는다.
 

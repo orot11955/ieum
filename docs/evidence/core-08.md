@@ -1,7 +1,8 @@
 # CORE-08 · 모델 없는 evidence pack
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료, 원격 Linux CI 대기; 사용자 ACCEPTED 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI 성공; 사용자 ACCEPTED 전.
 - 선행: CORE-01·CORE-06 VERIFIED. 작업 기준 main `182083c06bb0fac5b3722efe638f504dccdd9fe3`.
+- 기능 커밋: `8aa9a734d72834304672731b6dd5cc9a47249a54`; [GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35859299995) `completed success` (Linux).
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 실제 사용자 자료는 읽거나 공개하지 않았다.
 
 ## 구현·계약

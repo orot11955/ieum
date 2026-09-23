@@ -161,7 +161,7 @@
         "CORE-01",
         "CORE-06"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "사용자가 고른 원문 revision과 단위에서 제목·질문·관찰·반론·결정·미확인 항목을 템플릿으로 정리한다. 내용이 없는 항목은 빈칸이나 미확인으로 표시한다.",
       "contract": "위치: core/derivation/evidence-pack 및 lab 출력 adapter. pack manifest에 source refs, source hashes, origin families, purpose를 저장한다. 첫 Markdown 출력에는 새로운 사실을 생성하지 않는다.",
       "tests": "없는 출처 ID, 발췌 불일치, 동일 원문의 재인용, 반론 누락 목록, 원본 수정 뒤 기존 pack 불변, private 출력 경로.",
