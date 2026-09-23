@@ -9,7 +9,9 @@ import {
   runFromFile,
 } from "./adapters/run.js";
 import { evaluateFile } from "./evaluation/index.js";
+import { compareSemanticFile } from "./evaluation/index.js";
 import { packFromRun } from "./adapters/evidence-pack.js";
+import { rankSemanticFile } from "./adapters/embedding-artifact.js";
 
 if (process.argv.length === 3 && process.argv[2] === "--smoke") {
   process.stdout.write(`${CORE_PACKAGE_ID}:lab-harness\n`);
@@ -120,9 +122,35 @@ if (process.argv.length === 3 && process.argv[2] === "--smoke") {
     );
     process.exitCode = 1;
   }
+} else if (process.argv[2] === "semantic" && process.argv.length === 5) {
+  try {
+    process.stdout.write(
+      `${JSON.stringify(rankSemanticFile(process.argv[3] ?? "", process.argv[4] ?? ""))}\n`,
+    );
+  } catch (error) {
+    process.stderr.write(
+      `Semantic search failed: ${error instanceof Error ? error.message : "unknown error"}\n`,
+    );
+    process.exitCode = 1;
+  }
+} else if (
+  process.argv[2] === "compare-semantic" &&
+  (process.argv.length === 5 ||
+    (process.argv.length === 7 && process.argv[5] === "--out"))
+) {
+  try {
+    process.stdout.write(
+      `${JSON.stringify(compareSemanticFile(process.argv[3] ?? "", process.argv[4] ?? "", process.argv[6]))}\n`,
+    );
+  } catch (error) {
+    process.stderr.write(
+      `Semantic comparison failed: ${error instanceof Error ? error.message : "unknown error"}\n`,
+    );
+    process.exitCode = 1;
+  }
 } else {
   process.stderr.write(
-    "Usage: ieum-lab --smoke | --snapshot <file> | run <file> [--out <directory>] [--feedback <file>] [--budget <16|32|64|all>] | replay <run-directory> | inspect <run-directory> | compare <run-a> <run-b> | evaluate <dataset.json> [--out <directory>] | pack <run-directory> <request.json> [--out <directory>]\n",
+    "Usage: ieum-lab --smoke | --snapshot <file> | run <file> [--out <directory>] [--feedback <file>] [--budget <16|32|64|all>] | replay <run-directory> | inspect <run-directory> | compare <run-a> <run-b> | evaluate <dataset.json> [--out <directory>] | pack <run-directory> <request.json> [--out <directory>] | semantic <snapshot.json> <artifact.json> | compare-semantic <dataset.json> <artifact.json> [--out <directory>]\n",
   );
   process.exitCode = 2;
 }

@@ -10,9 +10,14 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { validateSnapshot } from "@ieum/core";
+import { rankSemanticSnapshot, validateSnapshot } from "@ieum/core";
 import type { ValidatedSnapshot } from "@ieum/core";
 import { runExactObserve } from "../adapters/observe.js";
+import {
+  readEmbeddingArtifact,
+  resolveSnapshotVectors,
+} from "../adapters/embedding-artifact.js";
+import type { EmbeddingArtifact } from "../adapters/embedding-artifact.js";
 
 type Split = "development" | "validation" | "holdout";
 type LabelKind = "match" | "no_match" | "ambiguous" | "insufficient";
@@ -290,7 +295,7 @@ export function validateFeatureInput(
   return validateSnapshot(raw, inputHash);
 }
 
-function snapshotFor(
+export function snapshotFor(
   contexts: readonly ContextRow[],
   item: CaseRow,
 ): ValidatedSnapshot {
@@ -435,23 +440,13 @@ function summarize(rows: readonly CaseResult[], k: number): MetricSet {
   };
 }
 
-export function evaluateB0(dataset: EvaluationDataset, k = 10) {
-  if (!Number.isSafeInteger(k) || k < 1 || k > 32)
-    throw new RangeError("K must be an integer in [1,32]");
-  const rows: CaseResult[] = dataset.cases.map((item) => {
-    const judgement = runExactObserve(snapshotFor(dataset.contexts, item), 32);
-    return {
-      id: item.id,
-      split: item.split,
-      slices: item.slices,
-      label: item.gold,
-      eligibleContextCount: judgement.retrieval.eligibleContextCount,
-      topContextIds: judgement.retrieval.candidates
-        .slice(0, k)
-        .map((candidate) => candidate.contextId),
-      suggestedContextIds: [], // B0 is observe-only; no candidate is a suggestion.
-    };
-  });
+function reportRows(
+  rows: readonly CaseResult[],
+  k: number,
+  baseline: string,
+  dataKind: EvaluationDataset["dataKind"],
+  contextCount: number,
+) {
   const splits = Object.fromEntries(
     (["development", "validation", "holdout"] as const).map((split) => [
       split,
@@ -488,16 +483,152 @@ export function evaluateB0(dataset: EvaluationDataset, k = 10) {
       ),
     }));
   return {
-    baseline: "B0-lexical-v0",
-    dataKind: dataset.dataKind,
+    baseline,
+    dataKind,
     k,
-    contextCount: dataset.contexts.length,
-    queryCount: dataset.cases.length,
+    contextCount,
+    queryCount: rows.length,
     overall: summarize(rows, k),
     splits,
     slices,
     failures,
     qualityGate: "not_evaluated" as const,
+  };
+}
+
+export function evaluateB0(dataset: EvaluationDataset, k = 10) {
+  if (!Number.isSafeInteger(k) || k < 1 || k > 32)
+    throw new RangeError("K must be an integer in [1,32]");
+  const rows: CaseResult[] = dataset.cases.map((item) => {
+    const judgement = runExactObserve(snapshotFor(dataset.contexts, item), 32);
+    return {
+      id: item.id,
+      split: item.split,
+      slices: item.slices,
+      label: item.gold,
+      eligibleContextCount: judgement.retrieval.eligibleContextCount,
+      topContextIds: judgement.retrieval.candidates
+        .slice(0, k)
+        .map((candidate) => candidate.contextId),
+      suggestedContextIds: [], // B0 is observe-only; no candidate is a suggestion.
+    };
+  });
+  return reportRows(
+    rows,
+    k,
+    "B0-lexical-v0",
+    dataset.dataKind,
+    dataset.contexts.length,
+  );
+}
+
+export function evaluateB1(
+  dataset: EvaluationDataset,
+  artifact: EmbeddingArtifact,
+  k = 10,
+) {
+  if (!Number.isSafeInteger(k) || k < 1 || k > 32)
+    throw new RangeError("K must be an integer in [1,32]");
+  const rows: CaseResult[] = dataset.cases.map((item) => {
+    const snapshot = snapshotFor(dataset.contexts, item);
+    const hits = rankSemanticSnapshot(
+      snapshot,
+      resolveSnapshotVectors(snapshot, artifact),
+    );
+    return {
+      id: item.id,
+      split: item.split,
+      slices: item.slices,
+      label: item.gold,
+      eligibleContextCount: snapshot.contexts.length,
+      topContextIds: hits.slice(0, k).map((hit) => hit.contextId),
+      suggestedContextIds: [], // B1 is also observe-only; ranks are not suggestions.
+    };
+  });
+  return reportRows(
+    rows,
+    k,
+    "B1-fixed-exact-v0",
+    dataset.dataKind,
+    dataset.contexts.length,
+  );
+}
+
+export function compareSemanticFile(
+  datasetFile: string,
+  artifactFile: string,
+  output?: string,
+) {
+  const datasetBytes = readFileSync(datasetFile);
+  const dataset = loadDataset(datasetFile);
+  if (!readFileSync(datasetFile).equals(datasetBytes))
+    throw new RangeError("evaluation dataset changed during run");
+  const beforeB0 = process.memoryUsage().heapUsed;
+  const b0Start = performance.now();
+  const b0 = evaluateB0(dataset);
+  const b0DurationMs = performance.now() - b0Start;
+  const afterB0 = process.memoryUsage().heapUsed;
+  const b1Start = performance.now();
+  const artifact = readEmbeddingArtifact(artifactFile);
+  const b1 = evaluateB1(dataset, artifact);
+  const b1DurationMs = performance.now() - b1Start;
+  const afterB1 = process.memoryUsage().heapUsed;
+  const id = randomUUID();
+  const target = path.resolve(
+    output ??
+      path.join(os.homedir(), ".local", "share", "ieum-lab", "comparisons", id),
+  );
+  if (existsSync(target))
+    throw new RangeError("comparison directory already exists");
+  mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
+  const temp = mkdtempSync(`${target}.tmp-`);
+  try {
+    const comparison = {
+      dataKind: dataset.dataKind,
+      datasetHash: digest(datasetBytes),
+      artifactHash: artifact.artifactHash,
+      namespace: artifact.space.namespace,
+      modelId: artifact.space.modelId,
+      modelRevision: artifact.space.modelRevision,
+      b0,
+      b1,
+      processMeasurements: {
+        b0DurationMs,
+        b1DurationMs,
+        b0HeapDeltaBytes: afterB0 - beforeB0,
+        b1HeapDeltaBytes: afterB1 - afterB0,
+        note: "Single sequential process samples, including snapshot construction and B1 artifact loading; heap deltas are not peak memory or steady-state benchmarks.",
+      },
+      qualityGate: "not_evaluated",
+    };
+    const files = {
+      "comparison.json": `${JSON.stringify(comparison, null, 2)}\n`,
+      "report.md": `# B0/B1 fixed-artifact comparison\n\n- data kind: ${dataset.dataKind}\n- contexts: ${dataset.contexts.length}\n- queries: ${dataset.cases.length}\n- K: 10\n- B0 Recall@10: ${b0.overall.recallAtK.numerator}/${b0.overall.recallAtK.denominator}\n- B1 Recall@10: ${b1.overall.recallAtK.numerator}/${b1.overall.recallAtK.denominator}\n- quality gate: not evaluated\n\nBoth modes are observe-only. Synthetic vectors do not validate a real semantic model. Duration and heap deltas are single-process samples, not latency or peak-memory guarantees.\n`,
+    };
+    for (const [name, content] of Object.entries(files))
+      writeFileSync(path.join(temp, name), content, {
+        flag: "wx",
+        mode: 0o600,
+      });
+    writeFileSync(
+      path.join(temp, "manifest.json"),
+      `${JSON.stringify({ schemaVersion: 1, comparisonId: id, datasetHash: digest(datasetBytes), artifactHash: artifact.artifactHash, files: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, digest(content)])) }, null, 2)}\n`,
+      { flag: "wx", mode: 0o600 },
+    );
+    if (existsSync(target))
+      throw new RangeError("comparison directory already exists");
+    renameSync(temp, target);
+  } catch (error) {
+    rmSync(temp, { recursive: true, force: true });
+    throw error;
+  }
+  return {
+    comparisonId: id,
+    directory: target,
+    dataKind: dataset.dataKind,
+    contextCount: dataset.contexts.length,
+    queryCount: dataset.cases.length,
+    artifactHash: artifact.artifactHash,
   };
 }
 

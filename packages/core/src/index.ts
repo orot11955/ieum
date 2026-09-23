@@ -24,6 +24,15 @@ export type {
   LexicalCorpus,
   LexicalFeatures,
 } from "./features/lexical/index.js";
+export {
+  cosineSimilarity,
+  rankSemanticSnapshot,
+} from "./features/semantic/index.js";
+export type {
+  SemanticHit,
+  SemanticSpace,
+  SemanticVectors,
+} from "./features/semantic/index.js";
 export { evaluateCandidate, NOT_MEASURED_INPUTS } from "./evaluation/index.js";
 export type {
   Availability,

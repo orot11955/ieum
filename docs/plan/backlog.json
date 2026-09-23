@@ -176,7 +176,7 @@
       "dependencies": [
         "CORE-07"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "고정 embedding artifact를 읽는 lab adapter와 pure cosine 계산을 추가한다. 모델 revision, 차원, tokenizer/prefix/pooling/precision을 manifest로 검증한다. live provider 호출은 core 밖에 둔다.",
       "contract": "위치: core/features/semantic, lab/adapters/embedding-artifact. B1은 동일 eligible snapshot의 exact search; 모델 교체 시 artifact namespace와 cache를 분리한다.",
       "tests": "차원 불일치, 서로 다른 모델 공간 혼합, zero vector, 부분 artifact 누락, provider 실패, 한영 재서술, identifier 검색 회귀.",
