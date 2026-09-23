@@ -512,7 +512,7 @@
         "BE-10",
         "CORE-11"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "허용된 추출 provider/파서를 application adapter로 호출한다. 후보별 source revision과 unresolved field를 보존하고 사용자가 편집한 승인 payload를 기존 Task/Event/Unit 명령으로 변환한다.",
       "contract": "모듈: extraction. dedupe는 source revision+stable proposal fingerprint+target kind 기준. 새 원문 revision의 의미적으로 비슷한 후보는 기존 항목과 비교·경고하며 원문 변경이 완료 상태를 덮지 않는다.",
       "tests": "동일 후보 반복 승인, 다른 텍스트인데 비슷한 task, 시간대 미확정, 기존 task 이미 완료, 모델 timeout/invalid JSON, 허용되지 않은 데이터 외부 전송.",
