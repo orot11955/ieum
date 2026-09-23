@@ -19,3 +19,12 @@ export type {
   UnitContent,
   UnitRevisionRef,
 } from "./model/types.js";
+export { validateSnapshot } from "./snapshot/validator.js";
+export type {
+  ProfileWatermarkRevision,
+  RelationRevision,
+  SnapshotExclusion,
+  SnapshotManifest,
+  ValidatedSnapshot,
+  VisibilityRevision,
+} from "./snapshot/types.js";

@@ -46,7 +46,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-02 · 시점·권한 범위가 고정된 snapshot
 
-**구간:** P1 · **상태:** PLANNED · **선행:** CORE-01
+**구간:** P1 · **상태:** IMPLEMENTED · **선행:** CORE-01
 
 **구현 범위:** 순수 snapshot validator와 파일 snapshot builder를 분리한다. asOfRecordedAt 이전에 존재한 revision/소속/관계만 선택하고 query와 같은 origin 계열을 후보 근거에서 제외한다. eligible set과 제외 이유를 기록한다.
 

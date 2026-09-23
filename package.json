@@ -19,7 +19,7 @@
     "contracts:generate": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && node scripts/contracts/generate.mjs",
     "contracts:check": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && node scripts/contracts/generate.mjs --check && node scripts/contracts/check-boundaries.mjs && node --test scripts/contracts/check-boundaries.test.mjs",
     "typecheck": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/contracts typecheck && pnpm --filter @ieum/lab-cli typecheck && pnpm --filter @ieum/core typecheck",
-    "test:unit": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/core test && pnpm --filter @ieum/contracts test",
+    "test:unit": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/lab-cli build && pnpm --filter @ieum/core test && pnpm --filter @ieum/contracts test && pnpm --filter @ieum/lab-cli test",
     "build": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/lab-cli build",
     "lab:smoke": "node apps/lab-cli/dist/main.js --smoke"
   },

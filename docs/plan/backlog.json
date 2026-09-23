@@ -70,7 +70,7 @@
       "dependencies": [
         "CORE-01"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "순수 snapshot validator와 파일 snapshot builder를 분리한다. asOfRecordedAt 이전에 존재한 revision/소속/관계만 선택하고 query와 같은 origin 계열을 후보 근거에서 제외한다. eligible set과 제외 이유를 기록한다.",
       "contract": "위치: core/snapshot validator, lab-cli/adapters/snapshot. manifest에는 입력 hash, eligible IDs, revision 목록, profile watermark, 정렬 규칙을 포함한다. 실제 권한 판정은 backend 책임이다.",
       "tests": "미래 revision·사후 등록된 과거 사건·다른 workspace·현재 query 파생물·삭제 상태 누수 반례; 입력 순서 shuffle 후 manifest의 canonical 부분 일치.",
