@@ -4,6 +4,14 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./platform/database/scope": {
+      "types": "./dist/platform/database/scope.d.ts",
+      "default": "./dist/platform/database/scope.js"
+    },
+    "./platform/database/schema": {
+      "types": "./dist/platform/database/schema.d.ts",
+      "default": "./dist/platform/database/schema.js"
+    },
     "./identity": {
       "types": "./dist/identity.d.ts",
       "default": "./dist/identity.js"
@@ -16,6 +24,16 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run --exclude '**/*.integration.test.ts'",
+    "test:db": "vitest run test/database.integration.test.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.3",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "12.1.0",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11"
   }
 }

@@ -334,7 +334,7 @@
       "dependencies": [
         "BE-02"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "실제 PostgreSQL과 Drizzle migration을 도입한다. auth/vendor schema와 업무 schema를 구분한다. workspace 복합 FK/unique, runtime non-owner role, RLS 정책과 connection pool 경계를 구현한다.",
       "contract": "위치: backend/platform/database, db/migrations. migration/admin, application, delivery 역할을 분리한다. transaction 안에서 scope를 설정하고 빠진 scope는 fail closed한다.",
       "tests": "Testcontainers 실제 PG에서 두 workspace 교차 SELECT/INSERT/UPDATE/link 금지; 테이블 owner/BYPASSRLS 금지 확인; pool 재사용 scope 누수; 빈 DB와 이전 schema upgrade.",
