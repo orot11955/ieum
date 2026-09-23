@@ -30,10 +30,10 @@
 
 2026-09-23 재점검에서 참조되지 않는 `docs/status/plan-adoption-diff.json`을 제거했다. 이 파일은 과거 계획 1.0→1.1 채택 수치의 중복 요약이며 실행 검사나 현재 카드 상태의 입력이 아니었다. Git에서 무시하는 로컬 `.pnpm-store`, `node_modules`, core/lab `dist`와 패키지별 `node_modules`, 생성된 디자인 CSS/TS도 지웠다. 정본 `backlog.json`, 생성 카드·목록, BASE-01의 검사 입력인 `cleanup-manifest.json`, 보존 대상으로 지정된 디자인·UI 소스와 BASE-02 인프라 원본은 유지했다. 준비 검사는 필요한 디자인 출력을 다시 생성하고, workspace 검사는 lockfile로 의존성을 설치한 뒤 실행한다.
 
-**판정: 계획은 단계적으로 실행 가능하지만 다음 제품 카드는 아직 착수 불가.** 정리 후 `npm run plan:check`가 75개 카드·27개 화면·14개 요구사항·184개 로컬 링크와 생성 문서의 일치를 통과했다. 검사 결과의 `readyTasks: []`는 BASE-02가 `IMPLEMENTED`이기 때문이다. BASE-02의 로컬 고정 설치·검사는 [증거](../evidence/base-02.md)에 있지만, 완료 기준인 새 기기 재현과 원격 Linux CI 결과는 아직 없다.
+**판정: 계획은 단계적으로 실행 가능하지만 다음 제품 카드는 아직 착수 불가.** 정리 후 `npm run plan:check`가 75개 카드·27개 화면·14개 요구사항·184개 로컬 링크와 생성 문서의 일치를 통과했다. 검사 결과의 `readyTasks: []`는 BASE-02가 `IMPLEMENTED`이기 때문이다. BASE-02의 로컬 고정 설치와 별도 clean checkout 검사는 [증거](../evidence/base-02.md)에 있지만, 완료 기준인 새 기기 재현과 원격 Linux CI 결과는 아직 없다.
 
-1. 현재 main의 미커밋 계획/BASE-02 변경을 diff로 검토하고 기능 ID가 있는 커밋으로 반영한다. 사용자 변경을 덮어쓰거나 원격 main을 강제 이동하지 않는다.
-2. 해당 commit에서 GitHub Actions의 preparation/workspace job과 새 환경의 `pnpm install --frozen-lockfile`→lint/format/typecheck/unit/build/smoke를 확인한다. 실패하면 원인을 해결하고 같은 기준으로 다시 검사한다.
+1. 계획/BASE-02 변경은 `a0d68ce`, `a89c77f`로 로컬 main에 커밋했다. 두 commit을 격리 checkout에 풀어 Node 24에서 준비 검사·고정 설치·lint/format/typecheck/unit/build/smoke를 통과했다. 이는 새 기기나 Linux CI의 대체 증거가 아니다.
+2. 원격 main에 반영된 commit에서 GitHub Actions의 preparation/workspace job과 새 기기의 `pnpm install --frozen-lockfile`→lint/format/typecheck/unit/build/smoke를 확인한다. 실패하면 원인을 해결하고 같은 기준으로 다시 검사한다.
 3. 실제 증거를 기록한 뒤 BASE-02를 `VERIFIED`로 올리고 `node scripts/plan/render.mjs`와 계획 검사를 실행한다. 그때 BASE-03을 다음 우선 카드로 착수한다. BE-01/FE-01도 개별 선행관계상 열리지만, 공유 계약·설정 변경은 직렬로 반영한다.
 4. BASE-03은 작은 schema→OpenAPI→client 왕복과 private DTO 유출·금지 import 실패를 닫아야 한다. 이후 auth/editor 통합은 BE-02/FE-02의 spike 결과로 결정한다. 운영 DB, 배포, 실제 사용자 데이터는 각 카드의 승인·격리·복구 조건 전에는 실행하지 않는다.
 

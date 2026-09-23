@@ -3,6 +3,7 @@
 - 상태: **IMPLEMENTED**. 로컬 검사는 통과했으나 원격 GitHub Actions와 새 기기 실행은 미확인이다.
 - 작업 기준: local main `010fee7e41013b2cfcfe91c32ad6b496d32ee275`, 시작 시 `origin/main` 추적 참조와 동일. 일반 샌드박스의 원격 조회는 DNS 실패(exit 128)였으나 승인된 네트워크에서 `git ls-remote --heads origin main`을 다시 실행해 같은 SHA를 확인했다(exit 0).
 - 환경: macOS arm64, Node v24.18.0, pnpm v11.24.0. 제품 DB·모델·운영 서비스는 사용하지 않았다.
+- 로컬 main 커밋: `a0d68ce`(workspace·CI), `a89c77f`(계획·상태 정리). 원격 반영과 GitHub Actions 실행은 별도 확인 대상이다.
 
 ## 구현 범위
 
@@ -25,11 +26,25 @@ pnpm은 transitive `esbuild` 설치 스크립트를 `allowBuilds.esbuild: false`
 | 잘못된 import와 `number`→`string` 대입을 임시 소스에 넣고 `pnpm typecheck` | 2 (기대한 실패) | TS2305와 TS2322를 검출. 임시 소스와 생성된 임시 산출물 제거, `noEmitOnError` 설정 |
 | `git diff --check` | 0 | 공백 오류 없음 |
 
+## 로컬 커밋 뒤 격리 체크아웃 재검증
+
+`git archive HEAD`로 두 커밋을 `/private/tmp/ieum-base02-clean-02xYCl`에 새로 풀었다. 기존 프로젝트의 `node_modules`·`.pnpm-store`·빌드 출력은 복사하지 않았다. 같은 macOS 기기에서 Node v24.18.0과 pnpm v11.24.0을 사용했으므로 새 기기 또는 Linux 실행 증거로 해석하지 않는다.
+
+| 명령 | exit | 결과 |
+| --- | ---: | --- |
+| `npm run prep:check` | 0 | 소스만 있는 checkout에서 디자인 생성·18개 디자인 테스트·계획 검사 통과 |
+| `pnpm install --frozen-lockfile` | 0 | 빈 workspace 저장소에 lockfile로 138개 패키지 설치 |
+| `pnpm lint`, `pnpm format:check`, `pnpm typecheck` | 모두 0 | Node 24에서 통과 |
+| `pnpm test:unit` | 0 | Vitest 1개 통과 |
+| `pnpm build`, `pnpm lab:smoke` | 모두 0 | 빌드 산출물 실행, `@ieum/core:lab-harness` 출력 |
+
+별도 원본 작업 트리에서 기본 Node v26.7.0으로 실행한 `pnpm install --frozen-lockfile`은 engine 경고를 내고 exit 0이었다. 위 격리 검증은 프로젝트가 지정한 Node 24.18.0으로 실행했다. `docker info`는 샌드박스에서 socket 권한 오류, 승인된 로컬 조회에서 daemon 미실행으로 exit 1이었다. 따라서 Linux 컨테이너 재현은 미실행이다.
+
 `pnpm` 패키지 설치 전 일반 샌드박스에서는 레지스트리 DNS가 실패했고, 최초 설치는 pnpm 저장소 경로 차이로 재시도가 필요했다. 프로젝트 내 `.pnpm-store`로 통일한 뒤 고정 설치와 검사가 통과했다. 이는 코드 검사 실패가 아닌 환경/설치 경로 문제다.
 
 ## 미검증과 다음 판정
 
-GitHub Actions의 새 workspace job은 아직 원격에서 실행되지 않았다. 실제 새 기기에서 네트워크 설치를 반복하지 않았으며, Linux의 esbuild 설치 스크립트 차단 상태도 원격 결과로 확인해야 한다. 따라서 BASE-02를 VERIFIED로 올리지 않았다. 기능 커밋을 main에 반영한 뒤 CI 결과와 새 기기 설치→검사→빌드 증거를 확인한다. 그때 실패가 없으면 VERIFIED로 올리고 BASE-03을 시작한다.
+GitHub Actions의 새 workspace job은 아직 원격에서 실행되지 않았다. 실제 새 기기에서 네트워크 설치를 반복하지 않았으며, Linux의 esbuild 설치 스크립트 차단 상태도 원격 결과로 확인해야 한다. 따라서 BASE-02를 VERIFIED로 올리지 않았다. 원격 CI 결과와 새 기기 설치→검사→빌드 증거를 확인하고 실패가 없으면 VERIFIED로 올린 뒤 BASE-03을 시작한다.
 
 읽기 전용 공급망 검토는 workflow의 `contents: read`, checkout credential 미보존, 고정 의존성과 integrity, 비밀 주입 부재를 확인했고 지정 파일에서 수정 필요 결함을 찾지 못했다. 패키지 본문과 원격 실행은 해당 검토 범위 밖이다.
 
