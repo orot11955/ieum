@@ -22,7 +22,7 @@
 | [09 · 단계별 구현 순서](09-implementation-sequence.md) | 카드 선행관계에 따른 실행 묶음·gate·문서 충돌 정리 |
 | [최소 계약 예제](contracts.md) | BASE-03의 관리/Delivery·편집기·Core 경계와 생성 경로 |
 
-BASE-01–03, CORE-01–15, BE-01–04는 VERIFIED다. BE-05는 구현과 로컬 PostgreSQL 검증을 마쳤고 Linux CI 확인 전인 IMPLEMENTED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-05 CI 확인 후 BE-06이다. FE-01·QA-02도 별도 착수 가능하다. main 이외 브랜치·PR을 만들지 않는다.
+BASE-01–03, CORE-01–15, BE-01–05는 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-06이다. FE-01·QA-02도 별도 착수 가능하다. main 이외 브랜치·PR을 만들지 않는다.
 
 ## 현재 실행 가능한 검사
 

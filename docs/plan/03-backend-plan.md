@@ -87,7 +87,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-05 · 업무 명령·멱등성·충돌·감사
 
-**구간:** P2 · **상태:** IMPLEMENTED · **선행:** BE-04, BASE-03
+**구간:** P2 · **상태:** VERIFIED · **선행:** BE-04, BASE-03
 
 **구현 범위:** 명시적 command handler, transaction coordinator, optimistic revision, idempotency receipt, audit를 구현한다. 성공 receipt 조회 전에도 현재 권한을 확인한다. outbox 계약을 두되 queue 구현은 첫 비동기 기능에서 한다.
 
