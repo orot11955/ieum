@@ -1,7 +1,8 @@
 # CORE-10 · hybrid 결합·정책 보정·추천 게이트
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료, 원격 Linux CI 대기; 사용자 ACCEPTED 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI 성공; 사용자 ACCEPTED 전.
 - 선행: CORE-05·CORE-09 VERIFIED. 작업 기준 main `f9884e2`.
+- 기능 커밋: `9f33215`; [GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35865007178) `completed success` (Linux).
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 실제 사용자 자료나 live provider를 사용하지 않았다.
 
 ## 구현·계약
