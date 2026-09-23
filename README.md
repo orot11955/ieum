@@ -36,8 +36,9 @@
 | [BE-01 증거](docs/evidence/be-01.md) · [API/화면 재점검](docs/review/api-wireframe-server-entry-2026-09-23.md) | 서버 최소 실행 경계와 남은 계약 |
 | [BE-02 증거](docs/evidence/be-02.md) · [auth spike](docs/evidence/auth-spike-report.md) | 인증 adapter의 실제 PostgreSQL·Linux CI 검증 |
 | [BE-03 증거](docs/evidence/be-03.md) · [DB migration 안내](db/README.md) | 업무 schema·RLS·role의 로컬 및 Linux PostgreSQL 검증 |
+| [BE-04 증거](docs/evidence/be-04.md) | 계정·초대·세션·복구의 실제 PostgreSQL·Linux CI 검증 |
 
-CORE-01–15와 BE-01–03이 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-04다. FE-01과 QA-02도 별도 착수 가능하다.
+CORE-01–15와 BE-01–04가 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-05다. FE-01과 QA-02도 별도 착수 가능하다.
 
 ## 현재 실행 가능한 검사
 

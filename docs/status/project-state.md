@@ -1,9 +1,9 @@
-# IEUM 프로젝트 상태 · BE-04 IMPLEMENTED, CORE-16 BLOCKED
+# IEUM 프로젝트 상태 · BE-04 VERIFIED, CORE-16 BLOCKED
 
-- 검증 기준: main `aed7fa4` (2026-09-24 KST, BE-03 GitHub Actions run `35886223459` 전체 성공)
+- 검증 기준: main `39a4b15` (2026-09-24 KST, BE-04 GitHub Actions run `35892594101` 전체 성공)
 - 실행 정본: [계획 1.1](../plan/README.md), [backlog](../plan/backlog.json)
-- 완료 범위: **BASE-01–03, CORE-01–15, BE-01–03 VERIFIED**. 원본·근거·시점 snapshot, lexical/semantic/hybrid 관찰 검색과 합성 평가, 근거 묶음, 추출 후보, 구조 진단·변경안 미리보기, 문서 계획·claim 검증 계약, Nest/Fastify 조립, 실제 DB 인증 adapter와 업무 workspace/RLS 기반까지 확인했다.
-- 진행 중: **BE-04 계정·개인 공간 IMPLEMENTED**, Linux CI 검증 대기. BE-05는 BE-04가 VERIFIED가 된 뒤 착수한다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록/holdout 부재로 BLOCKED**다.
+- 완료 범위: **BASE-01–03, CORE-01–15, BE-01–04 VERIFIED**. 원본·근거·시점 snapshot, lexical/semantic/hybrid 관찰 검색과 합성 평가, 근거 묶음, 추출 후보, 구조 진단·변경안 미리보기, 문서 계획·claim 검증 계약, Nest/Fastify 조립, 실제 DB 인증·업무 workspace/RLS·계정/초대/세션/복구까지 확인했다.
+- 진행 중: 다음 서버 카드는 **BE-05 업무 명령·멱등성·감사**다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록/holdout 부재로 BLOCKED**다.
 - 브랜치 정책: main 직접 작업, 새 브랜치/PR/force push 없음
 
 ## 실제 현재 상태
@@ -13,11 +13,11 @@
 | 원본 제품 목적·권한·도메인·화면/ERD 계약 | 보존된 설계; 새 실행 정본 아래 참고 | 해당 BASE/CORE/BE/FE 카드 |
 | Paper/Dark 토큰·recipe·lock·생성/검사 스크립트 | 보존, 준비 검사 대상 | FE-01 |
 | 공통 React UI·theme-init·theme unit test | 보존한 소스 표본; runtime/브라우저 미검증 | FE-01 |
-| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03·CORE-01–15·BE-01–03 VERIFIED, BE-04 IMPLEMENTED, CORE-16 BLOCKED | BE-04 CI·FE-01 |
+| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03·CORE-01–15·BE-01–04 VERIFIED, CORE-16 BLOCKED | BE-05·FE-01 |
 | pnpm workspace·strict TS·Vitest·lint/format·core/lab/API build와 CI 정의 | Node 24.18.0 로컬 검사와 Linux GitHub Actions 통과 | BE-02·FE-01 제품 기반 |
 | 관리/Delivery Zod·OpenAPI·client 타입, Core 원본·근거 검증/시점 snapshot/lexical·semantic·hybrid 후보 검색·관찰 판단 기준선 | 합성 예제와 Linux CI 통과; 업무 HTTP/DB 없음 | BE-02·FE-01 |
 | 판단 Core·Lab·실제 판단 품질 | 합성 40 Context/60 query에서 B0 Recall@10 49/50, 합성 B1 37/50, B2/B3 47.5/50. 구조·문서 계약은 검증됐으나 실제 사용자 품질 미평가, 활성 제안 설정 없음 | CORE-16은 FE-14·FE-16/실제 자료 후 재개 |
-| Nest API·인증·DB·worker·업무 기능 | BE-01 최소 API·BE-02 auth adapter·BE-03 업무 DB/RLS는 Linux CI 통과. BE-04 계정·초대·세션·복구는 로컬 실제 PostgreSQL 통과, Linux CI 대기. 기록·job API 미구현 | BE-04 CI 뒤 BE-05–26 |
+| Nest API·인증·DB·worker·업무 기능 | BE-01 최소 API·BE-02 auth adapter·BE-03 업무 DB/RLS·BE-04 계정/초대/세션/복구가 Linux CI 통과. 기록·job API 미구현 | BE-05–26 |
 | 내부 업무 웹·편집기·브라우저 E2E | 미구현 | FE-01–21 |
 | Delivery·운영 복원·개인 데이터 migration | 미구현/미검증 | P7–P9 |
 | 실제 운영 DB/배포/사용자 기기 작업 트리 | 미접근·미확인·미변경 | 실제 작업 전에 명시적으로 확인 |
