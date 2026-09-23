@@ -2,6 +2,8 @@
 
 범위: [제품 목적](../product/vision-and-scope.md), [로드맵](../plan/01-master-roadmap.md), [데이터/API 계약](../plan/05-data-api-and-state-contracts.md), [검증 gate](../plan/06-testing-and-release-gates.md), [요구사항·화면 추적](../plan/08-sources-and-traceability.md), 75개 카드와 현재 BASE-02 diff. 문서 계약의 정합성 검토이며 실제 제품 동작·보안·효용 검증이 아니다.
 
+후속 상태: 아래 착수 판정은 검증 전 시점의 기록이다. BASE-02는 [Linux GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35840461351)과 격리 설치를 확인해 VERIFIED로 올렸고, BASE-03의 선행 조건이 열렸다.
+
 ## 판정
 
 현재 P0–P9 흐름은 제품의 세 책임인 **개인 관리 앱, 선택적 판단·정제 보조, 승인 발행·Delivery**를 모두 다룬다. R01–R14와 W01–W27의 카드 연결은 계획 검사로 확인했다. Core Lab 또는 단순 CRUD만으로 최종 제품 완료를 선언하지 않고, 수동 명령과 비동기 판단을 분리하는 방향도 제품 목적과 맞는다.

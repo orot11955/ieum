@@ -3,8 +3,8 @@
 ## 현재 작업 정책
 
 - **main에서 직접 작업한다. 새 브랜치·PR을 만들지 않는다.** 원격 main을 force 이동하거나 hard reset, 사용자 미커밋 변경 덮어쓰기, 과거 제품 패치 전체 재적용을 하지 않는다.
-- 사용자의 구현 지시로 BASE-02 최소 workspace와 CI를 작성했다. 현재 상태는 IMPLEMENTED이며 원격 CI와 새 기기 재현은 미확인이다. 문서/정리 요청만으로 추가 제품 기능이나 DB/배포를 변경하지 않는다.
-- 다음 카드 전 git status·원격 main·현재 prep 검사와 BASE-02 증거를 확인한다. **BASE-02가 VERIFIED/ACCEPTED가 된 뒤 BASE-03**으로 진행한다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
+- BASE-02 최소 workspace와 CI는 Linux 원격 CI와 격리 설치까지 VERIFIED다. 다음 카드의 선행·완료 기준을 지키며 구현한다. 문서/정리 요청만으로 제품 기능이나 DB/배포를 변경하지 않는다.
+- 다음 카드 전 git status·원격 main·현재 prep 검사와 선행 카드 증거를 확인한다. **다음 카드는 BASE-03**이다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
 
 ## 반드시 읽을 정본
 
@@ -50,6 +50,8 @@ Web: app은 조립, pages는 화면 조합, features는 사용자 동작·미저
 카드의 선행이 VERIFIED/ACCEPTED인지 확인한다. 정상·실패·충돌 반례를 먼저 정하고 필요한 코드만 구현한다. 큰 카드는 하위 기능 커밋으로 쪼개되 현재 카드의 필수 완료 기준을 후속으로 미루지 않는다. 실패 테스트만 있는 중간 상태를 원격 main에 올리지 않는다.
 
 공유 contract/migration/lock/token/root CI는 조정자가 직렬 반영한다. 한 main working tree를 여러 writer가 동시에 수정하지 않는다. 기능별 commit에 작업 ID를 포함한다.
+
+검증을 마친 정상적인 main 커밋은 별도 허락 없이 `origin/main`에 fast-forward push할 수 있다. push 직전에 원격 SHA와 로컬 선행 관계를 확인한다. force push·타인 변경 덮어쓰기·실패하는 중간 상태의 push는 금지한다. 운영 배포·Migration·데이터 삭제 같은 외부 변경은 별도 승인 범위다.
 
 실제 명령/exit code/환경/결과/미검증/데이터 영향을 docs/evidence/<id>.md에 기록한다. IMPLEMENTED와 VERIFIED와 사용자 ACCEPTED를 구분한다. 없는 테스트를 passWithNoTests로 성공 처리하지 않는다. 실제 데이터 품질과 합성 fixture 결과를 구분한다.
 

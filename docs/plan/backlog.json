@@ -25,7 +25,7 @@
       "dependencies": [
         "BASE-01"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "pnpm workspace, TS strict, 패키지 exports, core/lab 최소 빌드, Vitest, formatter/linter를 준비한다. web/API harness는 실제 spike가 생길 때 추가한다. Node 24 계열의 선택 버전과 패키지 호환성을 확인하고 lockfile을 고정한다.",
       "contract": "산출물: pnpm-workspace.yaml, tsconfig 공통 설정, 패키지별 scripts, CI 기본 파이프라인. production start는 개발용 tsx 실행과 구분하여 빌드 산출물을 실행한다.",
       "tests": "깨끗한 설치→typecheck→test→build; 잘못된 import/타입을 의도적으로 넣으면 CI 실패; core 테스트는 DB·모델 없이 실행.",

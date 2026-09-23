@@ -21,7 +21,7 @@
 | [08 · 출처/추적](08-sources-and-traceability.md) | 기존 계획의 출처·요구/화면 매핑 |
 | [09 · 단계별 구현 순서](09-implementation-sequence.md) | 카드 선행관계에 따른 실행 묶음·gate·문서 충돌 정리 |
 
-BASE-01은 저장소 준비 완료다. BASE-02의 최소 workspace와 CI는 IMPLEMENTED이고 원격 CI는 아직 미확인이다. BASE-02를 검증한 뒤 **BASE-03 → CORE-01–08**을 진행한다. 라이브러리 호환성 spike는 카드의 선행관계가 충족될 때만 진행한다. main 이외 브랜치·PR을 만들지 않는다.
+BASE-01과 BASE-02는 VERIFIED다. 다음은 **BASE-03 → CORE-01–08**을 진행한다. 라이브러리 호환성 spike는 카드의 선행관계가 충족될 때만 진행한다. main 이외 브랜치·PR을 만들지 않는다.
 
 ## 현재 실행 가능한 검사
 
@@ -39,6 +39,6 @@ node scripts/design/themes.mjs --check
 
 카드를 바꾼 경우 `node scripts/plan/render.mjs`로 파생 문서를 갱신한다. BASE-02에서 추가한 `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm lab:smoke`는 core/lab 기반만 검사한다. 제품 integration/E2E·판단 Lab 명령은 해당 카드에서 만든다.
 
-[상태와 제한](../status/project-state.md) · [BASE-01 증거](../evidence/base-01.md) · [BASE-02 로컬 증거](../evidence/base-02.md) · [문서 우선순위](../adr/0012-main-zero-base-execution.md)
+[상태와 제한](../status/project-state.md) · [BASE-01 증거](../evidence/base-01.md) · [BASE-02 증거](../evidence/base-02.md) · [문서 우선순위](../adr/0012-main-zero-base-execution.md)
 
 통합 Markdown/ZIP·기존 validation-report·SHA256SUMS는 배포 사본이므로 저장소에 중복 체크인하지 않는다. 최신 실행/검사 결과는 상태 문서와 CI가 기준이다.

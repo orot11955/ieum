@@ -4,7 +4,7 @@
 
 ## 현재 상태 · 2026-09-23 KST
 
-**main 단일 브랜치 · BASE-02 최소 workspace와 CI 구현 · 원격 CI 미확인.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. 판단 Core·제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
+**main 단일 브랜치 · BASE-02 최소 workspace와 CI 검증 완료 · 다음 카드 BASE-03.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. 판단 Core·제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
 
 현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 최소 빌드 기반, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 판단 기능이 실행된다고 설명하지 않는다.
 
@@ -17,9 +17,9 @@
 | [Core](docs/plan/02-core-plan.md) · [Backend](docs/plan/03-backend-plan.md) · [Web](docs/plan/04-web-plan.md) | 영역별 상세 기능·반례·완료 기준 |
 | [실행 지시](docs/plan/07-codex-execution-playbook.md) · [AGENTS](AGENTS.md) | 구현 시작 지시와 main 직접 작업 규칙 |
 | [BASE-01 증거](docs/evidence/base-01.md) | 실제 실행 검사와 미검증 범위 |
-| [BASE-02 증거](docs/evidence/base-02.md) | workspace·CI 작성과 로컬 검증 범위 |
+| [BASE-02 증거](docs/evidence/base-02.md) | workspace·CI의 로컬/Linux 검증 범위 |
 
-BASE-02는 IMPLEMENTED이며 원격 CI 결과는 아직 확인하지 못했다. 검증 근거를 확인해 VERIFIED로 올린 뒤 **BASE-03 → CORE-01–08**을 진행한다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
+BASE-02는 Linux CI까지 VERIFIED다. **BASE-03 → CORE-01–08**을 선행 조건에 맞춰 진행한다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
 
 ## 현재 실행 가능한 검사
 

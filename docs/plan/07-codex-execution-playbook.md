@@ -2,7 +2,7 @@
 
 ## 현재 상태와 권한
 
-계획 1.1은 main에 채택됐다. 사용자의 구현 지시로 BASE-02 최소 workspace와 CI를 작성했으며 상태는 IMPLEMENTED다. 판단 Core·API·업무 Web 및 운영 DB/배포는 미구현·미접근이다. 다음 카드의 착수는 선행 작업의 VERIFIED/ACCEPTED 증거를 따른다.
+계획 1.1은 main에 채택됐다. BASE-02 최소 workspace와 CI는 Linux 실행까지 VERIFIED다. 판단 Core·API·업무 Web 및 운영 DB/배포는 미구현·미접근이다. 다음 카드의 착수는 선행 작업의 VERIFIED/ACCEPTED 증거를 따른다.
 
 문서 우선순위: 사용자 최신 지시 → AGENTS.md → ADR 0012 → docs/plan/backlog.json 및 00–09 → 보존된 제품/도메인/화면 계약. 과거 M/S/I 번호·다크 후속·별도 브랜치 지시는 현재 실행 규칙이 아니다.
 
@@ -20,8 +20,8 @@ README, AGENTS, docs/status/project-state.md, docs/plan/README.md,
 BASE-01 증거를 재확인하되 이미 채택한 계획·브랜치를 다시 만들지 마라.
 현재 가능한 prep 검사를 먼저 실행하고 실패를 먼저 해결하라.
 
-BASE-02의 로컬 증거와 남은 원격 CI/새 기기 검증을 확인하라.
-BASE-02를 VERIFIED/ACCEPTED로 판정할 수 있을 때 BASE-03 → CORE-01–08을 우선 구현하라.
+BASE-02의 로컬/Linux 증거를 확인하라.
+BASE-03 → CORE-01–08을 선행 조건에 맞춰 우선 구현하라.
 선행 카드가 VERIFIED/ACCEPTED가 아니면 의존하는 카드로 넘어가지 마라.
 한 카드의 acceptance를 먼저 테스트로 표현하고 필요한 코드만 구현하라.
 규모가 크면 카드 안에서 기능 커밋으로 나누되 필수 반례를 뒤로 미루지 마라.
@@ -95,7 +95,7 @@ PLANNED → IN_PROGRESS → IMPLEMENTED → VERIFIED → ACCEPTED로 구분한�
 
 ### BASE-02 · 최소 workspace·실행·검사 기반
 
-**구간:** P0 · **상태:** IMPLEMENTED · **선행:** BASE-01
+**구간:** P0 · **상태:** VERIFIED · **선행:** BASE-01
 
 **구현 범위:** pnpm workspace, TS strict, 패키지 exports, core/lab 최소 빌드, Vitest, formatter/linter를 준비한다. web/API harness는 실제 spike가 생길 때 추가한다. Node 24 계열의 선택 버전과 패키지 호환성을 확인하고 lockfile을 고정한다.
 
