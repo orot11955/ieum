@@ -5,6 +5,7 @@ import {
   findExactLexicalSources,
   retrieveExactLexicalCandidates,
 } from "./exact-finder.js";
+import { measureExactCandidates, runExactObserve } from "./observe.js";
 
 function capture(captureId: string, text: string) {
   return {
@@ -32,8 +33,8 @@ function unit(source: ReturnType<typeof capture>, unitId: string) {
   };
 }
 
-function fixture() {
-  const query = capture("query", "여행 기록 PRIVATE_QUERY");
+function fixture(queryText = "여행 기록 PRIVATE_QUERY") {
+  const query = capture("query", queryText);
   const member = capture("member", "여행 기록 PRIVATE_MEMBER");
   const unrelated = capture("unrelated", "완료 보고 PRIVATE_OTHER");
   return validateSnapshot(
@@ -118,4 +119,61 @@ test("exact finder scans identity and members separately and preserves member-on
     "exhaustive_only",
   );
   assert.equal(exhaustive.matchedContextCount, 2);
+});
+
+test("exact observe distinguishes zero from missing and never selects a primary", () => {
+  const snapshot = fixture();
+  const result = runExactObserve(snapshot, "all");
+  assert.deepEqual(runExactObserve(snapshot, "all"), result);
+  assert.equal(result.mode, "observe");
+  assert.equal(result.matchProbability, null);
+  assert.equal(result.primaryContextId, null);
+  assert.deepEqual(result.proposals, []);
+  const unrelated = result.candidates.find(
+    (item) => item.candidate.contextId === "unrelated",
+  );
+  assert.equal(unrelated?.evaluation.identity.availability, "available");
+  assert.equal(unrelated?.evaluation.identity.value, 0);
+  assert.equal(unrelated?.decision.status, "candidate");
+  assert.ok(unrelated?.decision.reasons.includes("MEASURED_ZERO"));
+  assert.equal(
+    result.candidates.filter(
+      (item) => item.score.contentScore !== null && item.score.contentScore > 0,
+    ).length,
+    2,
+  );
+  assert.equal(JSON.stringify(result).includes("PRIVATE_"), false);
+});
+
+test("empty query vector abstains instead of reporting measured zero", () => {
+  const result = runExactObserve(fixture("😀"), "all");
+  assert.equal(result.status, "abstain");
+  assert.equal(result.reason, "NO_CONTENT_EVIDENCE");
+  assert.ok(result.candidates.every((item) => item.score.coverage === 0));
+  assert.ok(
+    result.candidates.every((item) => item.score.contentScore === null),
+  );
+  assert.ok(
+    result.candidates.every((item) => item.decision.status === "abstain"),
+  );
+});
+
+test("exact measurements reject incomplete source results", () => {
+  const snapshot = fixture();
+  const retrieval = retrieveExactLexicalCandidates(snapshot);
+  assert.throws(
+    () =>
+      measureExactCandidates(snapshot, {
+        ...retrieval,
+        sources: [
+          {
+            ...retrieval.sources[0]!,
+            status: "error",
+            errorCode: "INDEX_UNAVAILABLE",
+          },
+          retrieval.sources[1]!,
+        ],
+      }),
+    /complete sources/,
+  );
 });

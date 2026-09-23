@@ -13,6 +13,36 @@ export type {
   LexicalCorpus,
   LexicalFeatures,
 } from "./features/lexical/index.js";
+export { evaluateCandidate, NOT_MEASURED_INPUTS } from "./evaluation/index.js";
+export type {
+  Availability,
+  CandidateEvaluation,
+  CandidateMeasurements,
+  EvaluatedFeature,
+  MemberInput,
+  MemberMeasurement,
+  SignalInput,
+} from "./evaluation/index.js";
+export { explainCandidate } from "./explanation/index.js";
+export type {
+  CandidateExplanation,
+  FeatureTrace,
+} from "./explanation/index.js";
+export { runObserveJudgement } from "./judgement/index.js";
+export type {
+  CandidateJudgement,
+  ObserveJudgement,
+} from "./judgement/index.js";
+export {
+  OBSERVE_POLICY_CONFIG,
+  resolvePolicy,
+  validatePolicyConfig,
+} from "./policy/index.js";
+export type {
+  PolicyConfig,
+  PolicyDecision,
+  PolicyReason,
+} from "./policy/index.js";
 export {
   RETRIEVAL_CONFIG,
   resolveExplicitContext,
@@ -29,6 +59,17 @@ export type {
   SourceReport,
   SourceResult,
 } from "./retrieval/index.js";
+export {
+  LEXICAL_SCORE_CONFIG,
+  NO_AUXILIARY_SIGNALS,
+  scoreCandidate,
+  validateScoreConfig,
+} from "./scoring/index.js";
+export type {
+  AuxiliarySignals,
+  CandidateScore,
+  ScoreConfig,
+} from "./scoring/index.js";
 export { sliceRawSpan } from "./snapshot.js";
 export type { CoreCaptureSnapshot, Utf16Span } from "./snapshot.js";
 export {
