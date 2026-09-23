@@ -4,7 +4,7 @@
 
 ## 현재 상태 · 2026-09-23 KST
 
-**main 단일 브랜치 · BASE-01–03, CORE-01–15, BE-01–02 VERIFIED · BE-03 IMPLEMENTED · CORE-16 BLOCKED.** Core의 원본·snapshot·관찰 판단, 파일 Lab 실행·재생, 합성 B0/B1/B2/B3 비교, 근거 묶음, 추출·구조 변경 미리보기·문서 claim 검증 계약을 구현했다. Nest/Fastify API와 Better Auth adapter는 Linux CI에서 검증했다. BE-03의 업무 DB/RLS는 로컬 격리 PostgreSQL에서 통과했고 Linux CI를 기다린다. 실제 사용자 품질, 업무 웹/API, 운영 DB·배포는 아직 미검증이다.
+**main 단일 브랜치 · BASE-01–03, CORE-01–15, BE-01–03 VERIFIED · CORE-16 BLOCKED.** Core의 원본·snapshot·관찰 판단, 파일 Lab 실행·재생, 합성 B0/B1/B2/B3 비교, 근거 묶음, 추출·구조 변경 미리보기·문서 claim 검증 계약을 구현했다. Nest/Fastify API, Better Auth adapter, 최소 업무 DB/RLS는 Linux CI에서 검증했다. 실제 사용자 품질, 업무 웹/API, 운영 DB·배포는 아직 미검증이다.
 
 현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 빌드와 Core 원문·근거 검증/시점 snapshot/lexical·semantic·hybrid 후보 검색·관찰 판단 기준선, 파일 run/replay/inspect/compare/evaluate/pack/semantic/compare-semantic/compare-hybrid CLI와 합성 데이터, 관리/Delivery 계약 예제와 생성 client 타입, Nest/Fastify liveness API와 worker self-check, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 완성된 판단 기능이 실행된다고 설명하지 않는다.
 
@@ -35,9 +35,9 @@
 | [CORE-16 차단 근거](docs/evidence/core-16.md) | 실제 효용 평가의 미충족 선행과 재개 조건 |
 | [BE-01 증거](docs/evidence/be-01.md) · [API/화면 재점검](docs/review/api-wireframe-server-entry-2026-09-23.md) | 서버 최소 실행 경계와 남은 계약 |
 | [BE-02 증거](docs/evidence/be-02.md) · [auth spike](docs/evidence/auth-spike-report.md) | 인증 adapter의 실제 PostgreSQL·Linux CI 검증 |
-| [BE-03 증거](docs/evidence/be-03.md) · [DB migration 안내](db/README.md) | 업무 schema·RLS·role의 로컬 PostgreSQL 검증과 CI 대기 |
+| [BE-03 증거](docs/evidence/be-03.md) · [DB migration 안내](db/README.md) | 업무 schema·RLS·role의 로컬 및 Linux PostgreSQL 검증 |
 
-CORE-01–15와 BE-01–02가 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-03 Linux CI 확인 뒤 BE-04다. FE-01과 QA-02도 별도 착수 가능하다.
+CORE-01–15와 BE-01–03이 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-04다. FE-01과 QA-02도 별도 착수 가능하다.
 
 ## 현재 실행 가능한 검사
 

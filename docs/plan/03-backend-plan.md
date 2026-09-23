@@ -55,7 +55,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-03 · PostgreSQL migration·소유 범위·RLS
 
-**구간:** P2 · **상태:** IMPLEMENTED · **선행:** BE-02
+**구간:** P2 · **상태:** VERIFIED · **선행:** BE-02
 
 **구현 범위:** 실제 PostgreSQL과 Drizzle migration을 도입한다. auth/vendor schema와 업무 schema를 구분한다. workspace 복합 FK/unique, runtime non-owner role, RLS 정책과 connection pool 경계를 구현한다.
 
