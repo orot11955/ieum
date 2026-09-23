@@ -24,7 +24,7 @@
 | CORE-15 | P6 | VERIFIED | 모델 초안·claim map 검증 | CORE-14, CORE-11 |
 | CORE-16 | P9 | BLOCKED | 실제 판단·정리 효용 최종 평가 | CORE-10, CORE-13, CORE-15, FE-14, FE-16 |
 | BE-01 | P0 | VERIFIED | NestJS + Fastify 통합과 composition root | BASE-02 |
-| BE-02 | P0 | IMPLEMENTED | 인증 adapter의 실제 호환성 검증 | BE-01, BASE-03 |
+| BE-02 | P0 | VERIFIED | 인증 adapter의 실제 호환성 검증 | BE-01, BASE-03 |
 | BE-03 | P2 | PLANNED | PostgreSQL migration·소유 범위·RLS | BE-02 |
 | BE-04 | P2 | PLANNED | 계정·개인 공간·초대·세션·복구 | BE-03 |
 | BE-05 | P2 | PLANNED | 업무 명령·멱등성·충돌·감사 | BE-04, BASE-03 |

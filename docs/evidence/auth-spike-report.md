@@ -47,4 +47,4 @@
 
 ## 남은 검증 경계
 
-GitHub Actions의 PostgreSQL job 결과는 이 문서 작성 시점에 아직 없다. 실제 발송 채널·초대 수락·계정 정지·workspace 권한·운영 HTTPS/proxy/rate limit·복구 감사는 BE-04와 통합 gate에서 검증한다. 인증 credential과 MFA secret·복구 코드는 로그나 이 문서에 기록하지 않았다.
+[Linux GitHub Actions run 35883533850](https://github.com/orot11955/ieum/actions/runs/35883533850)은 구현 SHA `e5cb093136443930b66c480e467507e7e8eda087`에서 PostgreSQL 통합 job과 기존 두 job 모두 성공했다. 실제 발송 채널·초대 수락·계정 정지·workspace 권한·운영 HTTPS/proxy/rate limit·복구 감사는 BE-04와 통합 gate에서 검증한다. 인증 credential과 MFA secret·복구 코드는 로그나 이 문서에 기록하지 않았다.

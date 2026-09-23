@@ -319,7 +319,7 @@
         "BE-01",
         "BASE-03"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "Better Auth+Drizzle+Fastify의 native handler 연동을 먼저 시험한다. Nest community wrapper는 기본 채택하지 않는다. 여러 Set-Cookie, body parsing, session 조회, 초대 제한, MFA 전후, cache-off 철회를 검증한다.",
       "contract": "산출물: auth-spike-report.md, 확정 auth schema mapping/버전/advisory 검토 기록. AuthPort를 통하여 업무 코드가 vendor session/credential 모델에 의존하지 않게 한다.",
       "tests": "중복 body parse, login/logout/재설정, signup 우회 경로, MFA 미완료 세션, 다른 기기 철회, CSRF/Origin, 잘못된 proxy host, 복구 코드 재사용.",
