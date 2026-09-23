@@ -138,6 +138,65 @@ async function insertUnit(
   return id;
 }
 
+/** Capture module boundary for a caller already inside a command transaction. */
+export async function insertCaptureInTransaction(
+  client: PoolClient,
+  input: {
+    workspaceId: string;
+    actorId: string;
+    title: string;
+    rawBody: string;
+    sourceKind: "manual" | "import";
+    sourceKey?: string;
+  },
+): Promise<{ id: string; unitId: string }> {
+  if (
+    !validText(input.title, 300) ||
+    !validRawBody(input.rawBody) ||
+    !["manual", "import"].includes(input.sourceKind) ||
+    (input.sourceKey !== undefined && !validText(input.sourceKey, 300)) ||
+    (input.sourceKind === "import" && !input.sourceKey)
+  )
+    throw new CommandError("INVALID_COMMAND");
+  if (input.sourceKey) {
+    const previous = await client.query(
+      "SELECT id FROM business.capture WHERE workspace_id=$1 AND source_kind=$2 AND source_key=$3",
+      [input.workspaceId, input.sourceKind, input.sourceKey],
+    );
+    if (previous.rowCount) throw new CaptureError("SOURCE_DUPLICATE");
+  }
+  const id = randomUUID();
+  const originKey = input.sourceKey
+    ? `${input.sourceKind}:${input.sourceKey}`
+    : `manual:${id}`;
+  await client.query(
+    `INSERT INTO business.capture (id,workspace_id,created_by_id,title,source_kind,source_key,origin_key) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [
+      id,
+      input.workspaceId,
+      input.actorId,
+      input.title.trim(),
+      input.sourceKind,
+      input.sourceKey ?? null,
+      originKey,
+    ],
+  );
+  await client.query(
+    `INSERT INTO business.capture_revision (workspace_id,capture_id,revision,title,raw_body) VALUES ($1,$2,1,$3,$4)`,
+    [input.workspaceId, id, input.title.trim(), input.rawBody],
+  );
+  const unitId = await insertUnit(
+    client,
+    input.workspaceId,
+    id,
+    1,
+    originKey,
+    { start: 0, end: input.rawBody.length, encoding: "utf16" },
+    input.rawBody,
+  );
+  return { id, unitId };
+}
+
 function requiredUuid(value: string): void {
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -191,45 +250,14 @@ export class CaptureService {
         apply: async (client, access) => {
           if (access.workspaceId !== input.workspaceId)
             throw new CaptureError("CAPTURE_NOT_FOUND");
-          if (input.sourceKey) {
-            const previous = await client.query(
-              "SELECT id FROM business.capture WHERE workspace_id = $1 AND source_kind = $2 AND source_key = $3",
-              [access.workspaceId, input.sourceKind, input.sourceKey],
-            );
-            if (previous.rowCount) throw new CaptureError("SOURCE_DUPLICATE");
-          }
-          const id = randomUUID();
-          const originKey = input.sourceKey
-            ? `${input.sourceKind}:${input.sourceKey}`
-            : `manual:${id}`;
-          await client.query(
-            `INSERT INTO business.capture
-             (id, workspace_id, created_by_id, title, source_kind, source_key, origin_key)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [
-              id,
-              access.workspaceId,
-              input.actorId,
-              input.title.trim(),
-              input.sourceKind,
-              input.sourceKey ?? null,
-              originKey,
-            ],
-          );
-          await client.query(
-            `INSERT INTO business.capture_revision
-             (workspace_id, capture_id, revision, title, raw_body) VALUES ($1, $2, 1, $3, $4)`,
-            [access.workspaceId, id, input.title.trim(), input.rawBody],
-          );
-          const unitId = await insertUnit(
-            client,
-            access.workspaceId,
-            id,
-            1,
-            originKey,
-            { start: 0, end: input.rawBody.length, encoding: "utf16" },
-            input.rawBody,
-          );
+          const { id, unitId } = await insertCaptureInTransaction(client, {
+            workspaceId: access.workspaceId,
+            actorId: input.actorId,
+            title: input.title,
+            rawBody: input.rawBody,
+            sourceKind: input.sourceKind,
+            ...(input.sourceKey ? { sourceKey: input.sourceKey } : {}),
+          });
           return {
             response: { id, revision: 1, version: 1, unitId },
             audit: {

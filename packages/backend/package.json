@@ -24,6 +24,10 @@
       "types": "./dist/knowledge.d.ts",
       "default": "./dist/knowledge.js"
     },
+    "./tasks": {
+      "types": "./dist/tasks.d.ts",
+      "default": "./dist/tasks.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"

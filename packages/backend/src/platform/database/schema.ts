@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  date,
   foreignKey,
   index,
   integer,
@@ -639,6 +640,161 @@ export const thoughtRelation = business.table(
       "thought_relation_symmetric_order",
       sql`${table.type} NOT IN ('CONTRADICTS', 'RELATED_TO') OR (${table.fromUnitId}, ${table.fromRevision}) < (${table.toUnitId}, ${table.toRevision})`,
     ),
+  ],
+);
+
+export const task = business.table(
+  "task",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    createdById: text("created_by_id").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    state: text("state").notNull().default("TODO"),
+    version: integer("version").notNull().default(1),
+    dueKind: text("due_kind").notNull().default("NONE"),
+    dueDate: date("due_date", { mode: "string" }),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    dueTimeZone: text("due_time_zone"),
+    contextId: uuid("context_id"),
+    originKind: text("origin_kind").notNull().default("EXPLICIT"),
+    originUnitId: uuid("origin_unit_id"),
+    originUnitRevision: integer("origin_unit_revision"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completionVersion: integer("completion_version"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("task_workspace_id_unique").on(table.workspaceId, table.id),
+    index("task_workspace_state_updated_idx").on(
+      table.workspaceId,
+      table.state,
+      table.updatedAt,
+    ),
+    foreignKey({
+      name: "task_context_fk",
+      columns: [table.workspaceId, table.contextId],
+      foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
+    }),
+    foreignKey({
+      name: "task_origin_unit_revision_fk",
+      columns: [
+        table.workspaceId,
+        table.originUnitId,
+        table.originUnitRevision,
+      ],
+      foreignColumns: [
+        thoughtUnitRevision.workspaceId,
+        thoughtUnitRevision.unitId,
+        thoughtUnitRevision.revision,
+      ],
+    }),
+    check(
+      "task_title_nonempty",
+      sql`length(trim(${table.title})) BETWEEN 1 AND 300`,
+    ),
+    check(
+      "task_description_length",
+      sql`length(${table.description}) <= 10000`,
+    ),
+    check(
+      "task_state_check",
+      sql`${table.state} IN ('TODO','IN_PROGRESS','ON_HOLD','DONE','CANCELED')`,
+    ),
+    check("task_version_positive", sql`${table.version} > 0`),
+    check(
+      "task_due_check",
+      sql`(${table.dueKind}='NONE' AND ${table.dueDate} IS NULL AND ${table.dueAt} IS NULL AND ${table.dueTimeZone} IS NULL) OR (${table.dueKind}='DATE' AND ${table.dueDate} IS NOT NULL AND ${table.dueAt} IS NULL AND ${table.dueTimeZone} IS NULL) OR (${table.dueKind}='INSTANT' AND ${table.dueDate} IS NULL AND ${table.dueAt} IS NOT NULL AND length(${table.dueTimeZone}) BETWEEN 1 AND 100)`,
+    ),
+    check("task_origin_kind_check", sql`${table.originKind}='EXPLICIT'`),
+    check(
+      "task_origin_pair_check",
+      sql`(${table.originUnitId} IS NULL)=(${table.originUnitRevision} IS NULL)`,
+    ),
+    check(
+      "task_completion_check",
+      sql`(${table.state}='DONE' AND ${table.completedAt} IS NOT NULL AND ${table.completionVersion} IS NOT NULL AND ${table.completionVersion}>1 AND ${table.completionVersion}<=${table.version}) OR (${table.state}<>'DONE' AND ${table.completedAt} IS NULL AND ${table.completionVersion} IS NULL)`,
+    ),
+  ],
+);
+
+export const taskTransition = business.table(
+  "task_transition",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    taskId: uuid("task_id").notNull(),
+    version: integer("version").notNull(),
+    fromState: text("from_state").notNull(),
+    toState: text("to_state").notNull(),
+    actorId: text("actor_id").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "task_transition_pk",
+      columns: [table.workspaceId, table.taskId, table.version],
+    }),
+    foreignKey({
+      name: "task_transition_task_fk",
+      columns: [table.workspaceId, table.taskId],
+      foreignColumns: [task.workspaceId, task.id],
+    }),
+    check("task_transition_version_positive", sql`${table.version}>1`),
+    check(
+      "task_transition_state_check",
+      sql`${table.fromState} IN ('TODO','IN_PROGRESS','ON_HOLD','DONE','CANCELED') AND ${table.toState} IN ('TODO','IN_PROGRESS','ON_HOLD','DONE','CANCELED') AND ${table.fromState}<>${table.toState}`,
+    ),
+  ],
+);
+
+export const taskResult = business.table(
+  "task_result",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    taskId: uuid("task_id").notNull(),
+    completionVersion: integer("completion_version").notNull(),
+    captureId: uuid("capture_id").notNull(),
+    createdById: text("created_by_id").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("task_result_completion_unique").on(
+      table.workspaceId,
+      table.taskId,
+      table.completionVersion,
+    ),
+    unique("task_result_capture_unique").on(table.workspaceId, table.captureId),
+    foreignKey({
+      name: "task_result_task_fk",
+      columns: [table.workspaceId, table.taskId],
+      foreignColumns: [task.workspaceId, task.id],
+    }),
+    foreignKey({
+      name: "task_result_capture_fk",
+      columns: [table.workspaceId, table.captureId],
+      foreignColumns: [capture.workspaceId, capture.id],
+    }),
+    foreignKey({
+      name: "task_result_transition_fk",
+      columns: [table.workspaceId, table.taskId, table.completionVersion],
+      foreignColumns: [
+        taskTransition.workspaceId,
+        taskTransition.taskId,
+        taskTransition.version,
+      ],
+    }),
+    check("task_result_completion_positive", sql`${table.completionVersion}>0`),
   ],
 );
 
