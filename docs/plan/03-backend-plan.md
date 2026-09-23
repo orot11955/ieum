@@ -103,7 +103,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-06 · pg-boss worker·transactional outbox
 
-**구간:** P4 · **상태:** PLANNED · **선행:** BE-05
+**구간:** P4 · **상태:** VERIFIED · **선행:** BE-05
 
 **구현 범위:** PostgreSQL 기반 queue를 사용하여 판단·profile·export 등 필요한 비동기 작업을 처리한다. 같은 transaction enqueue adapter를 검증하고 실패하면 outbox relay 방식을 쓴다. 외부 부작용에는 중복 실행 가능성을 전제로 한다.
 

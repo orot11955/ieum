@@ -42,8 +42,9 @@
 | [BE-08 증거](docs/evidence/be-08.md) | 다중 Context 소속·관계의 실제 PostgreSQL·HTTP 검증 |
 | [BE-09 증거](docs/evidence/be-09.md) | Task 상태·기한·결과 원문의 실제 PostgreSQL·HTTP 검증 |
 | [BE-10 증거](docs/evidence/be-10.md) | 일정의 시간대·종일·DST·취소의 실제 PostgreSQL·HTTP 검증 |
+| [BE-06 증거](docs/evidence/be-06.md) | pg-boss outbox relay·worker·권한 격리의 PostgreSQL·Linux CI 검증 |
 
-CORE-01–15와 BE-01–05·07–10이 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** BE-11은 FE-01→FE-02 선행 검증을 기다린다. 다음 독립 서버 카드는 BE-06이다. FE-01과 QA-02도 별도 착수 가능하다.
+CORE-01–15와 BE-01–10이 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** BE-11은 FE-01→FE-02 선행 검증을 기다린다. 다음 독립 서버 카드는 BE-12다. FE-01과 QA-02도 별도 착수 가능하다.
 
 ## 현재 실행 가능한 검사
 

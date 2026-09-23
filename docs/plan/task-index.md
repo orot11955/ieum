@@ -28,7 +28,7 @@
 | BE-03 | P2 | VERIFIED | PostgreSQL migration·소유 범위·RLS | BE-02 |
 | BE-04 | P2 | VERIFIED | 계정·개인 공간·초대·세션·복구 | BE-03 |
 | BE-05 | P2 | VERIFIED | 업무 명령·멱등성·충돌·감사 | BE-04, BASE-03 |
-| BE-06 | P4 | PLANNED | pg-boss worker·transactional outbox | BE-05 |
+| BE-06 | P4 | VERIFIED | pg-boss worker·transactional outbox | BE-05 |
 | BE-07 | P3 | VERIFIED | Capture·원본 revision·ThoughtUnit | BE-05, CORE-01 |
 | BE-08 | P3 | VERIFIED | Context·다중 소속·관계·대표 맥락 | BE-07 |
 | BE-09 | P3 | VERIFIED | 할일·상태 전이·결과 기록 | BE-07, BE-08 |
