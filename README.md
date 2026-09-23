@@ -4,9 +4,9 @@
 
 ## 현재 상태 · 2026-09-23 KST
 
-**main 단일 브랜치 · BASE-01–03과 CORE-01–08 검증 완료 · 다음 권장 카드 CORE-09.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. Core의 관찰용 후보·보류 정책, 파일 Lab 실행·재생, 합성 B0 평가와 모델 없는 근거 묶음을 구현했다. 실제 사용자 품질, 제안 정책, 제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
+**main 단일 브랜치 · BASE-01–03과 CORE-01–09 검증 완료 · 다음 권장 카드 CORE-10.** 사용자가 병합한 다크 기준선 `f4ccbc2`에서 준비했다. Core의 관찰용 후보·보류 정책, 파일 Lab 실행·재생, 합성 B0/B1 평가와 모델 없는 근거 묶음을 구현했다. 실제 사용자 품질, 제안 정책, 제품 API·업무 웹·DB·배포는 아직 구현하지 않았다.
 
-현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 빌드와 Core 원문·근거 검증/시점 snapshot/lexical·후보 검색·관찰 판단 기준선, 파일 run/replay/inspect/compare/evaluate/pack CLI와 합성 데이터, 관리/Delivery 계약 예제와 생성 client 타입, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 완성된 판단 기능이 실행된다고 설명하지 않는다.
+현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 빌드와 Core 원문·근거 검증/시점 snapshot/lexical·semantic 후보 검색·관찰 판단 기준선, 파일 run/replay/inspect/compare/evaluate/pack/semantic/compare-semantic CLI와 합성 데이터, 관리/Delivery 계약 예제와 생성 client 타입, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 완성된 판단 기능이 실행된다고 설명하지 않는다.
 
 ## 구현의 시작점
 
@@ -26,8 +26,9 @@
 | [CORE-06 증거](docs/evidence/core-06.md) | 파일 실행·결정 재생·수동 피드백·artifact 무결성의 합성 반례 검증 범위 |
 | [CORE-07 증거](docs/evidence/core-07.md) | 합성 40개 맥락·60개 질의의 B0 평가와 누수·분모 반례 |
 | [CORE-08 증거](docs/evidence/core-08.md) | 직접 선택한 원문에서 모델 없이 private 근거 묶음 생성 |
+| [CORE-09 증거](docs/evidence/core-09.md) | 고정 벡터 exact 검색과 합성 B0/B1 비교·한계 |
 
-CORE-08까지 Linux CI에서 VERIFIED다. **CORE-09**를 선행 조건에 맞춰 진행한다. BE-01·FE-01도 착수 가능하다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
+CORE-09까지 Linux CI에서 VERIFIED다. **CORE-10**을 선행 조건에 맞춰 진행한다. CORE-14·BE-01·FE-01도 착수 가능하다. 이후 기능별 테스트·검토·커밋을 main에서 수행한다.
 
 ## 현재 실행 가능한 검사
 
@@ -55,6 +56,8 @@ Lab CLI는 빌드 뒤 `node apps/lab-cli/dist/main.js run <snapshot.json>`으로
 합성 B0 평가는 `node apps/lab-cli/dist/main.js evaluate datasets/sample/core-07-b0.json`으로 실행하며 기본 결과는 저장소 밖에 둔다. 합성 수치를 실제 사용자 품질로 해석하지 않는다.
 
 모델 없는 근거 묶음은 직접 선택 이벤트가 저장된 run에 대해 `node apps/lab-cli/dist/main.js pack <run-directory> <request.json>`으로 만든다. 기본 private 경로는 `~/.local/share/ieum-lab/packs/`이며 요청 형식과 검증 범위는 [CORE-08 증거](docs/evidence/core-08.md)를 따른다.
+
+고정 embedding artifact는 `node apps/lab-cli/dist/main.js semantic <snapshot.json> <artifact.json>`으로 한 snapshot에서 검색하고 `compare-semantic <dataset.json> <artifact.json>`으로 B0/B1을 비교한다. 합성 예제 벡터는 `node scripts/experiments/generate-synthetic-embeddings.mjs`로 재생성할 수 있으며, 모델 품질 근거가 아니라 검색 경로 검증용이다.
 
 준비 검사 개별 명령:
 

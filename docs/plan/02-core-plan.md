@@ -158,7 +158,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-09 · 고정 embedding과 exact semantic 검색
 
-**구간:** P4 · **상태:** IMPLEMENTED · **선행:** CORE-07
+**구간:** P4 · **상태:** VERIFIED · **선행:** CORE-07
 
 **구현 범위:** 고정 embedding artifact를 읽는 lab adapter와 pure cosine 계산을 추가한다. 모델 revision, 차원, tokenizer/prefix/pooling/precision을 manifest로 검증한다. live provider 호출은 core 밖에 둔다.
 
