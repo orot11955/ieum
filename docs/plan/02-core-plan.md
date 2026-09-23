@@ -30,7 +30,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-01 · 원본·단위·맥락·근거 타입과 불변식
 
-**구간:** P1 · **상태:** PLANNED · **선행:** BASE-03
+**구간:** P1 · **상태:** IMPLEMENTED · **선행:** BASE-03
 
 **구현 범위:** CaptureRevision, ThoughtUnitRevision, ContextSnapshot, EvidenceRef, originKey, recordedAt/occurredAt을 구현한다. 기본은 원본 1개→단위 1개이며 수동 분할과 원문 보존을 지원하는 타입을 만든다.
 
