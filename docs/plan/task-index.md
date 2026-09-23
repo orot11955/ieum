@@ -12,7 +12,7 @@
 | CORE-03 | P1 | VERIFIED | 한국어·식별자 lexical 기준선 | CORE-02 |
 | CORE-04 | P1 | VERIFIED | 후보 검색·원본별 중복 제거·예산 | CORE-03 |
 | CORE-05 | P1 | VERIFIED | 점수·가용성·보류·설명 엔진 | CORE-04 |
-| CORE-06 | P1 | IMPLEMENTED | 파일 Replay·실행 이력·수동 피드백 | CORE-05 |
+| CORE-06 | P1 | VERIFIED | 파일 Replay·실행 이력·수동 피드백 | CORE-05 |
 | CORE-07 | P1 | PLANNED | 평가 데이터·라벨·메트릭·반례 | CORE-06 |
 | CORE-08 | P1 | PLANNED | 모델 없는 evidence pack | CORE-01, CORE-06 |
 | CORE-09 | P4 | PLANNED | 고정 embedding과 exact semantic 검색 | CORE-07 |

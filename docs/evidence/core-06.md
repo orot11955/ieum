@@ -1,7 +1,8 @@
 # CORE-06 · 파일 Replay·실행 이력·수동 피드백
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료; 원격 Linux CI 검증 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI 성공; 사용자 ACCEPTED 전.
 - 선행: CORE-05 VERIFIED. 작업 기준 main `9d5e8b6c480c7b1cc371f60f9323b2aef30478d3`.
+- 기능 커밋: `ae1b4acd5a83db9fc70652ac897c837ba1d4ea93`; [GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35856303281) `completed success` (Linux).
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 입력과 피드백은 테스트에서 만든 합성 fixture이며 실제 사용자 자료가 아니다.
 
 ## 구현·계약

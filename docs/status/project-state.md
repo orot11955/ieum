@@ -1,9 +1,9 @@
-# IEUM 프로젝트 상태 · CORE-05 VERIFIED, CORE-06 다음
+# IEUM 프로젝트 상태 · CORE-06 VERIFIED, CORE-07 다음
 
-- 검증 기준: main `f8fb26d2986c38cb6cd6d682a8e3b48f9e1ffee3` (2026-09-23 KST, GitHub Actions 성공)
+- 검증 기준: main `ae1b4acd5a83db9fc70652ac897c837ba1d4ea93` (2026-09-23 KST, GitHub Actions 성공)
 - 실행 정본: [계획 1.1](../plan/README.md), [backlog](../plan/backlog.json)
-- 완료 범위: **BASE-01–03 준비·계약과 CORE-01–05 원본·근거 모델/시점 snapshot/lexical·후보 검색/관찰 판단 기준선**. 여덟 카드 모두 VERIFIED
-- 다음 구현: **CORE-06–08**; BE-01·FE-01도 선행 조건 충족
+- 완료 범위: **BASE-01–03 준비·계약과 CORE-01–06 원본·근거 모델/시점 snapshot/lexical·후보 검색/관찰 판단·파일 replay 기준선**. 아홉 카드 모두 VERIFIED
+- 다음 구현: **CORE-07–08**; BE-01·FE-01도 선행 조건 충족
 - 브랜치 정책: main 직접 작업, 새 브랜치/PR/force push 없음
 
 ## 실제 현재 상태
@@ -13,10 +13,10 @@
 | 원본 제품 목적·권한·도메인·화면/ERD 계약 | 보존된 설계; 새 실행 정본 아래 참고 | 해당 BASE/CORE/BE/FE 카드 |
 | Paper/Dark 토큰·recipe·lock·생성/검사 스크립트 | 보존, 준비 검사 대상 | FE-01 |
 | 공통 React UI·theme-init·theme unit test | 보존한 소스 표본; runtime/브라우저 미검증 | FE-01 |
-| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03, CORE-01–05 VERIFIED; 나머지 PLANNED | CORE-06 |
-| pnpm workspace·strict TS·Vitest·lint/format·core/lab build와 CI 정의 | Node 24.18.0 로컬 검사와 Linux GitHub Actions 통과 | CORE-06 replay 도구 |
-| 관리/Delivery Zod·OpenAPI·client 타입, Core 원본·근거 검증/시점 snapshot/lexical·후보 검색·관찰 판단 기준선 | 합성 예제와 Linux CI 통과; 실제 HTTP/DB 없음 | CORE-06, BE-01, FE-01 |
-| 판단 Core·Lab·실제 판단 품질 | 가용성·고정 가중치 점수·관찰용 후보/보류·근거 설명 구현; 제안 정책과 실제 사용자 품질 미구현/미평가 | CORE-06–16 |
+| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03, CORE-01–06 VERIFIED; 나머지 PLANNED | CORE-07 |
+| pnpm workspace·strict TS·Vitest·lint/format·core/lab build와 CI 정의 | Node 24.18.0 로컬 검사와 Linux GitHub Actions 통과 | CORE-07 평가 데이터 |
+| 관리/Delivery Zod·OpenAPI·client 타입, Core 원본·근거 검증/시점 snapshot/lexical·후보 검색·관찰 판단 기준선 | 합성 예제와 Linux CI 통과; 실제 HTTP/DB 없음 | CORE-07, BE-01, FE-01 |
+| 판단 Core·Lab·실제 판단 품질 | 가용성·고정 가중치 점수·관찰용 후보/보류·근거 설명과 파일 run/replay/inspect/compare 구현; 평가 라벨·품질 지표·제안 정책·실제 사용자 품질 미구현/미평가 | CORE-07–16 |
 | Nest API·인증·DB·worker·업무 기능 | 미구현 | BE-01–26 |
 | 내부 업무 웹·편집기·브라우저 E2E | 미구현 | FE-01–21 |
 | Delivery·운영 복원·개인 데이터 migration | 미구현/미검증 | P7–P9 |
@@ -32,9 +32,9 @@ BASE-01에서 삭제된 제품 경로를 실행하는 npm scripts·의존성/loc
 
 ## 준비 검증과 다음 행동
 
-실제 실행 결과는 [BASE-01 증거](../evidence/base-01.md), [BASE-02 증거](../evidence/base-02.md), [BASE-03 증거](../evidence/base-03.md), [CORE-01 증거](../evidence/core-01.md), [CORE-02 증거](../evidence/core-02.md), [CORE-03 증거](../evidence/core-03.md), [CORE-04 증거](../evidence/core-04.md), [CORE-05 증거](../evidence/core-05.md)를 따른다. plan/design 검사 통과를 제품 typecheck/build/DB/E2E 통과로 해석하지 않고, core/lab 빌드를 완성된 판단 기능 검증으로 확대하지 않는다. CORE-05의 Lab adapter는 테스트에서 호출했으며 replay/inspect CLI와 불변 실행 기록은 CORE-06 범위다. workflow는 원격 Linux에서 통과했지만 브랜치 보호 설정은 확인하지 못했으므로 main 반영 차단이 설정됐다고 주장하지 않는다.
+실제 실행 결과는 [BASE-01 증거](../evidence/base-01.md), [BASE-02 증거](../evidence/base-02.md), [BASE-03 증거](../evidence/base-03.md), [CORE-01 증거](../evidence/core-01.md), [CORE-02 증거](../evidence/core-02.md), [CORE-03 증거](../evidence/core-03.md), [CORE-04 증거](../evidence/core-04.md), [CORE-05 증거](../evidence/core-05.md), [CORE-06 증거](../evidence/core-06.md)를 따른다. plan/design 검사 통과를 제품 typecheck/build/DB/E2E 통과로 해석하지 않고, core/lab 빌드를 완성된 판단 기능 검증으로 확대하지 않는다. CORE-06은 단일 query 파일 Lab에서 저장 feature를 이용한 결정 재계산을 검증했으며 사용자 품질이나 DB/웹 경로는 검증하지 않았다. workflow는 원격 Linux에서 통과했지만 브랜치 보호 설정은 확인하지 못했으므로 main 반영 차단이 설정됐다고 주장하지 않는다.
 
-다음 카드로 넘어가기 전 [실행 지시문](../plan/07-codex-execution-playbook.md)을 적용한다. 원격 main과 로컬 변경, CORE-05 검증 상태를 먼저 확인한다. 운영 DB가 있는지 알 수 없으므로 새 격리된 개발 DB 외에는 연결하지 않는다.
+다음 카드로 넘어가기 전 [실행 지시문](../plan/07-codex-execution-playbook.md)을 적용한다. 원격 main과 로컬 변경, CORE-06 검증 상태를 먼저 확인한다. 운영 DB가 있는지 알 수 없으므로 새 격리된 개발 DB 외에는 연결하지 않는다.
 
 ## 과거 검토 기록
 

@@ -110,7 +110,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-06 · 파일 Replay·실행 이력·수동 피드백
 
-**구간:** P1 · **상태:** IMPLEMENTED · **선행:** CORE-05
+**구간:** P1 · **상태:** VERIFIED · **선행:** CORE-05
 
 **구현 범위:** replay/inspect/compare CLI와 불변 run directory를 구현한다. 저장 feature로 decision replay하고 입력·설정·engine hash와 결과를 남긴다. 노출/직접 선택/관련성 거절/primary 변경을 구분한다.
 
