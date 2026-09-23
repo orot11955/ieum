@@ -396,7 +396,7 @@
         "BE-05",
         "CORE-01"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "기록 생성/조회/수정/보관과 불변 raw revision을 구현한다. 기본 unit 생성과 사용자의 span 기반 수동 분할을 제공한다. 출처 metadata와 sourceKey 중복 수집을 처리한다.",
       "contract": "모듈: captures/sources. POST/GET captures, POST revisions, POST units/split. capture_revision과 unit_revision의 workspace+revision FK; 현재 pointer만 갱신하고 과거 revision은 유지.",
       "tests": "원문 수정 후 과거 unit/출처 참조 유지, 동시 편집 409, 같은 텍스트의 다른 입력 보존, sourceKey 중복 요청, 비공개 원문 로그 없음.",

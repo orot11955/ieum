@@ -119,7 +119,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-07 · Capture·원본 revision·ThoughtUnit
 
-**구간:** P3 · **상태:** IMPLEMENTED · **선행:** BE-05, CORE-01
+**구간:** P3 · **상태:** VERIFIED · **선행:** BE-05, CORE-01
 
 **구현 범위:** 기록 생성/조회/수정/보관과 불변 raw revision을 구현한다. 기본 unit 생성과 사용자의 span 기반 수동 분할을 제공한다. 출처 metadata와 sourceKey 중복 수집을 처리한다.
 
