@@ -23,7 +23,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-01 · NestJS + Fastify 통합과 composition root
 
-**구간:** P0 · **상태:** IMPLEMENTED · **선행:** BASE-02
+**구간:** P0 · **상태:** VERIFIED · **선행:** BASE-02
 
 **구현 범위:** Nest의 module/provider/guard/filter와 FastifyAdapter를 최소 endpoint로 시험한다. packages/backend에 공유 use case를 두고 API/worker bootstrap에서 조립하는 경계를 만든다. tsconfig/decorator/ESM/build 호환성을 확인한다.
 
