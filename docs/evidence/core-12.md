@@ -1,7 +1,8 @@
 # CORE-12 · 맥락의 구조 진단
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료, 원격 Linux CI 대기; 사용자 ACCEPTED 전.
+- 상태: **VERIFIED**. 로컬 검증과 수정 후 원격 Linux CI 성공; 사용자 ACCEPTED 전.
 - 선행: CORE-09 VERIFIED. 작업 기준 main `9e053d3`.
+- 기능 커밋: `f1f017e`, 형식 수정 `b20ee53`; [GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35866928416) `completed success` (Linux).
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 실제 사용자 기록·실제 embedding/provider는 사용하지 않았다.
 
 ## 구현·계약
