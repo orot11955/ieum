@@ -16,6 +16,10 @@
       "types": "./dist/knowledge.d.ts",
       "default": "./dist/knowledge.js"
     },
+    "./tasks": {
+      "types": "./dist/tasks.d.ts",
+      "default": "./dist/tasks.js"
+    },
     "./delivery": {
       "types": "./dist/delivery.d.ts",
       "default": "./dist/delivery.js"

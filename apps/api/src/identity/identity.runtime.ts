@@ -3,6 +3,7 @@ import type { AuthPort } from "@ieum/backend/identity";
 import type { PreferenceCommands } from "@ieum/backend/preferences";
 import type { CaptureService } from "@ieum/backend/captures";
 import type { KnowledgeService } from "@ieum/backend/knowledge";
+import type { TaskService } from "@ieum/backend/tasks";
 import type { createAccountAdministration } from "../auth/registration.js";
 
 export interface IdentityRuntime {
@@ -10,6 +11,7 @@ export interface IdentityRuntime {
   preferences: PreferenceCommands;
   captures: CaptureService;
   knowledge: KnowledgeService;
+  tasks: TaskService;
   authPort: AuthPort;
   sessions: ReturnType<typeof createAccountAdministration>["sessions"];
   origin: string;

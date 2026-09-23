@@ -2,6 +2,7 @@ import * as z from "zod";
 import type { CoreCaptureSnapshot, Utf16Span } from "@ieum/core";
 import { identityOpenApiPaths } from "./identity.js";
 import { knowledgeOpenApiPaths } from "./knowledge.js";
+import { taskOpenApiPaths } from "./tasks.js";
 
 export const createCapturePath = "/api/v1/workspaces/{wid}/captures" as const;
 export const capturePath = "/api/v1/workspaces/{wid}/captures/{id}" as const;
@@ -182,6 +183,7 @@ export const managementOpenApi = {
   paths: {
     ...identityOpenApiPaths,
     ...knowledgeOpenApiPaths,
+    ...taskOpenApiPaths,
     [createCapturePath]: {
       post: {
         operationId: "createCapture",

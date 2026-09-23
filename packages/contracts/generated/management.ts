@@ -271,6 +271,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listTasks"];
+        put?: never;
+        post: operations["createTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTask"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/tasks/{id}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["editTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/tasks/{id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["transitionTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/tasks/{id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["addTaskResult"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -1093,6 +1173,365 @@ export interface operations {
                         id: string;
                         /** @enum {boolean} */
                         ended: true;
+                    };
+                };
+            };
+        };
+    };
+    listTasks: {
+        parameters: {
+            query?: {
+                state?: string;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped tasks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        tasks: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            description: string;
+                            /** @enum {string} */
+                            state: "TODO" | "IN_PROGRESS" | "ON_HOLD" | "DONE" | "CANCELED";
+                            version: number;
+                            due: {
+                                /** @enum {string} */
+                                kind: "NONE";
+                            } | {
+                                /** @enum {string} */
+                                kind: "DATE";
+                                /** Format: date */
+                                date: string;
+                            } | {
+                                /** @enum {string} */
+                                kind: "INSTANT";
+                                /** Format: date-time */
+                                at: string;
+                                timeZone: string;
+                            };
+                            /** Format: uuid */
+                            contextId: string | null;
+                            origin: {
+                                /** @enum {string} */
+                                kind: "EXPLICIT";
+                                /** Format: uuid */
+                                unitId: string | null;
+                                unitRevision: number | null;
+                            };
+                            /** Format: date-time */
+                            completedAt: string | null;
+                            completionVersion: number | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+        };
+    };
+    createTask: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    description?: string;
+                    due?: {
+                        /** @enum {string} */
+                        kind: "NONE";
+                    } | {
+                        /** @enum {string} */
+                        kind: "DATE";
+                        /** Format: date */
+                        date: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "INSTANT";
+                        /** Format: date-time */
+                        at: string;
+                        timeZone: string;
+                    };
+                    /** Format: uuid */
+                    contextId?: string | null;
+                    origin?: {
+                        /** Format: uuid */
+                        unitId: string;
+                        revision: number;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Task created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        state: "TODO" | "IN_PROGRESS" | "ON_HOLD" | "DONE" | "CANCELED";
+                    };
+                };
+            };
+        };
+    };
+    getTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Task detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        description: string;
+                        /** @enum {string} */
+                        state: "TODO" | "IN_PROGRESS" | "ON_HOLD" | "DONE" | "CANCELED";
+                        version: number;
+                        due: {
+                            /** @enum {string} */
+                            kind: "NONE";
+                        } | {
+                            /** @enum {string} */
+                            kind: "DATE";
+                            /** Format: date */
+                            date: string;
+                        } | {
+                            /** @enum {string} */
+                            kind: "INSTANT";
+                            /** Format: date-time */
+                            at: string;
+                            timeZone: string;
+                        };
+                        /** Format: uuid */
+                        contextId: string | null;
+                        origin: {
+                            /** @enum {string} */
+                            kind: "EXPLICIT";
+                            /** Format: uuid */
+                            unitId: string | null;
+                            unitRevision: number | null;
+                        };
+                        /** Format: date-time */
+                        completedAt: string | null;
+                        completionVersion: number | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: uuid */
+                        workspaceId: string;
+                        history: {
+                            version: number;
+                            /** @enum {string} */
+                            fromState: "TODO" | "IN_PROGRESS" | "ON_HOLD" | "DONE" | "CANCELED";
+                            /** @enum {string} */
+                            toState: "TODO" | "IN_PROGRESS" | "ON_HOLD" | "DONE" | "CANCELED";
+                            /** Format: date-time */
+                            recordedAt: string;
+                        }[];
+                        results: {
+                            /** Format: uuid */
+                            id: string;
+                            completionVersion: number;
+                            /** Format: uuid */
+                            captureId: string;
+                            /** Format: date-time */
+                            recordedAt: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    editTask: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                    title?: string;
+                    description?: string;
+                    due?: {
+                        /** @enum {string} */
+                        kind: "NONE";
+                    } | {
+                        /** @enum {string} */
+                        kind: "DATE";
+                        /** Format: date */
+                        date: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "INSTANT";
+                        /** Format: date-time */
+                        at: string;
+                        timeZone: string;
+                    };
+                    /** Format: uuid */
+                    contextId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Task edited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        state: "TODO" | "IN_PROGRESS" | "ON_HOLD" | "DONE" | "CANCELED";
+                    };
+                };
+            };
+        };
+    };
+    transitionTask: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                    /** @enum {string} */
+                    targetState: "TODO" | "IN_PROGRESS" | "ON_HOLD" | "DONE" | "CANCELED";
+                };
+            };
+        };
+        responses: {
+            /** @description Task state changed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        state: "TODO" | "IN_PROGRESS" | "ON_HOLD" | "DONE" | "CANCELED";
+                        completionVersion: number | null;
+                    };
+                };
+            };
+        };
+    };
+    addTaskResult: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                    title: string;
+                    rawBody: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Task result recorded as Capture */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        taskId: string;
+                        completionVersion: number;
+                        /** Format: uuid */
+                        captureId: string;
+                        /** Format: uuid */
+                        unitId: string;
                     };
                 };
             };

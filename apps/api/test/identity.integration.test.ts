@@ -9,6 +9,7 @@ import { CommandCoordinator } from "@ieum/backend/command-coordinator";
 import { PreferenceCommands } from "@ieum/backend/preferences";
 import { CaptureService } from "@ieum/backend/captures";
 import { KnowledgeService } from "@ieum/backend/knowledge";
+import { TaskService } from "@ieum/backend/tasks";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -137,6 +138,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         preferences: new PreferenceCommands(commands),
         captures: new CaptureService(identity, commands),
         knowledge: new KnowledgeService(identity, commands),
+        tasks: new TaskService(identity, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -550,6 +552,67 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(relationEnded.statusCode).toBe(201);
     expect(relationEnded.json()).toMatchObject({ id: relationId, ended: true });
+    const taskUrl = `/api/v1/workspaces/${operator.workspaceId}/tasks`;
+    const taskCreated = await app.inject({
+      method: "POST",
+      url: taskUrl,
+      headers: { ...captureHeaders, "idempotency-key": "be09-http-task-0001" },
+      payload: {
+        title: "실행",
+        due: { kind: "DATE", date: "2028-02-29" },
+        contextId,
+      },
+    });
+    expect(taskCreated.statusCode).toBe(201);
+    const taskId = taskCreated.json<{ id: string }>().id;
+    const taskRead = await app.inject({
+      method: "GET",
+      url: `${taskUrl}/${taskId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(taskRead.statusCode).toBe(200);
+    expect(taskRead.headers["cache-control"]).toBe("no-store");
+    expect(taskRead.json()).toMatchObject({
+      due: { kind: "DATE", date: "2028-02-29" },
+      state: "TODO",
+    });
+    const taskDone = await app.inject({
+      method: "POST",
+      url: `${taskUrl}/${taskId}/transition`,
+      headers: { ...captureHeaders, "idempotency-key": "be09-http-done-0001" },
+      payload: { baseVersion: 1, targetState: "DONE" },
+    });
+    expect(taskDone.statusCode).toBe(201);
+    expect(taskDone.json()).toMatchObject({
+      state: "DONE",
+      version: 2,
+      completionVersion: 2,
+    });
+    const resultCreated = await app.inject({
+      method: "POST",
+      url: `${taskUrl}/${taskId}/results`,
+      headers: { ...captureHeaders, "idempotency-key": "be09-http-result-001" },
+      payload: { baseVersion: 2, title: "실행 결과", rawBody: "새 경험" },
+    });
+    expect(resultCreated.statusCode).toBe(201);
+    const resultCaptureId = resultCreated.json<{ captureId: string }>()
+      .captureId;
+    const resultCapture = await app.inject({
+      method: "GET",
+      url: `${captureUrl}/${resultCaptureId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(resultCapture.statusCode).toBe(200);
+    expect(resultCapture.json()).toMatchObject({ rawBody: "새 경험" });
+    const taskCrossWorkspace = await app.inject({
+      method: "GET",
+      url: `${taskUrl}/${taskId}`.replace(
+        operator.workspaceId,
+        invitedWorkspaceId,
+      ),
+      headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+    });
+    expect(taskCrossWorkspace.statusCode).toBe(404);
     const badOrigin = await app.inject({
       method: "POST",
       url: contextUrl,
