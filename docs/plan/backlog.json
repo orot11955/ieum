@@ -411,7 +411,7 @@
       "dependencies": [
         "BE-07"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "name/purpose/scope/kind/state를 가진 context와 unit membership을 구현한다. secondary 여러 개, active primary 최대 1개, approved relation type/direction을 관리한다. rename/archive/supersede를 구분한다.",
       "contract": "모듈: knowledge. context/membership/relation command와 scoped read model. primary 이동은 하나의 transaction; 다른 모듈 테이블을 직접 수정하는 범용 service는 금지.",
       "tests": "동시 primary 변경, 같은 pair 중복, cross-workspace 연결, parent cycle, 반박을 비관련으로 처리하는 오류, 보관 맥락 재검색.",

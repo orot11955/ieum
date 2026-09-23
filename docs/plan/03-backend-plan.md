@@ -135,7 +135,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-08 · Context·다중 소속·관계·대표 맥락
 
-**구간:** P3 · **상태:** PLANNED · **선행:** BE-07
+**구간:** P3 · **상태:** IMPLEMENTED · **선행:** BE-07
 
 **구현 범위:** name/purpose/scope/kind/state를 가진 context와 unit membership을 구현한다. secondary 여러 개, active primary 최대 1개, approved relation type/direction을 관리한다. rename/archive/supersede를 구분한다.
 

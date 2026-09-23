@@ -30,7 +30,7 @@
 | BE-05 | P2 | VERIFIED | 업무 명령·멱등성·충돌·감사 | BE-04, BASE-03 |
 | BE-06 | P4 | PLANNED | pg-boss worker·transactional outbox | BE-05 |
 | BE-07 | P3 | VERIFIED | Capture·원본 revision·ThoughtUnit | BE-05, CORE-01 |
-| BE-08 | P3 | PLANNED | Context·다중 소속·관계·대표 맥락 | BE-07 |
+| BE-08 | P3 | IMPLEMENTED | Context·다중 소속·관계·대표 맥락 | BE-07 |
 | BE-09 | P3 | PLANNED | 할일·상태 전이·결과 기록 | BE-07, BE-08 |
 | BE-10 | P3 | PLANNED | 일정·시간대·종일·변경·취소 | BE-05, BE-07 |
 | BE-11 | P3 | PLANNED | 위키·문서 공통 draft/revision 엔진 | BE-05, FE-02 |
