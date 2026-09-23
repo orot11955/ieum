@@ -236,6 +236,12 @@ describe("structure change option previews", () => {
       identityRevision: 4,
       membershipRevision: 5,
     });
+    expect(option(attached, "KEEP").signature).toBe(
+      option(request, "KEEP").signature,
+    );
+    expect(option(attached, "MERGE").baseRevisions).toEqual(
+      option(request, "MERGE").baseRevisions,
+    );
   });
   it("keeps old context identities in merge and blocks different-purpose or parent-child merges", () => {
     const merge = option(request, "MERGE");

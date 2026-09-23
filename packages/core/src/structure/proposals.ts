@@ -280,13 +280,7 @@ export function compareStructureOptions(
         (item) => item.contextId === newParent.attachUnderId,
       )
     : null;
-  const baseContexts = [source, ...(peer ? [peer] : [])];
-  if (
-    attachedParent &&
-    !baseContexts.some((item) => item.contextId === attachedParent.contextId)
-  )
-    baseContexts.push(attachedParent);
-  const bases = baseContexts.map((item) => ({
+  const bases = [source, ...(peer ? [peer] : [])].map((item) => ({
     contextId: item.contextId,
     identityRevision: item.identityRevision,
     membershipRevision: item.membershipRevision,
@@ -372,6 +366,19 @@ export function compareStructureOptions(
   ];
   return kinds.map((kind): StructureOption => {
     const reasons = reasonsFor(kind);
+    const optionBases =
+      kind === "CREATE_PARENT" &&
+      attachedParent &&
+      !bases.some((item) => item.contextId === attachedParent.contextId)
+        ? [
+            ...bases,
+            {
+              contextId: attachedParent.contextId,
+              identityRevision: attachedParent.identityRevision,
+              membershipRevision: attachedParent.membershipRevision,
+            },
+          ]
+        : bases;
     let mappings = [...baseMappings];
     let createdContexts: StructureOption["createdContexts"] = [];
     let addedLinks: StructureOption["addedLinks"] = [];
@@ -471,7 +478,13 @@ export function compareStructureOptions(
         requiresReview: true,
       }));
     const signature = hashText(
-      JSON.stringify([kind, bases, createdContexts, mappings, addedLinks]),
+      JSON.stringify([
+        kind,
+        optionBases,
+        createdContexts,
+        mappings,
+        addedLinks,
+      ]),
     );
     if (!/^[a-f0-9]{64}$/.test(signature))
       throw new RangeError("structure signature must be SHA-256 hex");
@@ -485,7 +498,7 @@ export function compareStructureOptions(
           ? "blocked"
           : "reviewable",
       reasons: [...reasons, ...(suppressed ? ["PREVIOUSLY_REJECTED"] : [])],
-      baseRevisions: bases,
+      baseRevisions: optionBases,
       createdContexts,
       membershipMappings: mappings,
       addedLinks,
@@ -495,7 +508,7 @@ export function compareStructureOptions(
         restoreMemberships: mappings,
         removeCreatedContextIds: createdContexts.map((item) => item.contextId),
         removeAddedLinks: addedLinks,
-        preservedContextIds: bases.map((item) => item.contextId),
+        preservedContextIds: optionBases.map((item) => item.contextId),
       },
       requiresExplicitCommand: true,
     };
