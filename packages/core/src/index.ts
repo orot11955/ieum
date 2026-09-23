@@ -97,6 +97,17 @@ export type {
   TuningRow,
   ValidationRatio,
 } from "./policy/suggestion.js";
+export {
+  STRUCTURE_DIAGNOSTIC_CONFIG,
+  diagnoseContextStructure,
+} from "./structure/diagnostics.js";
+export type {
+  StructureDiagnostic,
+  StructureDiagnosticConfig,
+  StructureDiagnosticInput,
+  StructureMemberSignal,
+  StructureSource,
+} from "./structure/diagnostics.js";
 export type {
   PolicyConfig,
   PolicyDecision,

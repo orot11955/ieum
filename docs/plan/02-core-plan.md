@@ -206,7 +206,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-12 · 맥락의 구조 진단
 
-**구간:** P5 · **상태:** PLANNED · **선행:** CORE-09
+**구간:** P5 · **상태:** IMPLEMENTED · **선행:** CORE-09
 
 **구현 범위:** 변경된 dirty context의 승인 member snapshot만 분석한다. 작은 범위의 pairwise 유사도/그래프, origin 다양성, 목적 차이, bridge/outlier를 진단한다. 반복 run을 새로운 근거로 세지 않는다.
 

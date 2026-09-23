@@ -223,7 +223,7 @@
       "dependencies": [
         "CORE-09"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "변경된 dirty context의 승인 member snapshot만 분석한다. 작은 범위의 pairwise 유사도/그래프, origin 다양성, 목적 차이, bridge/outlier를 진단한다. 반복 run을 새로운 근거로 세지 않는다.",
       "contract": "위치: core/structure/diagnostics. 입력 규모 예산과 deterministic seed/config를 둔다. count 또는 centroid 하나만으로 분리·병합을 결정하지 않는다.",
       "tests": "같은 단어지만 다른 목적, 반론과 본론, 원문 하나에서 분리한 여러 unit, 작은 샘플, hub, 같은 snapshot 3회 실행.",
