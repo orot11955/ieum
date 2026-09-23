@@ -100,8 +100,8 @@ jobs:
         run: npm install --global pnpm@11.24.0
       - name: Install locked workspace dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build backend use cases
-        run: pnpm --filter @ieum/backend build
+      - name: Build API runtime workspace prerequisites
+        run: pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build
       - name: Apply auth migration to isolated PostgreSQL
         run: pnpm --filter @ieum/api exec drizzle-kit migrate --config drizzle.config.ts
       - name: Verify native auth adapter against PostgreSQL
@@ -125,8 +125,8 @@ jobs:
         run: npm install --global pnpm@11.24.0
       - name: Install locked workspace dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build backend application boundary
-        run: pnpm --filter @ieum/backend build
+      - name: Build API runtime workspace prerequisites
+        run: pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build
       - name: Verify workspace migrations and RLS on PostgreSQL
         run: pnpm --filter @ieum/backend test:db
       - name: Verify identity HTTP with separate database roles
