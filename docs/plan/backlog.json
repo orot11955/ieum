@@ -130,7 +130,7 @@
       "dependencies": [
         "CORE-05"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "replay/inspect/compare CLI와 불변 run directory를 구현한다. 저장 feature로 decision replay하고 입력·설정·engine hash와 결과를 남긴다. 노출/직접 선택/관련성 거절/primary 변경을 구분한다.",
       "contract": "위치: apps/lab-cli, artifacts 출력. manifest.json, judgements.jsonl, failures.jsonl, metrics.json, report.md. 원본 fixture를 수정하지 않으며 private artifacts는 저장소 밖이 기본이다.",
       "tests": "같은 feature 반복 replay 결과 일치, 중단 후 임시 파일 처리, 중복 command ID, 미응답을 음성으로 취급하지 않음, 모델 재실행과 replay 구분.",
