@@ -43,6 +43,13 @@
       "when": 1790187312380,
       "tag": "0005_ambiguous_felicia_hardy",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790188545256,
+      "tag": "0006_light_wong",
+      "breakpoints": true
     }
   ]
 }

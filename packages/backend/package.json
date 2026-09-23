@@ -28,6 +28,14 @@
       "types": "./dist/tasks.d.ts",
       "default": "./dist/tasks.js"
     },
+    "./calendar": {
+      "types": "./dist/calendar.d.ts",
+      "default": "./dist/calendar.js"
+    },
+    "./calendar-time": {
+      "types": "./dist/calendar-time.d.ts",
+      "default": "./dist/calendar-time.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"

@@ -724,6 +724,72 @@ export const task = business.table(
   ],
 );
 
+export const calendarEvent = business.table(
+  "calendar_event",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    createdById: text("created_by_id").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    state: text("state").notNull().default("CONFIRMED"),
+    version: integer("version").notNull().default(1),
+    scheduleKind: text("schedule_kind").notNull(),
+    timeZone: text("time_zone").notNull(),
+    startAt: timestamp("start_at", { withTimezone: true }),
+    endAt: timestamp("end_at", { withTimezone: true }),
+    startLocal: text("start_local"),
+    endLocal: text("end_local"),
+    startOffsetMinutes: integer("start_offset_minutes"),
+    endOffsetMinutes: integer("end_offset_minutes"),
+    startDate: date("start_date", { mode: "string" }),
+    endDateExclusive: date("end_date_exclusive", { mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("calendar_event_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    index("calendar_event_timed_period_idx").on(
+      table.workspaceId,
+      table.startAt,
+      table.endAt,
+    ),
+    index("calendar_event_all_day_period_idx").on(
+      table.workspaceId,
+      table.startDate,
+      table.endDateExclusive,
+    ),
+    check(
+      "calendar_event_title_nonempty",
+      sql`length(trim(${table.title})) BETWEEN 1 AND 300`,
+    ),
+    check(
+      "calendar_event_description_length",
+      sql`length(${table.description}) <= 10000`,
+    ),
+    check(
+      "calendar_event_state_check",
+      sql`${table.state} IN ('CONFIRMED','CANCELED')`,
+    ),
+    check("calendar_event_version_positive", sql`${table.version} > 0`),
+    check(
+      "calendar_event_time_zone_length",
+      sql`length(${table.timeZone}) BETWEEN 1 AND 100`,
+    ),
+    check(
+      "calendar_event_schedule_check",
+      sql`(${table.scheduleKind}='TIMED' AND ${table.startAt} IS NOT NULL AND ${table.endAt} IS NOT NULL AND ${table.startAt}<${table.endAt} AND ${table.startLocal} IS NOT NULL AND ${table.endLocal} IS NOT NULL AND ${table.startOffsetMinutes} IS NOT NULL AND ${table.endOffsetMinutes} IS NOT NULL AND ${table.startDate} IS NULL AND ${table.endDateExclusive} IS NULL) OR (${table.scheduleKind}='ALL_DAY' AND ${table.startDate} IS NOT NULL AND ${table.endDateExclusive} IS NOT NULL AND ${table.startDate}<${table.endDateExclusive} AND ${table.startAt} IS NULL AND ${table.endAt} IS NULL AND ${table.startLocal} IS NULL AND ${table.endLocal} IS NULL AND ${table.startOffsetMinutes} IS NULL AND ${table.endOffsetMinutes} IS NULL)`,
+    ),
+  ],
+);
+
 export const taskTransition = business.table(
   "task_transition",
   {
