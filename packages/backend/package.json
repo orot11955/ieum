@@ -20,6 +20,10 @@
       "types": "./dist/captures.d.ts",
       "default": "./dist/captures.js"
     },
+    "./knowledge": {
+      "types": "./dist/knowledge.d.ts",
+      "default": "./dist/knowledge.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"

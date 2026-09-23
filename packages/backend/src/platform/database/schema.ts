@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   foreignKey,
+  index,
   integer,
   jsonb,
   pgSchema,
@@ -302,6 +303,7 @@ export const thoughtUnit = business.table(
     originKey: text("origin_key").notNull(),
     state: text("state").notNull().default("ACTIVE"),
     currentRevision: integer("current_revision").notNull().default(1),
+    membershipVersion: integer("membership_version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -329,6 +331,10 @@ export const thoughtUnit = business.table(
       sql`${table.state} IN ('ACTIVE', 'SUPERSEDED')`,
     ),
     check("thought_unit_revision_positive", sql`${table.currentRevision} > 0`),
+    check(
+      "thought_unit_membership_version_positive",
+      sql`${table.membershipVersion} > 0`,
+    ),
   ],
 );
 
@@ -385,6 +391,253 @@ export const thoughtUnitRevision = business.table(
     check(
       "thought_unit_content_kind_check",
       sql`${table.contentKind} IN ('quote', 'paraphrase')`,
+    ),
+  ],
+);
+
+export const knowledgeContext = business.table(
+  "context",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    name: text("name").notNull(),
+    purpose: text("purpose").notNull(),
+    scope: text("scope").notNull(),
+    kind: text("kind").notNull(),
+    state: text("state").notNull().default("ACTIVE"),
+    supersededById: uuid("superseded_by_id"),
+    identityRevision: integer("identity_revision").notNull().default(1),
+    membershipRevision: integer("membership_revision").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("context_workspace_id_unique").on(table.workspaceId, table.id),
+    check(
+      "context_name_nonempty",
+      sql`length(trim(${table.name})) BETWEEN 1 AND 200`,
+    ),
+    check(
+      "context_purpose_nonempty",
+      sql`length(trim(${table.purpose})) BETWEEN 1 AND 2000`,
+    ),
+    check(
+      "context_scope_nonempty",
+      sql`length(trim(${table.scope})) BETWEEN 1 AND 2000`,
+    ),
+    check(
+      "context_kind_check",
+      sql`${table.kind} IN ('TOPIC', 'FLOW', 'PROJECT', 'COLLECTION')`,
+    ),
+    check(
+      "context_state_check",
+      sql`${table.state} IN ('ACTIVE', 'ARCHIVED', 'SUPERSEDED')`,
+    ),
+    check(
+      "context_versions_positive",
+      sql`${table.identityRevision} > 0 AND ${table.membershipRevision} > 0`,
+    ),
+    check(
+      "context_superseded_target_check",
+      sql`(${table.state} = 'SUPERSEDED') = (${table.supersededById} IS NOT NULL)`,
+    ),
+    check(
+      "context_not_self_superseded",
+      sql`${table.supersededById} IS NULL OR ${table.id} <> ${table.supersededById}`,
+    ),
+  ],
+);
+
+export const contextIdentityRevision = business.table(
+  "context_identity_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    contextId: uuid("context_id").notNull(),
+    revision: integer("revision").notNull(),
+    name: text("name").notNull(),
+    purpose: text("purpose").notNull(),
+    scope: text("scope").notNull(),
+    kind: text("kind").notNull(),
+    state: text("state").notNull(),
+    supersededById: uuid("superseded_by_id"),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "context_identity_revision_pk",
+      columns: [table.workspaceId, table.contextId, table.revision],
+    }),
+    foreignKey({
+      name: "context_identity_revision_context_fk",
+      columns: [table.workspaceId, table.contextId],
+      foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
+    }),
+    check("context_identity_revision_positive", sql`${table.revision} > 0`),
+  ],
+);
+
+export const contextMembership = business.table(
+  "context_membership",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    unitId: uuid("unit_id").notNull(),
+    unitRevision: integer("unit_revision").notNull(),
+    contextId: uuid("context_id").notNull(),
+    role: text("role").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    endedReason: text("ended_reason"),
+  },
+  (table) => [
+    foreignKey({
+      name: "context_membership_unit_fk",
+      columns: [table.workspaceId, table.unitId],
+      foreignColumns: [thoughtUnit.workspaceId, thoughtUnit.id],
+    }),
+    foreignKey({
+      name: "context_membership_unit_revision_fk",
+      columns: [table.workspaceId, table.unitId, table.unitRevision],
+      foreignColumns: [
+        thoughtUnitRevision.workspaceId,
+        thoughtUnitRevision.unitId,
+        thoughtUnitRevision.revision,
+      ],
+    }),
+    foreignKey({
+      name: "context_membership_context_fk",
+      columns: [table.workspaceId, table.contextId],
+      foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
+    }),
+    uniqueIndex("context_membership_active_pair_unique")
+      .on(table.workspaceId, table.unitId, table.contextId)
+      .where(sql`${table.endedAt} IS NULL`),
+    uniqueIndex("context_membership_active_primary_unique")
+      .on(table.workspaceId, table.unitId)
+      .where(sql`${table.endedAt} IS NULL AND ${table.role} = 'PRIMARY'`),
+    index("context_membership_context_active_idx").on(
+      table.workspaceId,
+      table.contextId,
+      table.endedAt,
+    ),
+    check(
+      "context_membership_role_check",
+      sql`${table.role} IN ('PRIMARY', 'SECONDARY', 'BACKGROUND')`,
+    ),
+    check(
+      "context_membership_end_check",
+      sql`(${table.endedAt} IS NULL) = (${table.endedReason} IS NULL)`,
+    ),
+  ],
+);
+
+export const contextRelation = business.table(
+  "context_relation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    fromContextId: uuid("from_context_id").notNull(),
+    toContextId: uuid("to_context_id").notNull(),
+    type: text("type").notNull(),
+    approvedById: text("approved_by_id").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "context_relation_from_fk",
+      columns: [table.workspaceId, table.fromContextId],
+      foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
+    }),
+    foreignKey({
+      name: "context_relation_to_fk",
+      columns: [table.workspaceId, table.toContextId],
+      foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
+    }),
+    uniqueIndex("context_relation_active_unique")
+      .on(table.workspaceId, table.fromContextId, table.toContextId, table.type)
+      .where(sql`${table.endedAt} IS NULL`),
+    check(
+      "context_relation_type_check",
+      sql`${table.type} IN ('PARENT_OF', 'RELATED_TO')`,
+    ),
+    check(
+      "context_relation_not_self",
+      sql`${table.fromContextId} <> ${table.toContextId}`,
+    ),
+    check(
+      "context_relation_symmetric_order",
+      sql`${table.type} <> 'RELATED_TO' OR ${table.fromContextId} < ${table.toContextId}`,
+    ),
+  ],
+);
+
+export const thoughtRelation = business.table(
+  "thought_relation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    fromUnitId: uuid("from_unit_id").notNull(),
+    fromRevision: integer("from_revision").notNull(),
+    toUnitId: uuid("to_unit_id").notNull(),
+    toRevision: integer("to_revision").notNull(),
+    type: text("type").notNull(),
+    approvedById: text("approved_by_id").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "thought_relation_from_fk",
+      columns: [table.workspaceId, table.fromUnitId, table.fromRevision],
+      foreignColumns: [
+        thoughtUnitRevision.workspaceId,
+        thoughtUnitRevision.unitId,
+        thoughtUnitRevision.revision,
+      ],
+    }),
+    foreignKey({
+      name: "thought_relation_to_fk",
+      columns: [table.workspaceId, table.toUnitId, table.toRevision],
+      foreignColumns: [
+        thoughtUnitRevision.workspaceId,
+        thoughtUnitRevision.unitId,
+        thoughtUnitRevision.revision,
+      ],
+    }),
+    uniqueIndex("thought_relation_active_unique")
+      .on(
+        table.workspaceId,
+        table.fromUnitId,
+        table.fromRevision,
+        table.toUnitId,
+        table.toRevision,
+        table.type,
+      )
+      .where(sql`${table.endedAt} IS NULL`),
+    check(
+      "thought_relation_type_check",
+      sql`${table.type} IN ('SUPPORTS', 'CONTRADICTS', 'REFINES', 'RESULT_OF', 'RELATED_TO')`,
+    ),
+    check(
+      "thought_relation_not_self",
+      sql`${table.fromUnitId} <> ${table.toUnitId} OR ${table.fromRevision} <> ${table.toRevision}`,
+    ),
+    check(
+      "thought_relation_symmetric_order",
+      sql`${table.type} NOT IN ('CONTRADICTS', 'RELATED_TO') OR (${table.fromUnitId}, ${table.fromRevision}) < (${table.toUnitId}, ${table.toRevision})`,
     ),
   ],
 );
