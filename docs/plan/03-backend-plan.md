@@ -249,11 +249,11 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 **구간:** P5 · **상태:** PLANNED · **선행:** BE-13, BE-08, CORE-13
 
-**구현 범위:** 분리·병합·parent/link 변경 preview와 승인 transaction을 구현한다. 영향을 받는 entity를 안정된 순서로 잠그고 전체 baseRevisions를 검사한다. 기존 context는 superseded로 남긴다.
+**구현 범위:** 분리·병합·parent/link 변경 preview와 승인 transaction을 구현한다. 영향을 받는 entity를 안정된 순서로 잠그고 전체 baseRevisions를 검사한다. 기존 context는 superseded로 남긴다. 원본에 소속이 남는 분리는 ACTIVE를 유지하고, 완전 분리·병합은 원본을 SUPERSEDED로 보존한다. 복수 후속 Context는 별도 이력으로 남긴다.
 
-**입출력·데이터·코드 계약:** 모듈: knowledge/structure. MutationLog before/after mapping, profile invalidation 및 job 등록을 원자적으로 기록한다. Undo는 영향 범위의 inverse command이며 전체 DB restore가 아니다.
+**입출력·데이터·코드 계약:** 모듈: knowledge/structure. MutationLog before/after mapping, profile invalidation 및 job 등록을 원자적으로 기록한다. Undo는 영향 범위의 inverse command이며 전체 DB restore가 아니다. Undo는 바뀐 소속·관계만 역적용하며 이후 생긴 기록을 보존한다. 후속 변경이 있으면 새 inverse preview를 요구한다.
 
-**필수 반례·검증:** 중간 실패 rollback, stale mapping, 두 구조 변경 경쟁, bridge 유지, 변경 후 새 기록 추가 뒤 Undo, 과거 문서 source 조회, primary unique.
+**필수 반례·검증:** 중간 실패 rollback, stale mapping, 두 구조 변경 경쟁, bridge 유지, 변경 후 새 기록 추가 뒤 Undo, 과거 문서 source 조회, primary unique. 잔여/완전 분리의 상태와 복수 후속 이력, 과거 identity revision 조회.
 
 **완료 기준:** 변경 전후와 되돌릴 수 없는 충돌이 드러나며 이후 생긴 기록을 삭제하지 않는 역변경이 작동한다.
 
