@@ -85,7 +85,7 @@
       "dependencies": [
         "CORE-02"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "검색용 NFKC·영문 정규화와 한국어 문자 2/3-gram, 영문 word/identifier tokenizer를 구현한다. fixed snapshot TF-IDF cosine을 계산한다. query를 IDF corpus에 넣지 않는다.",
       "contract": "위치: core/features/lexical. tokenizer/IDF/normalizer 버전과 고정 파라미터를 config에 둔다. 원문 span은 정규화 문자열 offset으로 대체하지 않는다.",
       "tests": "C++/C#, 버전·경로·CLI 옵션, 한영 혼용, 빈 벡터, 조사·띄어쓰기, 부정문, 동일 원본 중복의 IDF 영향 검사.",

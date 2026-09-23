@@ -62,7 +62,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-03 · 한국어·식별자 lexical 기준선
 
-**구간:** P1 · **상태:** PLANNED · **선행:** CORE-02
+**구간:** P1 · **상태:** IMPLEMENTED · **선행:** CORE-02
 
 **구현 범위:** 검색용 NFKC·영문 정규화와 한국어 문자 2/3-gram, 영문 word/identifier tokenizer를 구현한다. fixed snapshot TF-IDF cosine을 계산한다. query를 IDF corpus에 넣지 않는다.
 
