@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
@@ -9,6 +9,7 @@ import { CommandCoordinator } from "@ieum/backend/command-coordinator";
 import { PreferenceCommands } from "@ieum/backend/preferences";
 import { CaptureService } from "@ieum/backend/captures";
 import { KnowledgeService } from "@ieum/backend/knowledge";
+import { StructureService } from "@ieum/backend/knowledge/structure";
 import { TaskService } from "@ieum/backend/tasks";
 import { CalendarService } from "@ieum/backend/calendar";
 import { JudgementService } from "@ieum/backend/judgement/judgement-service";
@@ -144,6 +145,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         preferences: new PreferenceCommands(commands),
         captures: new CaptureService(identity, commands),
         knowledge: new KnowledgeService(identity, commands),
+        structure: new StructureService(identity, commands),
         tasks: new TaskService(identity, commands),
         calendar: new CalendarService(identity, commands),
         judgement: new JudgementService(appPool, commands),
@@ -758,6 +760,95 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(relationEnded.statusCode).toBe(201);
     expect(relationEnded.json()).toMatchObject({ id: relationId, ended: true });
+    const structureBase = `/api/v1/workspaces/${operator.workspaceId}/structures`;
+    const structurePreview = await app.inject({
+      method: "POST",
+      url: `${structureBase}/preview`,
+      headers: { ...captureHeaders, "idempotency-key": "be15-http-preview-01" },
+      payload: {
+        kind: "LINK",
+        sourceContextId: contextId,
+        addedLinks: [
+          {
+            fromContextId: contextId,
+            toContextId: secondContextId,
+            type: "PARENT_OF",
+          },
+        ],
+      },
+    });
+    expect(structurePreview.statusCode).toBe(201);
+    const structureProposal = structurePreview.json<{
+      proposalId: string;
+      preview: { signature: string };
+    }>();
+    const structureBadOrigin = await app.inject({
+      method: "POST",
+      url: `${structureBase}/preview`,
+      headers: {
+        ...captureHeaders,
+        origin: "http://other.example",
+        "idempotency-key": "be15-http-origin-01",
+      },
+      payload: {
+        kind: "LINK",
+        sourceContextId: contextId,
+        addedLinks: [
+          {
+            fromContextId: contextId,
+            toContextId: secondContextId,
+            type: "PARENT_OF",
+          },
+        ],
+      },
+    });
+    expect(structureBadOrigin.statusCode).toBe(403);
+    const foreignStructureSource = randomUUID();
+    const structureForeign = await app.inject({
+      method: "POST",
+      url: `${structureBase}/preview`,
+      headers: { ...captureHeaders, "idempotency-key": "be15-http-foreign-01" },
+      payload: {
+        kind: "LINK",
+        sourceContextId: foreignStructureSource,
+        addedLinks: [
+          {
+            fromContextId: foreignStructureSource,
+            toContextId: contextId,
+            type: "PARENT_OF",
+          },
+        ],
+      },
+    });
+    expect(structureForeign.statusCode).toBe(404);
+    const structureApplied = await app.inject({
+      method: "POST",
+      url: `${structureBase}/proposals/${structureProposal.proposalId}/accept`,
+      headers: { ...captureHeaders, "idempotency-key": "be15-http-accept-01" },
+      payload: { signature: structureProposal.preview.signature },
+    });
+    expect(structureApplied.statusCode, structureApplied.body).toBe(201);
+    const structureMutationId = structureApplied.json<{ mutationId: string }>()
+      .mutationId;
+    const structureInverse = await app.inject({
+      method: "GET",
+      url: `${structureBase}/mutations/${structureMutationId}/undo-preview`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(structureInverse.statusCode).toBe(200);
+    const structureUndone = await app.inject({
+      method: "POST",
+      url: `${structureBase}/mutations/${structureMutationId}/undo`,
+      headers: { ...captureHeaders, "idempotency-key": "be15-http-undo-01" },
+      payload: {
+        signature: structureInverse.json<{ signature: string }>().signature,
+      },
+    });
+    expect(structureUndone.statusCode).toBe(201);
+    expect(structureUndone.json()).toMatchObject({
+      mutationId: structureMutationId,
+      undone: true,
+    });
     const taskUrl = `/api/v1/workspaces/${operator.workspaceId}/tasks`;
     const taskCreated = await app.inject({
       method: "POST",

@@ -5,6 +5,7 @@ import { CommandCoordinator } from "@ieum/backend/command-coordinator";
 import { PreferenceCommands } from "@ieum/backend/preferences";
 import { CaptureService } from "@ieum/backend/captures";
 import { KnowledgeService } from "@ieum/backend/knowledge";
+import { StructureService } from "@ieum/backend/knowledge/structure";
 import { TaskService } from "@ieum/backend/tasks";
 import { CalendarService } from "@ieum/backend/calendar";
 import { JudgementService } from "@ieum/backend/judgement/judgement-service";
@@ -59,6 +60,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
         preferences: new PreferenceCommands(commands),
         captures: new CaptureService(service, commands),
         knowledge: new KnowledgeService(service, commands),
+        structure: new StructureService(service, commands),
         tasks: new TaskService(service, commands),
         calendar: new CalendarService(service, commands),
         judgement: new JudgementService(businessPool, commands),

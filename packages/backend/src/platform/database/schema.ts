@@ -624,7 +624,7 @@ export const knowledgeContext = business.table(
     ),
     check(
       "context_superseded_target_check",
-      sql`(${table.state} = 'SUPERSEDED') = (${table.supersededById} IS NOT NULL)`,
+      sql`${table.state} = 'SUPERSEDED' OR ${table.supersededById} IS NULL`,
     ),
     check(
       "context_not_self_superseded",
@@ -689,6 +689,124 @@ export const contextIdentityRevision = business.table(
       foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
     }),
     check("context_identity_revision_positive", sql`${table.revision} > 0`),
+  ],
+);
+
+export const structureProposal = business.table(
+  "structure_proposal",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    kind: text("kind").notNull(),
+    sourceContextId: uuid("source_context_id").notNull(),
+    preview: jsonb("preview").notNull(),
+    signature: text("signature").notNull(),
+    state: text("state").notNull().default("PENDING"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("structure_proposal_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    foreignKey({
+      name: "structure_proposal_source_fk",
+      columns: [table.workspaceId, table.sourceContextId],
+      foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
+    }),
+    check(
+      "structure_proposal_signature_hash",
+      sql`length(${table.signature})=64`,
+    ),
+    check(
+      "structure_proposal_kind_check",
+      sql`${table.kind} IN ('SPLIT','MERGE','LINK','CREATE_PARENT')`,
+    ),
+    check(
+      "structure_proposal_state_check",
+      sql`${table.state} IN ('PENDING','APPLIED','EXPIRED','SUPERSEDED')`,
+    ),
+  ],
+);
+
+export const structureMutation = business.table(
+  "structure_mutation",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    proposalId: uuid("proposal_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    kind: text("kind").notNull(),
+    before: jsonb("before").notNull(),
+    after: jsonb("after").notNull(),
+    state: text("state").notNull().default("APPLIED"),
+    appliedAt: timestamp("applied_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("structure_mutation_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    unique("structure_mutation_proposal_unique").on(
+      table.workspaceId,
+      table.proposalId,
+    ),
+    foreignKey({
+      name: "structure_mutation_proposal_fk",
+      columns: [table.workspaceId, table.proposalId],
+      foreignColumns: [structureProposal.workspaceId, structureProposal.id],
+    }),
+    check(
+      "structure_mutation_state_check",
+      sql`${table.state} IN ('APPLIED','UNDONE')`,
+    ),
+  ],
+);
+
+export const contextSuccessor = business.table(
+  "context_successor",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    sourceContextId: uuid("source_context_id").notNull(),
+    targetContextId: uuid("target_context_id").notNull(),
+    mutationId: uuid("mutation_id").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("context_successor_active_unique")
+      .on(table.workspaceId, table.sourceContextId, table.targetContextId)
+      .where(sql`${table.endedAt} IS NULL`),
+    foreignKey({
+      name: "context_successor_source_fk",
+      columns: [table.workspaceId, table.sourceContextId],
+      foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
+    }),
+    foreignKey({
+      name: "context_successor_target_fk",
+      columns: [table.workspaceId, table.targetContextId],
+      foreignColumns: [knowledgeContext.workspaceId, knowledgeContext.id],
+    }),
+    foreignKey({
+      name: "context_successor_mutation_fk",
+      columns: [table.workspaceId, table.mutationId],
+      foreignColumns: [structureMutation.workspaceId, structureMutation.id],
+    }),
+    check(
+      "context_successor_not_self",
+      sql`${table.sourceContextId}<>${table.targetContextId}`,
+    ),
   ],
 );
 

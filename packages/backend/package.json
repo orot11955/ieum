@@ -24,6 +24,10 @@
       "types": "./dist/knowledge.d.ts",
       "default": "./dist/knowledge.js"
     },
+    "./knowledge/structure": {
+      "types": "./dist/knowledge/structure.d.ts",
+      "default": "./dist/knowledge/structure.js"
+    },
     "./tasks": {
       "types": "./dist/tasks.d.ts",
       "default": "./dist/tasks.js"

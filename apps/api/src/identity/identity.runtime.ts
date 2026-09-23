@@ -3,6 +3,7 @@ import type { AuthPort } from "@ieum/backend/identity";
 import type { PreferenceCommands } from "@ieum/backend/preferences";
 import type { CaptureService } from "@ieum/backend/captures";
 import type { KnowledgeService } from "@ieum/backend/knowledge";
+import type { StructureService } from "@ieum/backend/knowledge/structure";
 import type { TaskService } from "@ieum/backend/tasks";
 import type { CalendarService } from "@ieum/backend/calendar";
 import type { JudgementService } from "@ieum/backend/judgement/judgement-service";
@@ -15,6 +16,7 @@ export interface IdentityRuntime {
   preferences: PreferenceCommands;
   captures: CaptureService;
   knowledge: KnowledgeService;
+  structure: StructureService;
   tasks: TaskService;
   calendar: CalendarService;
   judgement: JudgementService;

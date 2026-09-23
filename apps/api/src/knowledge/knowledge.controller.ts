@@ -27,6 +27,12 @@ import {
   EndRelationResponseSchema,
   MembershipCommandResponseSchema,
   SetMembershipsRequestSchema,
+  StructureAcceptResponseSchema,
+  StructurePreviewRequestSchema,
+  StructurePreviewResponseSchema,
+  StructureSignatureRequestSchema,
+  StructureUndoPreviewSchema,
+  StructureUndoResponseSchema,
   ThoughtRelationResponseSchema,
   UnitMembershipsSchema,
   UnitRelationsSchema,
@@ -79,6 +85,93 @@ export class KnowledgeController {
     )
       throw new UnauthorizedException();
     return session.userId;
+  }
+
+  @Post("structures/preview")
+  async previewStructure(
+    @Req() request: FastifyRequest,
+    @Param("wid") workspaceId: string,
+    @Headers("idempotency-key") key: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const actorId = await this.current(request, true);
+    const fields = parseBody(StructurePreviewRequestSchema, body);
+    const result = await this.runtime.structure.preview({
+      actorId,
+      workspaceId,
+      idempotencyKey: key ?? "",
+      ...fields,
+    });
+    return StructurePreviewResponseSchema.parse({
+      ...result.response,
+      commandId: result.commandId,
+      replayed: result.replayed,
+    });
+  }
+
+  @Post("structures/proposals/:proposalId/accept")
+  async acceptStructure(
+    @Req() request: FastifyRequest,
+    @Param("wid") workspaceId: string,
+    @Param("proposalId") proposalId: string,
+    @Headers("idempotency-key") key: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const actorId = await this.current(request, true);
+    const fields = parseBody(StructureSignatureRequestSchema, body);
+    const result = await this.runtime.structure.accept({
+      actorId,
+      workspaceId,
+      proposalId,
+      idempotencyKey: key ?? "",
+      ...fields,
+    });
+    return StructureAcceptResponseSchema.parse({
+      ...result.response,
+      commandId: result.commandId,
+      replayed: result.replayed,
+    });
+  }
+
+  @Get("structures/mutations/:mutationId/undo-preview")
+  @Header("Cache-Control", "no-store")
+  async previewStructureUndo(
+    @Req() request: FastifyRequest,
+    @Param("wid") workspaceId: string,
+    @Param("mutationId") mutationId: string,
+  ) {
+    const actorId = await this.current(request);
+    return StructureUndoPreviewSchema.parse(
+      await this.runtime.structure.previewUndo(
+        actorId,
+        workspaceId,
+        mutationId,
+      ),
+    );
+  }
+
+  @Post("structures/mutations/:mutationId/undo")
+  async undoStructure(
+    @Req() request: FastifyRequest,
+    @Param("wid") workspaceId: string,
+    @Param("mutationId") mutationId: string,
+    @Headers("idempotency-key") key: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const actorId = await this.current(request, true);
+    const fields = parseBody(StructureSignatureRequestSchema, body);
+    const result = await this.runtime.structure.undo({
+      actorId,
+      workspaceId,
+      mutationId,
+      idempotencyKey: key ?? "",
+      ...fields,
+    });
+    return StructureUndoResponseSchema.parse({
+      ...result.response,
+      commandId: result.commandId,
+      replayed: result.replayed,
+    });
   }
 
   @Post("contexts")

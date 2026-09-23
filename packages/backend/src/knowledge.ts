@@ -744,22 +744,28 @@ export class KnowledgeService {
                   kind: ContextKind;
                   state: ContextState;
                   superseded_by_id: string | null;
-                  recorded_at: Date;
+                  recorded_at: string;
                 }>(
-                  "SELECT name,purpose,scope,kind,state,superseded_by_id,recorded_at FROM business.context_identity_revision WHERE workspace_id=$1 AND context_id=$2 AND revision=$3",
+                  "SELECT name,purpose,scope,kind,state,superseded_by_id,recorded_at::text AS recorded_at FROM business.context_identity_revision WHERE workspace_id=$1 AND context_id=$2 AND revision=$3",
                   [access.workspaceId, id, revision],
                 )
               ).rows[0];
         if (revision !== undefined && !historical)
           throw new KnowledgeError("CONTEXT_NOT_FOUND");
         const identity = historical ?? row;
+        const asOf = historical?.recorded_at ?? null;
         const memberships = await client.query<{
           unit_id: string;
           unit_revision: number;
           role: MembershipRole;
         }>(
-          "SELECT m.unit_id,m.unit_revision,m.role FROM business.context_membership m JOIN business.thought_unit u ON u.workspace_id=m.workspace_id AND u.id=m.unit_id WHERE m.workspace_id=$1 AND m.context_id=$2 AND m.ended_at IS NULL AND u.state='ACTIVE' ORDER BY m.started_at DESC,m.id DESC",
-          [access.workspaceId, id],
+          `SELECT m.unit_id,m.unit_revision,m.role FROM business.context_membership m
+           JOIN business.thought_unit u ON u.workspace_id=m.workspace_id AND u.id=m.unit_id
+           WHERE m.workspace_id=$1 AND m.context_id=$2
+             AND (($3::timestamptz IS NULL AND m.ended_at IS NULL AND u.state='ACTIVE')
+               OR ($3::timestamptz IS NOT NULL AND m.started_at <= $3 AND (m.ended_at IS NULL OR m.ended_at > $3)))
+           ORDER BY m.started_at DESC,m.id DESC`,
+          [access.workspaceId, id, asOf],
         );
         const relations = await client.query<{
           id: string;
@@ -767,8 +773,23 @@ export class KnowledgeService {
           to_context_id: string;
           type: ContextRelationType;
         }>(
-          "SELECT id,from_context_id,to_context_id,type FROM business.context_relation WHERE workspace_id=$1 AND (from_context_id=$2 OR to_context_id=$2) AND ended_at IS NULL ORDER BY started_at DESC,id DESC",
-          [access.workspaceId, id],
+          `SELECT id,from_context_id,to_context_id,type FROM business.context_relation
+           WHERE workspace_id=$1 AND (from_context_id=$2 OR to_context_id=$2)
+             AND (($3::timestamptz IS NULL AND ended_at IS NULL)
+               OR ($3::timestamptz IS NOT NULL AND started_at <= $3 AND (ended_at IS NULL OR ended_at > $3)))
+           ORDER BY started_at DESC,id DESC`,
+          [access.workspaceId, id, asOf],
+        );
+        const successors = await client.query<{
+          target_context_id: string;
+          mutation_id: string;
+        }>(
+          `SELECT target_context_id,mutation_id FROM business.context_successor
+           WHERE workspace_id=$1 AND source_context_id=$2
+             AND (($3::timestamptz IS NULL AND ended_at IS NULL)
+               OR ($3::timestamptz IS NOT NULL AND started_at <= $3 AND (ended_at IS NULL OR ended_at > $3)))
+           ORDER BY started_at,id`,
+          [access.workspaceId, id, asOf],
         );
         return {
           id,
@@ -794,6 +815,10 @@ export class KnowledgeService {
             fromContextId: r.from_context_id,
             toContextId: r.to_context_id,
             type: r.type,
+          })),
+          successors: successors.rows.map((r) => ({
+            contextId: r.target_context_id,
+            mutationId: r.mutation_id,
           })),
         };
       },

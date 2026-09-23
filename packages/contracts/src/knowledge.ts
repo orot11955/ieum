@@ -143,6 +143,99 @@ export const ContextDetailSchema = ContextSummarySchema.extend({
       type: ContextRelationTypeSchema,
     }),
   ),
+  successors: z.array(z.strictObject({ contextId: id, mutationId: id })),
+});
+const StructureKindSchema = z.enum(["SPLIT", "MERGE", "LINK", "CREATE_PARENT"]);
+const StructureMemberSchema = z.strictObject({
+  contextId: id,
+  role: MembershipRoleSchema,
+});
+const StructureNewContextSchema = z.strictObject({
+  id,
+  name: z.string().min(1).max(200),
+  purpose: z.string().min(1).max(2000),
+  scope: z.string().min(1).max(2000),
+  kind: ContextKindSchema,
+});
+const StructureLinkSchema = z.strictObject({
+  fromContextId: id,
+  toContextId: id,
+  type: ContextRelationTypeSchema,
+});
+export const StructurePreviewRequestSchema = z.strictObject({
+  kind: StructureKindSchema,
+  sourceContextId: id,
+  peerContextId: id.nullable().optional(),
+  createdContexts: z.array(StructureNewContextSchema).max(4).optional(),
+  assignments: z
+    .array(
+      z.strictObject({
+        unitId: id,
+        unitRevision: version,
+        after: z.array(StructureMemberSchema).max(100),
+      }),
+    )
+    .max(64)
+    .optional(),
+  addedLinks: z.array(StructureLinkSchema).max(20).optional(),
+});
+export const StructureSignatureRequestSchema = z.strictObject({
+  signature: z.string().regex(/^[a-f0-9]{64}$/),
+});
+const StructureUnitChangeSchema = z.strictObject({
+  unitId: id,
+  unitRevision: version,
+  membershipVersion: version,
+  before: z.array(StructureMemberSchema),
+  after: z.array(StructureMemberSchema),
+});
+const StructureBaseContextSchema = StructureNewContextSchema.extend({
+  identityRevision: version,
+  membershipRevision: version,
+  state: ContextStateSchema,
+});
+export const StructurePreviewSchema = z.strictObject({
+  kind: StructureKindSchema,
+  sourceContextId: id,
+  peerContextId: id.nullable(),
+  createdContexts: z.array(StructureNewContextSchema),
+  units: z.array(StructureUnitChangeSchema),
+  addedLinks: z.array(StructureLinkSchema),
+  baseContexts: z.array(StructureBaseContextSchema),
+  relationHash: z.string(),
+  sourceWillBeSuperseded: z.boolean(),
+  signature: z.string(),
+});
+export const StructurePreviewResponseSchema = result.extend({
+  proposalId: id,
+  preview: StructurePreviewSchema,
+});
+export const StructureAcceptResponseSchema = result.extend({
+  mutationId: id,
+  proposalId: id,
+  sourceContextId: id,
+  sourceState: z.enum(["ACTIVE", "SUPERSEDED"]),
+  successorContextIds: z.array(id),
+});
+export const StructureUndoPreviewSchema = z.strictObject({
+  mutationId: id,
+  signature: z.string(),
+  restores: z.array(
+    z.strictObject({
+      unitId: id,
+      before: z.array(StructureMemberSchema),
+      after: z.array(StructureMemberSchema),
+    }),
+  ),
+  endsRelationIds: z.array(id),
+  reactivatesSource: z.boolean(),
+  retainedContextIds: z.array(id),
+  note: z.string(),
+});
+export const StructureUndoResponseSchema = result.extend({
+  mutationId: id,
+  undone: z.literal(true),
+  retainedContextIds: z.array(id),
 });
 export const UnitMembershipsSchema = z.strictObject({
   unitId: id,
@@ -204,6 +297,71 @@ function response(schema: z.ZodType, description: string) {
   };
 }
 export const knowledgeOpenApiPaths = {
+  [`${base}/structures/preview`]: {
+    post: {
+      operationId: "previewStructure",
+      parameters: [pathId, idempotency],
+      requestBody: body(StructurePreviewRequestSchema),
+      responses: {
+        "201": response(StructurePreviewResponseSchema, "Structure preview"),
+      },
+    },
+  },
+  [`${base}/structures/proposals/{proposalId}/accept`]: {
+    post: {
+      operationId: "acceptStructure",
+      parameters: [
+        pathId,
+        idempotency,
+        {
+          name: "proposalId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      requestBody: body(StructureSignatureRequestSchema),
+      responses: {
+        "201": response(StructureAcceptResponseSchema, "Applied structure"),
+      },
+    },
+  },
+  [`${base}/structures/mutations/{mutationId}/undo-preview`]: {
+    get: {
+      operationId: "previewStructureUndo",
+      parameters: [
+        pathId,
+        {
+          name: "mutationId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "200": response(StructureUndoPreviewSchema, "Inverse preview"),
+      },
+    },
+  },
+  [`${base}/structures/mutations/{mutationId}/undo`]: {
+    post: {
+      operationId: "undoStructure",
+      parameters: [
+        pathId,
+        idempotency,
+        {
+          name: "mutationId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      requestBody: body(StructureSignatureRequestSchema),
+      responses: {
+        "201": response(StructureUndoResponseSchema, "Inverse applied"),
+      },
+    },
+  },
   [contextPath]: {
     get: {
       operationId: "listContexts",

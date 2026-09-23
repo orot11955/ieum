@@ -127,6 +127,70 @@ export interface paths {
         patch: operations["setUserState"];
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/structures/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["previewStructure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/structures/proposals/{proposalId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acceptStructure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/structures/mutations/{mutationId}/undo-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["previewStructureUndo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/structures/mutations/{mutationId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["undoStructure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/contexts": {
         parameters: {
             query?: never;
@@ -964,6 +1028,265 @@ export interface operations {
             };
         };
     };
+    previewStructure: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "SPLIT" | "MERGE" | "LINK" | "CREATE_PARENT";
+                    /** Format: uuid */
+                    sourceContextId: string;
+                    /** Format: uuid */
+                    peerContextId?: string | null;
+                    createdContexts?: {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        purpose: string;
+                        scope: string;
+                        /** @enum {string} */
+                        kind: "TOPIC" | "FLOW" | "PROJECT" | "COLLECTION";
+                    }[];
+                    assignments?: {
+                        /** Format: uuid */
+                        unitId: string;
+                        unitRevision: number;
+                        after: {
+                            /** Format: uuid */
+                            contextId: string;
+                            /** @enum {string} */
+                            role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                        }[];
+                    }[];
+                    addedLinks?: {
+                        /** Format: uuid */
+                        fromContextId: string;
+                        /** Format: uuid */
+                        toContextId: string;
+                        /** @enum {string} */
+                        type: "PARENT_OF" | "RELATED_TO";
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Structure preview */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        proposalId: string;
+                        preview: {
+                            /** @enum {string} */
+                            kind: "SPLIT" | "MERGE" | "LINK" | "CREATE_PARENT";
+                            /** Format: uuid */
+                            sourceContextId: string;
+                            /** Format: uuid */
+                            peerContextId: string | null;
+                            createdContexts: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                purpose: string;
+                                scope: string;
+                                /** @enum {string} */
+                                kind: "TOPIC" | "FLOW" | "PROJECT" | "COLLECTION";
+                            }[];
+                            units: {
+                                /** Format: uuid */
+                                unitId: string;
+                                unitRevision: number;
+                                membershipVersion: number;
+                                before: {
+                                    /** Format: uuid */
+                                    contextId: string;
+                                    /** @enum {string} */
+                                    role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                                }[];
+                                after: {
+                                    /** Format: uuid */
+                                    contextId: string;
+                                    /** @enum {string} */
+                                    role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                                }[];
+                            }[];
+                            addedLinks: {
+                                /** Format: uuid */
+                                fromContextId: string;
+                                /** Format: uuid */
+                                toContextId: string;
+                                /** @enum {string} */
+                                type: "PARENT_OF" | "RELATED_TO";
+                            }[];
+                            baseContexts: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                purpose: string;
+                                scope: string;
+                                /** @enum {string} */
+                                kind: "TOPIC" | "FLOW" | "PROJECT" | "COLLECTION";
+                                identityRevision: number;
+                                membershipRevision: number;
+                                /** @enum {string} */
+                                state: "ACTIVE" | "ARCHIVED" | "SUPERSEDED";
+                            }[];
+                            relationHash: string;
+                            sourceWillBeSuperseded: boolean;
+                            signature: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    acceptStructure: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    signature: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Applied structure */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        mutationId: string;
+                        /** Format: uuid */
+                        proposalId: string;
+                        /** Format: uuid */
+                        sourceContextId: string;
+                        /** @enum {string} */
+                        sourceState: "ACTIVE" | "SUPERSEDED";
+                        successorContextIds: string[];
+                    };
+                };
+            };
+        };
+    };
+    previewStructureUndo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                mutationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Inverse preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        mutationId: string;
+                        signature: string;
+                        restores: {
+                            /** Format: uuid */
+                            unitId: string;
+                            before: {
+                                /** Format: uuid */
+                                contextId: string;
+                                /** @enum {string} */
+                                role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                            }[];
+                            after: {
+                                /** Format: uuid */
+                                contextId: string;
+                                /** @enum {string} */
+                                role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                            }[];
+                        }[];
+                        endsRelationIds: string[];
+                        reactivatesSource: boolean;
+                        retainedContextIds: string[];
+                        note: string;
+                    };
+                };
+            };
+        };
+    };
+    undoStructure: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                mutationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    signature: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Inverse applied */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        mutationId: string;
+                        /** @enum {boolean} */
+                        undone: true;
+                        retainedContextIds: string[];
+                    };
+                };
+            };
+        };
+    };
     listContexts: {
         parameters: {
             query?: {
@@ -1108,6 +1431,12 @@ export interface operations {
                             toContextId: string;
                             /** @enum {string} */
                             type: "PARENT_OF" | "RELATED_TO";
+                        }[];
+                        successors: {
+                            /** Format: uuid */
+                            contextId: string;
+                            /** Format: uuid */
+                            mutationId: string;
                         }[];
                     };
                 };
