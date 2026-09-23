@@ -117,6 +117,14 @@ export type {
   StructureMemberSignal,
   StructureSource,
 } from "./structure/diagnostics.js";
+export { compareStructureOptions } from "./structure/proposals.js";
+export type {
+  ContextRevisionBase,
+  MembershipMapping,
+  StructureOption,
+  StructureOptionKind,
+  StructureProposalRequest,
+} from "./structure/proposals.js";
 export type {
   PolicyConfig,
   PolicyDecision,

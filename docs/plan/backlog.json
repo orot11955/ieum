@@ -238,7 +238,7 @@
       "dependencies": [
         "CORE-12"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "KEEP/LINK/CREATE_PARENT/SPLIT/MERGE를 비교한다. bridge member 중복 소속과 잔여 member를 허용한다. 기존 context를 물리 삭제하지 않는 explicit mapping을 생성한다.",
       "contract": "위치: core/structure/proposals. base revision 집합, 새 context 정의, 이동/유지/복제 memberships, primary 영향, 이전 출처 영향, inverse-preview 재료를 포함한다.",
       "tests": "목적이 다른 유사 context, 부모·자식을 중복으로 착각, 분리 후 양쪽에 남는 근거, 기각 반복 억제, stale preview, 순환 parent 관계.",

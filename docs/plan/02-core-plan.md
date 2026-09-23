@@ -222,7 +222,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-13 · 분리·병합·상위 묶음 변경안
 
-**구간:** P5 · **상태:** PLANNED · **선행:** CORE-12
+**구간:** P5 · **상태:** IMPLEMENTED · **선행:** CORE-12
 
 **구현 범위:** KEEP/LINK/CREATE_PARENT/SPLIT/MERGE를 비교한다. bridge member 중복 소속과 잔여 member를 허용한다. 기존 context를 물리 삭제하지 않는 explicit mapping을 생성한다.
 
