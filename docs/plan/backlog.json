@@ -55,7 +55,7 @@
       "dependencies": [
         "BASE-03"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "CaptureRevision, ThoughtUnitRevision, ContextSnapshot, EvidenceRef, originKey, recordedAt/occurredAt을 구현한다. 기본은 원본 1개→단위 1개이며 수동 분할과 원문 보존을 지원하는 타입을 만든다.",
       "contract": "위치: packages/core/src/model 및 validation. sourceSpan은 rawBody 기준 UTF-16 [start,end); 변환문은 quote가 아니라 paraphrase로 표시. ID 생성과 clock은 바깥에서 제공.",
       "tests": "한글·이모지·결합문자 span, 범위 초과, revision 없음, 변환문을 인용으로 위장, 중복 ID, NaN/Infinity 입력 거부.",

@@ -1,6 +1,6 @@
 # IEUM 제로베이스 실행 계획 · 1.1
 
-2026-09-23 KST · **main 채택 / BASE-03 검증 완료**
+2026-09-23 KST · **main 채택 / CORE-01 검증 완료**
 
 이음의 최종 목표는 원본·출처 보존, 일정·할일·위키 관리, 관련 맥락 연결·분리·병합, 근거 있는 문서 정제, 승인 발행·Delivery API다. 외부 블로그는 별도다. Core 장애가 명시적 저장·완료·편집·발행을 막지 않는다.
 
@@ -22,7 +22,7 @@
 | [09 · 단계별 구현 순서](09-implementation-sequence.md) | 카드 선행관계에 따른 실행 묶음·gate·문서 충돌 정리 |
 | [최소 계약 예제](contracts.md) | BASE-03의 관리/Delivery·편집기·Core 경계와 생성 경로 |
 
-BASE-01–03은 VERIFIED다. 다음은 **CORE-01–08**을 진행한다. BE-01·FE-01도 착수 가능하다. 라이브러리 호환성 spike는 카드의 선행관계가 충족될 때만 진행한다. main 이외 브랜치·PR을 만들지 않는다.
+BASE-01–03과 CORE-01은 VERIFIED다. 다음은 **CORE-02–08**을 진행한다. BE-01·FE-01도 착수 가능하다. 라이브러리 호환성 spike는 카드의 선행관계가 충족될 때만 진행한다. main 이외 브랜치·PR을 만들지 않는다.
 
 ## 현재 실행 가능한 검사
 
@@ -40,6 +40,6 @@ node scripts/design/themes.mjs --check
 
 카드를 바꾼 경우 `node scripts/plan/render.mjs`로 파생 문서를 갱신한다. `pnpm install --frozen-lockfile`, `pnpm contracts:check`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm lab:smoke`는 core/lab와 계약 예제만 검사한다. 제품 integration/E2E·판단 Lab 명령은 해당 카드에서 만든다.
 
-[상태와 제한](../status/project-state.md) · [BASE-01 증거](../evidence/base-01.md) · [BASE-02 증거](../evidence/base-02.md) · [BASE-03 증거](../evidence/base-03.md) · [문서 우선순위](../adr/0012-main-zero-base-execution.md)
+[상태와 제한](../status/project-state.md) · [BASE-01 증거](../evidence/base-01.md) · [BASE-02 증거](../evidence/base-02.md) · [BASE-03 증거](../evidence/base-03.md) · [CORE-01 증거](../evidence/core-01.md) · [문서 우선순위](../adr/0012-main-zero-base-execution.md)
 
 통합 Markdown/ZIP·기존 validation-report·SHA256SUMS는 배포 사본이므로 저장소에 중복 체크인하지 않는다. 최신 실행/검사 결과는 상태 문서와 CI가 기준이다.

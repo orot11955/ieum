@@ -1,6 +1,6 @@
 # CORE-01 · 원본·단위·맥락·근거 타입과 불변식
 
-- 상태: **IMPLEMENTED**. 로컬 검증 통과. 원격 Linux CI는 구현 커밋 push 후 확인한다.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI가 통과했다.
 - 기준: main `50604b94d64485358f583deb78af16759a6a3f8f`, macOS arm64, Node 24.18.0, pnpm 11.24.0. 선행 BASE-03은 VERIFIED.
 
 ## 구현과 완료 기준
@@ -22,6 +22,7 @@ Unit과 Evidence의 `quote`는 해당 Capture revision의 `rawBody.slice(start,e
 | `pnpm contracts:check` | 0 | 계약 생성물 drift와 import 경계 검사 통과 |
 | `pnpm build`, `pnpm lab:smoke` | 모두 0 | workspace 빌드·기존 smoke 유지 |
 | `npm run prep:check`, `git diff --check` | 모두 0 | 계획/디자인과 diff 검사 통과 |
+| [GitHub Actions run 35845106263](https://github.com/orot11955/ieum/actions/runs/35845106263), commit `a3d427304a406c558e9ac4555cf750887e260ea7` | success | Linux 준비 job과 workspace job 모두 성공. 고정 설치, lint, 계약 검사, format, typecheck, unit, build, smoke, tracked diff 포함 |
 
 ## 미검증·데이터 영향
 

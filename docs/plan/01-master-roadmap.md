@@ -105,6 +105,6 @@ CORE-16의 실제 품질·정리 효용, BE-25의 실측 성능, FE-21의 화면
 
 ## 5. 완료 상태 정의
 
-`PLANNED → IN_PROGRESS → IMPLEMENTED → VERIFIED → ACCEPTED`를 구분한다. 현재 BASE-01–03은 VERIFIED, 나머지 72개는 PLANNED다. 상태의 정본은 `backlog.json`이다. 카드 완료 판정에는 VERIFIED/ACCEPTED 증거가 필요하고 다음 의존 작업이 안전하게 사용할 수 있어야 한다. 코드만 존재하는 상태, fixture만 통과한 상태, 실제 품질이 검증된 상태, 공개 운영 가능한 상태를 하나로 합치지 않는다.
+`PLANNED → IN_PROGRESS → IMPLEMENTED → VERIFIED → ACCEPTED`를 구분한다. 현재 BASE-01–03과 CORE-01은 VERIFIED, 나머지 71개는 PLANNED다. 상태의 정본은 `backlog.json`이다. 카드 완료 판정에는 VERIFIED/ACCEPTED 증거가 필요하고 다음 의존 작업이 안전하게 사용할 수 있어야 한다. 코드만 존재하는 상태, fixture만 통과한 상태, 실제 품질이 검증된 상태, 공개 운영 가능한 상태를 하나로 합치지 않는다.
 
-전체 과제를 한 번에 한 agent에게 맡기지 않는다. BASE-01–03의 준비는 검증 완료 상태다. CORE-01–08을 우선 진행하며, BE-01/02·FE-01/02의 P0 spike도 개별 선행 조건에 맞춰 진행할 수 있다. 카드가 준비되면 선행관계의 **작은 카드 한 개**부터 실행하고, 성공한 기능을 커밋한 뒤 다음 카드로 이동한다. 구체적인 진행 순서와 gate는 [09 · 단계별 구현 순서](09-implementation-sequence.md)를 따른다.
+전체 과제를 한 번에 한 agent에게 맡기지 않는다. BASE-01–03과 CORE-01은 검증 완료 상태다. CORE-02–08을 우선 진행하며, BE-01/02·FE-01/02의 P0 spike도 개별 선행 조건에 맞춰 진행할 수 있다. 카드가 준비되면 선행관계의 **작은 카드 한 개**부터 실행하고, 성공한 기능을 커밋한 뒤 다음 카드로 이동한다. 구체적인 진행 순서와 gate는 [09 · 단계별 구현 순서](09-implementation-sequence.md)를 따른다.
