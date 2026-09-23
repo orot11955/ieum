@@ -37,6 +37,7 @@
 | [BE-02 증거](docs/evidence/be-02.md) · [auth spike](docs/evidence/auth-spike-report.md) | 인증 adapter의 실제 PostgreSQL·Linux CI 검증 |
 | [BE-03 증거](docs/evidence/be-03.md) · [DB migration 안내](db/README.md) | 업무 schema·RLS·role의 로컬 및 Linux PostgreSQL 검증 |
 | [BE-04 증거](docs/evidence/be-04.md) | 계정·초대·세션·복구의 실제 PostgreSQL·Linux CI 검증 |
+| [BE-05 증거](docs/evidence/be-05.md) | 명령 멱등성·감사·outbox의 실제 PostgreSQL·HTTP 검증 |
 
 CORE-01–15와 BE-01–04가 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-05다. FE-01과 QA-02도 별도 착수 가능하다.
 
@@ -62,7 +63,7 @@ pnpm lab:smoke
 pnpm api:smoke
 ```
 
-`pnpm api:smoke`는 빌드된 API를 로컬 루프백 포트에서 띄워 종료까지 검사한다. 인증·업무 DB는 `pnpm --filter @ieum/api test:auth`, `pnpm --filter @ieum/backend test:db`로 격리 PostgreSQL에서 따로 검사한다. 업무 API는 아직 없다.
+`pnpm api:smoke`는 빌드된 API를 로컬 루프백 포트에서 띄워 종료까지 검사한다. 인증·업무 DB는 `pnpm --filter @ieum/api test:auth`, `pnpm --filter @ieum/backend test:db`, `pnpm --filter @ieum/api test:identity`로 격리 PostgreSQL에서 검사한다. 현재 업무 API는 계정과 개인 설정 명령까지 제공한다.
 
 Lab CLI는 빌드 뒤 `node apps/lab-cli/dist/main.js run <snapshot.json>`으로 실행한다. 기본 artifact는 저장소 밖의 `~/.local/share/ieum-lab/runs/`에 보관한다. 생성된 경로로 `replay <run-directory>`, `inspect <run-directory>`, `compare <run-a> <run-b>`를 호출할 수 있다. 입력 형식과 private artifact 범위는 [CORE-06 증거](docs/evidence/core-06.md)를 따른다.
 

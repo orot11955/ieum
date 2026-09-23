@@ -365,7 +365,7 @@
         "BE-04",
         "BASE-03"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "명시적 command handler, transaction coordinator, optimistic revision, idempotency receipt, audit를 구현한다. 성공 receipt 조회 전에도 현재 권한을 확인한다. outbox 계약을 두되 queue 구현은 첫 비동기 기능에서 한다.",
       "contract": "키는 workspace+actor+command kind+idempotency key, payloadHash 포함. 같은 key/다른 payload는 409. 변경·감사·receipt·필요 outbox가 같은 transaction에 들어간다.",
       "tests": "동일 요청 동시 재전송, key 충돌, commit 뒤 응답 유실, transaction 중 권한 철회 경쟁, 감사 insert 실패, deadlock retry, 오래된 revision.",
