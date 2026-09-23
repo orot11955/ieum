@@ -253,7 +253,7 @@
       "dependencies": [
         "CORE-08"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "가이드/실험 노트/결정 기록/비교 글 등 목적별 checklist와 outline을 만든다. 관찰·외부 주장·반론·자기 해석을 구분하고 source family별 독립성을 추적한다.",
       "contract": "위치: core/derivation/planning. evidence pack→outline→readiness report. 미확인 항목과 반론 누락을 명시하며 모든 글에 동일 성숙도 점수를 강제하지 않는다.",
       "tests": "근거 없는 요약 항목, 같은 원문 재인용의 과대 가산, 실패 경험 글, 상충된 관점, 작성자 해석을 외부 인용으로 표시하는 오류.",
