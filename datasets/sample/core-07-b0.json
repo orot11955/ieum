@@ -1,0 +1,1633 @@
+{
+  "schemaVersion": 1,
+  "dataKind": "synthetic",
+  "contexts": [
+    {
+      "id": "deploy-rollback",
+      "name": "배포 롤백",
+      "memberText": "배포 실패 시 이전 버전으로 되돌리고 데이터 호환성을 확인한다",
+      "originFamily": "source:deploy-rollback"
+    },
+    {
+      "id": "deploy-canary",
+      "name": "카나리 배포",
+      "memberText": "소수 사용자에게 새 버전을 먼저 공개하고 오류율을 관찰한다",
+      "originFamily": "source:deploy-canary"
+    },
+    {
+      "id": "deploy-incident",
+      "name": "장애 타임라인",
+      "memberText": "장애 발생과 대응 시간을 순서대로 기록하고 원인을 정리한다",
+      "originFamily": "source:deploy-incident"
+    },
+    {
+      "id": "deploy-alerts",
+      "name": "운영 알림",
+      "memberText": "지연과 오류율 경보의 임계값과 알림 담당자를 관리한다",
+      "originFamily": "source:deploy-alerts"
+    },
+    {
+      "id": "travel-route",
+      "name": "여행 이동 경로",
+      "memberText": "열차 환승과 도보 시간을 포함해 도시 간 이동 순서를 정한다",
+      "originFamily": "source:travel-route"
+    },
+    {
+      "id": "travel-budget",
+      "name": "여행 예산",
+      "memberText": "숙박 교통 식비의 예상 지출과 실제 비용을 기록한다",
+      "originFamily": "source:travel-budget"
+    },
+    {
+      "id": "travel-lodging",
+      "name": "숙소 예약",
+      "memberText": "호텔 체크인 시간과 취소 가능 조건을 확인한다",
+      "originFamily": "source:travel-lodging"
+    },
+    {
+      "id": "travel-visa",
+      "name": "입국 서류",
+      "memberText": "여권 유효기간과 입국 비자 서류를 준비한다",
+      "originFamily": "source:travel-visa"
+    },
+    {
+      "id": "cooking-baking",
+      "name": "빵 굽기",
+      "memberText": "반죽 발효 시간과 오븐 온도를 기록한다",
+      "originFamily": "source:cooking-baking"
+    },
+    {
+      "id": "cooking-ferment",
+      "name": "발효 식품",
+      "memberText": "김치와 요거트 발효 온도 및 보관 기간을 비교한다",
+      "originFamily": "source:cooking-ferment"
+    },
+    {
+      "id": "cooking-allergy",
+      "name": "식품 알레르기",
+      "memberText": "견과류와 우유 성분을 확인하고 대체 재료를 고른다",
+      "originFamily": "source:cooking-allergy"
+    },
+    {
+      "id": "cooking-meal",
+      "name": "주간 식단",
+      "memberText": "요일별 식사 계획과 장보기 목록을 정리한다",
+      "originFamily": "source:cooking-meal"
+    },
+    {
+      "id": "garden-water",
+      "name": "식물 물주기",
+      "memberText": "화분 흙의 수분을 보고 관수 간격을 조절한다",
+      "originFamily": "source:garden-water"
+    },
+    {
+      "id": "garden-soil",
+      "name": "토양 관리",
+      "memberText": "퇴비와 배수 상태를 확인해 토양을 개선한다",
+      "originFamily": "source:garden-soil"
+    },
+    {
+      "id": "garden-pest",
+      "name": "해충 방제",
+      "memberText": "진딧물 피해를 살피고 친환경 방제 방법을 기록한다",
+      "originFamily": "source:garden-pest"
+    },
+    {
+      "id": "garden-harvest",
+      "name": "수확 기록",
+      "memberText": "토마토 수확 시기와 수량을 기록한다",
+      "originFamily": "source:garden-harvest"
+    },
+    {
+      "id": "finance-tax",
+      "name": "세금 신고",
+      "memberText": "종합소득세 신고 기한과 공제 항목을 확인한다",
+      "originFamily": "source:finance-tax"
+    },
+    {
+      "id": "finance-invoice",
+      "name": "청구서 발행",
+      "memberText": "거래처 청구서 번호와 지급 기한을 관리한다",
+      "originFamily": "source:finance-invoice"
+    },
+    {
+      "id": "finance-budget",
+      "name": "가계 예산",
+      "memberText": "월별 고정비와 변동비를 비교한다",
+      "originFamily": "source:finance-budget"
+    },
+    {
+      "id": "finance-receipt",
+      "name": "영수증 정리",
+      "memberText": "카드 영수증을 날짜와 거래처별로 보관한다",
+      "originFamily": "source:finance-receipt"
+    },
+    {
+      "id": "health-sleep",
+      "name": "수면 습관",
+      "memberText": "취침 시각과 수면 시간을 기록한다",
+      "originFamily": "source:health-sleep"
+    },
+    {
+      "id": "health-exercise",
+      "name": "운동 계획",
+      "memberText": "걷기와 근력 운동의 주간 빈도를 계획한다",
+      "originFamily": "source:health-exercise"
+    },
+    {
+      "id": "health-medication",
+      "name": "복약 기록",
+      "memberText": "약 복용 시각과 용량을 의료진 지시에 따라 기록한다",
+      "originFamily": "source:health-medication"
+    },
+    {
+      "id": "health-appointment",
+      "name": "진료 예약",
+      "memberText": "병원 예약 시각과 준비할 질문을 적는다",
+      "originFamily": "source:health-appointment"
+    },
+    {
+      "id": "photo-lens",
+      "name": "카메라 렌즈",
+      "memberText": "초점 거리와 조리개에 따른 촬영 결과를 비교한다",
+      "originFamily": "source:photo-lens"
+    },
+    {
+      "id": "photo-editing",
+      "name": "사진 보정",
+      "memberText": "노출과 색 균형을 조정한 편집본을 관리한다",
+      "originFamily": "source:photo-editing"
+    },
+    {
+      "id": "photo-backup",
+      "name": "사진 백업",
+      "memberText": "원본 사진을 외장 저장소와 클라우드에 복제한다",
+      "originFamily": "source:photo-backup"
+    },
+    {
+      "id": "photo-print",
+      "name": "사진 인화",
+      "memberText": "인화 용지 크기와 해상도를 확인한다",
+      "originFamily": "source:photo-print"
+    },
+    {
+      "id": "language-vocab",
+      "name": "어휘 학습",
+      "memberText": "새 단어의 뜻과 예문을 반복해서 복습한다",
+      "originFamily": "source:language-vocab"
+    },
+    {
+      "id": "language-pronunciation",
+      "name": "발음 연습",
+      "memberText": "녹음한 발음과 원어민 음성을 비교한다",
+      "originFamily": "source:language-pronunciation"
+    },
+    {
+      "id": "language-grammar",
+      "name": "문법 질문",
+      "memberText": "시제와 조사 사용법의 예외를 정리한다",
+      "originFamily": "source:language-grammar"
+    },
+    {
+      "id": "language-reading",
+      "name": "독해 기록",
+      "memberText": "긴 글의 요지와 모르는 표현을 기록한다",
+      "originFamily": "source:language-reading"
+    },
+    {
+      "id": "cycling-maintenance",
+      "name": "자전거 정비",
+      "memberText": "체인 윤활과 타이어 공기압을 점검한다",
+      "originFamily": "source:cycling-maintenance"
+    },
+    {
+      "id": "cycling-routes",
+      "name": "자전거 경로",
+      "memberText": "자전거 도로의 거리와 경사를 비교한다",
+      "originFamily": "source:cycling-routes"
+    },
+    {
+      "id": "cycling-safety",
+      "name": "주행 안전",
+      "memberText": "야간 조명과 헬멧 착용 상태를 확인한다",
+      "originFamily": "source:cycling-safety"
+    },
+    {
+      "id": "cycling-training",
+      "name": "라이딩 훈련",
+      "memberText": "인터벌 주행과 회복 시간을 기록한다",
+      "originFamily": "source:cycling-training"
+    },
+    {
+      "id": "community-venue",
+      "name": "모임 장소",
+      "memberText": "행사장 좌석과 접근 가능한 출입구를 확인한다",
+      "originFamily": "source:community-venue"
+    },
+    {
+      "id": "community-volunteers",
+      "name": "자원봉사 배정",
+      "memberText": "안내와 접수 담당자의 교대 시간을 조정한다",
+      "originFamily": "source:community-volunteers"
+    },
+    {
+      "id": "community-registration",
+      "name": "참가 신청",
+      "memberText": "참가자 등록 명단과 취소 요청을 관리한다",
+      "originFamily": "source:community-registration"
+    },
+    {
+      "id": "community-feedback",
+      "name": "행사 의견",
+      "memberText": "행사 후 참가자 설문과 개선 의견을 정리한다",
+      "originFamily": "source:community-feedback"
+    }
+  ],
+  "cases": [
+    {
+      "id": "deploy-1",
+      "text": "배포 실패 후 이전 버전으로 되돌리는 절차",
+      "originFamily": "query:deploy",
+      "recordedAt": 100,
+      "split": "development",
+      "slices": [
+        "exact",
+        "deploy"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "deploy-rollback"
+        ],
+        "reviews": [
+          {
+            "contextId": "deploy-rollback",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "deploy-2",
+      "text": "새 버전을 일부 사용자에게만 먼저 적용한다",
+      "originFamily": "query:deploy",
+      "recordedAt": 101,
+      "split": "development",
+      "slices": [
+        "paraphrase",
+        "deploy"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "deploy-canary"
+        ],
+        "reviews": [
+          {
+            "contextId": "deploy-canary",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "deploy-3",
+      "text": "장애가 언제 시작되고 누가 대응했나",
+      "originFamily": "query:deploy",
+      "recordedAt": 102,
+      "split": "development",
+      "slices": [
+        "korean",
+        "deploy"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "deploy-incident"
+        ],
+        "reviews": [
+          {
+            "contextId": "deploy-incident",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "deploy-4",
+      "text": "오류율 경보가 너무 늦게 울린다",
+      "originFamily": "query:deploy",
+      "recordedAt": 103,
+      "split": "development",
+      "slices": [
+        "hard",
+        "deploy"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "deploy-alerts"
+        ],
+        "reviews": [
+          {
+            "contextId": "deploy-alerts",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "deploy-5",
+      "text": "롤백과 카나리 적용을 함께 검토한다",
+      "originFamily": "query:deploy",
+      "recordedAt": 104,
+      "split": "development",
+      "slices": [
+        "multi_label",
+        "deploy"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "deploy-rollback",
+          "deploy-canary"
+        ],
+        "reviews": [
+          {
+            "contextId": "deploy-rollback",
+            "status": "relevant"
+          },
+          {
+            "contextId": "deploy-canary",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "deploy-6",
+      "text": "배포 승인 좀 해줘",
+      "originFamily": "query:deploy",
+      "recordedAt": 105,
+      "split": "development",
+      "slices": [
+        "ambiguous",
+        "deploy"
+      ],
+      "gold": {
+        "kind": "ambiguous",
+        "relevantContextIds": [],
+        "reviews": [
+          {
+            "contextId": "deploy-rollback",
+            "status": "unreviewed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "travel-1",
+      "text": "열차를 갈아타는 구간과 이동 시간을 정리한다",
+      "originFamily": "query:travel",
+      "recordedAt": 110,
+      "split": "development",
+      "slices": [
+        "paraphrase",
+        "travel"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "travel-route"
+        ],
+        "reviews": [
+          {
+            "contextId": "travel-route",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "travel-2",
+      "text": "숙박비와 교통비가 예상보다 늘었다",
+      "originFamily": "query:travel",
+      "recordedAt": 111,
+      "split": "development",
+      "slices": [
+        "exact",
+        "travel"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "travel-budget"
+        ],
+        "reviews": [
+          {
+            "contextId": "travel-budget",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "travel-3",
+      "text": "호텔 취소 수수료가 언제부터 발생하나",
+      "originFamily": "query:travel",
+      "recordedAt": 112,
+      "split": "development",
+      "slices": [
+        "korean",
+        "travel"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "travel-lodging"
+        ],
+        "reviews": [
+          {
+            "contextId": "travel-lodging",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "travel-4",
+      "text": "여권 만료일과 비자 요건을 확인해야 한다",
+      "originFamily": "query:travel",
+      "recordedAt": 113,
+      "split": "development",
+      "slices": [
+        "exact",
+        "travel"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "travel-visa"
+        ],
+        "reviews": [
+          {
+            "contextId": "travel-visa",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "travel-5",
+      "text": "여행 일정과 숙소를 같이 조정한다",
+      "originFamily": "query:travel",
+      "recordedAt": 114,
+      "split": "development",
+      "slices": [
+        "multi_label",
+        "travel"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "travel-route",
+          "travel-lodging"
+        ],
+        "reviews": [
+          {
+            "contextId": "travel-route",
+            "status": "relevant"
+          },
+          {
+            "contextId": "travel-lodging",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "travel-6",
+      "text": "그 여행 건",
+      "originFamily": "query:travel",
+      "recordedAt": 115,
+      "split": "development",
+      "slices": [
+        "insufficient",
+        "travel"
+      ],
+      "gold": {
+        "kind": "insufficient",
+        "relevantContextIds": [],
+        "reviews": []
+      }
+    },
+    {
+      "id": "cooking-1",
+      "text": "오븐에서 빵이 덜 익는 이유를 찾는다",
+      "originFamily": "query:cooking",
+      "recordedAt": 120,
+      "split": "development",
+      "slices": [
+        "exact",
+        "cooking"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cooking-baking"
+        ],
+        "reviews": [
+          {
+            "contextId": "cooking-baking",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cooking-2",
+      "text": "요거트를 오래 발효하면 맛이 어떻게 달라지나",
+      "originFamily": "query:cooking",
+      "recordedAt": 121,
+      "split": "development",
+      "slices": [
+        "korean",
+        "cooking"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cooking-ferment"
+        ],
+        "reviews": [
+          {
+            "contextId": "cooking-ferment",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cooking-3",
+      "text": "견과류 없이 만들 수 있는 간식을 찾는다",
+      "originFamily": "query:cooking",
+      "recordedAt": 122,
+      "split": "development",
+      "slices": [
+        "hard",
+        "cooking"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cooking-allergy"
+        ],
+        "reviews": [
+          {
+            "contextId": "cooking-allergy",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cooking-4",
+      "text": "다음 주 저녁 메뉴와 장보기 목록",
+      "originFamily": "query:cooking",
+      "recordedAt": 123,
+      "split": "development",
+      "slices": [
+        "exact",
+        "cooking"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cooking-meal"
+        ],
+        "reviews": [
+          {
+            "contextId": "cooking-meal",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cooking-5",
+      "text": "발효 반죽과 김치 보관을 함께 비교한다",
+      "originFamily": "query:cooking",
+      "recordedAt": 124,
+      "split": "development",
+      "slices": [
+        "multi_label",
+        "cooking"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cooking-baking",
+          "cooking-ferment"
+        ],
+        "reviews": [
+          {
+            "contextId": "cooking-baking",
+            "status": "relevant"
+          },
+          {
+            "contextId": "cooking-ferment",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cooking-6",
+      "text": "피아노 조율 도구를 주문한다",
+      "originFamily": "query:cooking",
+      "recordedAt": 125,
+      "split": "development",
+      "slices": [
+        "no_match",
+        "cooking"
+      ],
+      "gold": {
+        "kind": "no_match",
+        "relevantContextIds": [],
+        "reviews": [
+          {
+            "contextId": "cooking-baking",
+            "status": "irrelevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "garden-1",
+      "text": "화분 흙이 마르기 전에 물을 주어야 하나",
+      "originFamily": "query:garden",
+      "recordedAt": 130,
+      "split": "development",
+      "slices": [
+        "exact",
+        "garden"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "garden-water"
+        ],
+        "reviews": [
+          {
+            "contextId": "garden-water",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "garden-2",
+      "text": "퇴비를 섞은 뒤 배수가 나빠졌다",
+      "originFamily": "query:garden",
+      "recordedAt": 131,
+      "split": "development",
+      "slices": [
+        "korean",
+        "garden"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "garden-soil"
+        ],
+        "reviews": [
+          {
+            "contextId": "garden-soil",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "garden-3",
+      "text": "진딧물이 잎 뒷면에 생겼다",
+      "originFamily": "query:garden",
+      "recordedAt": 132,
+      "split": "development",
+      "slices": [
+        "exact",
+        "garden"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "garden-pest"
+        ],
+        "reviews": [
+          {
+            "contextId": "garden-pest",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "garden-4",
+      "text": "토마토를 언제 몇 개 수확했는지 적는다",
+      "originFamily": "query:garden",
+      "recordedAt": 133,
+      "split": "development",
+      "slices": [
+        "exact",
+        "garden"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "garden-harvest"
+        ],
+        "reviews": [
+          {
+            "contextId": "garden-harvest",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "garden-5",
+      "text": "물주기와 배수 문제를 함께 살핀다",
+      "originFamily": "query:garden",
+      "recordedAt": 134,
+      "split": "development",
+      "slices": [
+        "multi_label",
+        "garden"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "garden-water",
+          "garden-soil"
+        ],
+        "reviews": [
+          {
+            "contextId": "garden-water",
+            "status": "relevant"
+          },
+          {
+            "contextId": "garden-soil",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "garden-6",
+      "text": "그 화분",
+      "originFamily": "query:garden",
+      "recordedAt": 135,
+      "split": "development",
+      "slices": [
+        "insufficient",
+        "garden"
+      ],
+      "gold": {
+        "kind": "insufficient",
+        "relevantContextIds": [],
+        "reviews": []
+      }
+    },
+    {
+      "id": "finance-1",
+      "text": "소득세 공제를 빠뜨리지 않았는지 확인한다",
+      "originFamily": "query:finance",
+      "recordedAt": 140,
+      "split": "development",
+      "slices": [
+        "exact",
+        "finance"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "finance-tax"
+        ],
+        "reviews": [
+          {
+            "contextId": "finance-tax",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "finance-2",
+      "text": "거래처에 보낸 청구서 지급일을 확인한다",
+      "originFamily": "query:finance",
+      "recordedAt": 141,
+      "split": "development",
+      "slices": [
+        "korean",
+        "finance"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "finance-invoice"
+        ],
+        "reviews": [
+          {
+            "contextId": "finance-invoice",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "finance-3",
+      "text": "이번 달 고정비가 예산을 넘었다",
+      "originFamily": "query:finance",
+      "recordedAt": 142,
+      "split": "development",
+      "slices": [
+        "exact",
+        "finance"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "finance-budget"
+        ],
+        "reviews": [
+          {
+            "contextId": "finance-budget",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "finance-4",
+      "text": "카드 영수증을 월별로 모은다",
+      "originFamily": "query:finance",
+      "recordedAt": 143,
+      "split": "development",
+      "slices": [
+        "exact",
+        "finance"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "finance-receipt"
+        ],
+        "reviews": [
+          {
+            "contextId": "finance-receipt",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "finance-5",
+      "text": "청구서와 영수증을 함께 대조한다",
+      "originFamily": "query:finance",
+      "recordedAt": 144,
+      "split": "development",
+      "slices": [
+        "multi_label",
+        "finance"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "finance-invoice",
+          "finance-receipt"
+        ],
+        "reviews": [
+          {
+            "contextId": "finance-invoice",
+            "status": "relevant"
+          },
+          {
+            "contextId": "finance-receipt",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "finance-6",
+      "text": "심해 생물 도감 구매",
+      "originFamily": "query:finance",
+      "recordedAt": 145,
+      "split": "development",
+      "slices": [
+        "no_match",
+        "finance"
+      ],
+      "gold": {
+        "kind": "no_match",
+        "relevantContextIds": [],
+        "reviews": [
+          {
+            "contextId": "finance-tax",
+            "status": "irrelevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "health-1",
+      "text": "잠드는 시간이 자꾸 늦어진다",
+      "originFamily": "query:health",
+      "recordedAt": 150,
+      "split": "development",
+      "slices": [
+        "korean",
+        "health"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "health-sleep"
+        ],
+        "reviews": [
+          {
+            "contextId": "health-sleep",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "health-2",
+      "text": "주 세 번 걷기 계획을 세운다",
+      "originFamily": "query:health",
+      "recordedAt": 151,
+      "split": "development",
+      "slices": [
+        "exact",
+        "health"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "health-exercise"
+        ],
+        "reviews": [
+          {
+            "contextId": "health-exercise",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "health-3",
+      "text": "약을 언제 먹었는지 기록해야 한다",
+      "originFamily": "query:health",
+      "recordedAt": 152,
+      "split": "development",
+      "slices": [
+        "exact",
+        "health"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "health-medication"
+        ],
+        "reviews": [
+          {
+            "contextId": "health-medication",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "health-4",
+      "text": "진료 전에 물어볼 내용을 적는다",
+      "originFamily": "query:health",
+      "recordedAt": 153,
+      "split": "development",
+      "slices": [
+        "paraphrase",
+        "health"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "health-appointment"
+        ],
+        "reviews": [
+          {
+            "contextId": "health-appointment",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "health-5",
+      "text": "운동과 수면 일정을 함께 조정한다",
+      "originFamily": "query:health",
+      "recordedAt": 154,
+      "split": "development",
+      "slices": [
+        "multi_label",
+        "health"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "health-exercise",
+          "health-sleep"
+        ],
+        "reviews": [
+          {
+            "contextId": "health-exercise",
+            "status": "relevant"
+          },
+          {
+            "contextId": "health-sleep",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "health-6",
+      "text": "그거 다시",
+      "originFamily": "query:health",
+      "recordedAt": 155,
+      "split": "development",
+      "slices": [
+        "insufficient",
+        "health"
+      ],
+      "gold": {
+        "kind": "insufficient",
+        "relevantContextIds": [],
+        "reviews": []
+      }
+    },
+    {
+      "id": "photo-1",
+      "text": "인물 촬영에 적합한 초점 거리는 무엇인가",
+      "originFamily": "query:photo",
+      "recordedAt": 160,
+      "split": "validation",
+      "slices": [
+        "paraphrase",
+        "photo"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "photo-lens"
+        ],
+        "reviews": [
+          {
+            "contextId": "photo-lens",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "photo-2",
+      "text": "사진 색이 너무 노랗게 보인다",
+      "originFamily": "query:photo",
+      "recordedAt": 161,
+      "split": "validation",
+      "slices": [
+        "hard",
+        "photo"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "photo-editing"
+        ],
+        "reviews": [
+          {
+            "contextId": "photo-editing",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "photo-3",
+      "text": "원본 사진을 외장 디스크에도 저장한다",
+      "originFamily": "query:photo",
+      "recordedAt": 162,
+      "split": "validation",
+      "slices": [
+        "exact",
+        "photo"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "photo-backup"
+        ],
+        "reviews": [
+          {
+            "contextId": "photo-backup",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "photo-4",
+      "text": "큰 종이에 인화할 때 해상도를 확인한다",
+      "originFamily": "query:photo",
+      "recordedAt": 163,
+      "split": "validation",
+      "slices": [
+        "exact",
+        "photo"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "photo-print"
+        ],
+        "reviews": [
+          {
+            "contextId": "photo-print",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "photo-5",
+      "text": "보정본과 원본 백업을 구분한다",
+      "originFamily": "query:photo",
+      "recordedAt": 164,
+      "split": "validation",
+      "slices": [
+        "multi_label",
+        "photo"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "photo-editing",
+          "photo-backup"
+        ],
+        "reviews": [
+          {
+            "contextId": "photo-editing",
+            "status": "relevant"
+          },
+          {
+            "contextId": "photo-backup",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "photo-6",
+      "text": "국제 우편 요금을 계산한다",
+      "originFamily": "query:photo",
+      "recordedAt": 165,
+      "split": "validation",
+      "slices": [
+        "no_match",
+        "photo"
+      ],
+      "gold": {
+        "kind": "no_match",
+        "relevantContextIds": [],
+        "reviews": [
+          {
+            "contextId": "photo-lens",
+            "status": "irrelevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "language-1",
+      "text": "새 단어를 예문과 함께 외운다",
+      "originFamily": "query:language",
+      "recordedAt": 170,
+      "split": "validation",
+      "slices": [
+        "exact",
+        "language"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "language-vocab"
+        ],
+        "reviews": [
+          {
+            "contextId": "language-vocab",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "language-2",
+      "text": "내 발음 녹음을 듣고 차이를 찾는다",
+      "originFamily": "query:language",
+      "recordedAt": 171,
+      "split": "validation",
+      "slices": [
+        "exact",
+        "language"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "language-pronunciation"
+        ],
+        "reviews": [
+          {
+            "contextId": "language-pronunciation",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "language-3",
+      "text": "과거 시제를 언제 쓰는지 모르겠다",
+      "originFamily": "query:language",
+      "recordedAt": 172,
+      "split": "validation",
+      "slices": [
+        "korean",
+        "language"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "language-grammar"
+        ],
+        "reviews": [
+          {
+            "contextId": "language-grammar",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "language-4",
+      "text": "긴 영어 글의 핵심을 정리한다",
+      "originFamily": "query:language",
+      "recordedAt": 173,
+      "split": "validation",
+      "slices": [
+        "paraphrase",
+        "language"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "language-reading"
+        ],
+        "reviews": [
+          {
+            "contextId": "language-reading",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "language-5",
+      "text": "독해 중 모르는 단어를 복습한다",
+      "originFamily": "query:language",
+      "recordedAt": 174,
+      "split": "validation",
+      "slices": [
+        "multi_label",
+        "language"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "language-reading",
+          "language-vocab"
+        ],
+        "reviews": [
+          {
+            "contextId": "language-reading",
+            "status": "relevant"
+          },
+          {
+            "contextId": "language-vocab",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "language-6",
+      "text": "그 표현",
+      "originFamily": "query:language",
+      "recordedAt": 175,
+      "split": "validation",
+      "slices": [
+        "insufficient",
+        "language"
+      ],
+      "gold": {
+        "kind": "insufficient",
+        "relevantContextIds": [],
+        "reviews": []
+      }
+    },
+    {
+      "id": "cycling-1",
+      "text": "체인이 뻑뻑해서 윤활이 필요하다",
+      "originFamily": "query:cycling",
+      "recordedAt": 180,
+      "split": "holdout",
+      "slices": [
+        "exact",
+        "cycling"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cycling-maintenance"
+        ],
+        "reviews": [
+          {
+            "contextId": "cycling-maintenance",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cycling-2",
+      "text": "언덕이 적은 자전거 길을 찾는다",
+      "originFamily": "query:cycling",
+      "recordedAt": 181,
+      "split": "holdout",
+      "slices": [
+        "paraphrase",
+        "cycling"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cycling-routes"
+        ],
+        "reviews": [
+          {
+            "contextId": "cycling-routes",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cycling-3",
+      "text": "밤에 탈 때 전조등이 충분한가",
+      "originFamily": "query:cycling",
+      "recordedAt": 182,
+      "split": "holdout",
+      "slices": [
+        "hard",
+        "cycling"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cycling-safety"
+        ],
+        "reviews": [
+          {
+            "contextId": "cycling-safety",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cycling-4",
+      "text": "인터벌 훈련 뒤 회복 시간을 적는다",
+      "originFamily": "query:cycling",
+      "recordedAt": 183,
+      "split": "holdout",
+      "slices": [
+        "exact",
+        "cycling"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cycling-training"
+        ],
+        "reviews": [
+          {
+            "contextId": "cycling-training",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cycling-5",
+      "text": "주행 경로와 안전 장비를 함께 검토한다",
+      "originFamily": "query:cycling",
+      "recordedAt": 184,
+      "split": "holdout",
+      "slices": [
+        "multi_label",
+        "cycling"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "cycling-routes",
+          "cycling-safety"
+        ],
+        "reviews": [
+          {
+            "contextId": "cycling-routes",
+            "status": "relevant"
+          },
+          {
+            "contextId": "cycling-safety",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cycling-6",
+      "text": "고대 도자기 복원 방법",
+      "originFamily": "query:cycling",
+      "recordedAt": 185,
+      "split": "holdout",
+      "slices": [
+        "no_match",
+        "cycling"
+      ],
+      "gold": {
+        "kind": "no_match",
+        "relevantContextIds": [],
+        "reviews": [
+          {
+            "contextId": "cycling-maintenance",
+            "status": "irrelevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "community-1",
+      "text": "행사장 좌석 배치를 확인한다",
+      "originFamily": "query:community",
+      "recordedAt": 190,
+      "split": "holdout",
+      "slices": [
+        "exact",
+        "community"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "community-venue"
+        ],
+        "reviews": [
+          {
+            "contextId": "community-venue",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "community-2",
+      "text": "접수 담당자가 언제 교대하는지 정한다",
+      "originFamily": "query:community",
+      "recordedAt": 191,
+      "split": "holdout",
+      "slices": [
+        "korean",
+        "community"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "community-volunteers"
+        ],
+        "reviews": [
+          {
+            "contextId": "community-volunteers",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "community-3",
+      "text": "참가 신청 취소가 들어왔다",
+      "originFamily": "query:community",
+      "recordedAt": 192,
+      "split": "holdout",
+      "slices": [
+        "exact",
+        "community"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "community-registration"
+        ],
+        "reviews": [
+          {
+            "contextId": "community-registration",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "community-4",
+      "text": "행사 설문에서 나온 불편 사항을 정리한다",
+      "originFamily": "query:community",
+      "recordedAt": 193,
+      "split": "holdout",
+      "slices": [
+        "paraphrase",
+        "community"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "community-feedback"
+        ],
+        "reviews": [
+          {
+            "contextId": "community-feedback",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "community-5",
+      "text": "신청 명단과 안내 봉사자를 같이 확인한다",
+      "originFamily": "query:community",
+      "recordedAt": 194,
+      "split": "holdout",
+      "slices": [
+        "multi_label",
+        "community"
+      ],
+      "gold": {
+        "kind": "match",
+        "relevantContextIds": [
+          "community-registration",
+          "community-volunteers"
+        ],
+        "reviews": [
+          {
+            "contextId": "community-registration",
+            "status": "relevant"
+          },
+          {
+            "contextId": "community-volunteers",
+            "status": "relevant"
+          }
+        ]
+      }
+    },
+    {
+      "id": "community-6",
+      "text": "그 행사",
+      "originFamily": "query:community",
+      "recordedAt": 195,
+      "split": "holdout",
+      "slices": [
+        "insufficient",
+        "community"
+      ],
+      "gold": {
+        "kind": "insufficient",
+        "relevantContextIds": [],
+        "reviews": []
+      }
+    }
+  ]
+}

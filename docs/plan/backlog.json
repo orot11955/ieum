@@ -145,7 +145,7 @@
       "dependencies": [
         "CORE-06"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "합성 fixture와 실제 허용 데이터 평가를 분리한다. match/no_match/ambiguous/insufficient 및 미검토 pair를 표현한다. 시간·원본 계열 기준 split, holdout, slices를 지원한다.",
       "contract": "위치: datasets/sample, configs/experiments, lab/evaluation. Recall@K, Hit@K, reviewed-pair precision, query coverage, no-match false suggestion rate를 분모와 함께 출력한다.",
       "tests": "gold 필드가 feature 입력에 들어가면 실패; 빈 분모 N/A; 하나의 관련 정답만 맞춘 multi-label 사례; 동일 origin split 누수; 미래 feedback 누수.",

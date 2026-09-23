@@ -8,6 +8,7 @@ import {
   replayRun,
   runFromFile,
 } from "./adapters/run.js";
+import { evaluateFile } from "./evaluation/index.js";
 
 if (process.argv.length === 3 && process.argv[2] === "--smoke") {
   process.stdout.write(`${CORE_PACKAGE_ID}:lab-harness\n`);
@@ -88,9 +89,24 @@ if (process.argv.length === 3 && process.argv[2] === "--smoke") {
     );
     process.exitCode = 1;
   }
+} else if (
+  process.argv[2] === "evaluate" &&
+  (process.argv.length === 4 ||
+    (process.argv.length === 6 && process.argv[4] === "--out"))
+) {
+  try {
+    process.stdout.write(
+      `${JSON.stringify(evaluateFile(process.argv[3] ?? "", process.argv[5]))}\n`,
+    );
+  } catch (error) {
+    process.stderr.write(
+      `Lab evaluation failed: ${error instanceof Error ? error.message : "unknown error"}\n`,
+    );
+    process.exitCode = 1;
+  }
 } else {
   process.stderr.write(
-    "Usage: ieum-lab --smoke | --snapshot <file> | run <file> [--out <directory>] [--feedback <file>] [--budget <n|all>] | replay <run-directory> | inspect <run-directory> | compare <run-a> <run-b>\n",
+    "Usage: ieum-lab --smoke | --snapshot <file> | run <file> [--out <directory>] [--feedback <file>] [--budget <16|32|64|all>] | replay <run-directory> | inspect <run-directory> | compare <run-a> <run-b> | evaluate <dataset.json> [--out <directory>]\n",
   );
   process.exitCode = 2;
 }

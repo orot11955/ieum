@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test dist/adapters/*.test.js"
+    "test": "node --test dist/adapters/*.test.js dist/evaluation/*.test.js"
   },
   "dependencies": {
     "@ieum/core": "workspace:*"
