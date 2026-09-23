@@ -17,6 +17,7 @@ Context 목적, 기존 parent/related 관계, primary 및 과거 문서의 출�
 - 잔여 Unit, 두 Context에 남는 bridge, 신규 Context로 이동한 Unit, 이전 출처가 영향을 받는 문서, primary 재선택 필요 여부와 inverse-preview를 확인했다.
 - 목적이 다른 peer, 기존 부모·자식 관계, 새 parent 순환, 기존 입력 graph 순환, stale 진단 revision, 기각 signature 재노출 억제, 누락된 split mapping을 검사했다.
 - 다른 Context 소속이 아닌 Unit을 과거 출처 사용으로 위조한 입력을 거부했다.
+- 기능 CI 성공 뒤 diff 검토에서 새 parent를 제3 Context 아래에 붙일 때 해당 Context revision이 base set에 빠지는 점을 발견했다. attach 대상의 identity/membership revision도 base set에 포함하고 테스트했다.
 - 첫 전체 lint는 부모 관계 검사에 남은 미사용 callback 인자로 실패했다. 직접 경로 검사로 정리하고 lint·format·Core 테스트를 재실행해 통과했다.
 
 | 실제 명령 | exit | 결과 |

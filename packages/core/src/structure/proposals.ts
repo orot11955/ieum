@@ -275,7 +275,18 @@ export function compareStructureOptions(
         "split mapping must cover all source members and new contexts",
       );
   }
-  const bases = [source, ...(peer ? [peer] : [])].map((item) => ({
+  const attachedParent = newParent?.attachUnderId
+    ? snapshot.contexts.find(
+        (item) => item.contextId === newParent.attachUnderId,
+      )
+    : null;
+  const baseContexts = [source, ...(peer ? [peer] : [])];
+  if (
+    attachedParent &&
+    !baseContexts.some((item) => item.contextId === attachedParent.contextId)
+  )
+    baseContexts.push(attachedParent);
+  const bases = baseContexts.map((item) => ({
     contextId: item.contextId,
     identityRevision: item.identityRevision,
     membershipRevision: item.membershipRevision,

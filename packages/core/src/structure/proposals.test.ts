@@ -85,6 +85,15 @@ const snapshot = validateSnapshot(
         recordedAt: 80,
         memberUnits: ["a", "e"].map((unitId) => ({ unitId, revision: 1 })),
       },
+      {
+        workspaceId: "w",
+        contextId: "root",
+        identityRevision: 4,
+        membershipRevision: 5,
+        name: "root",
+        recordedAt: 80,
+        memberUnits: [{ unitId: "e", revision: 1 }],
+      },
     ],
     relations: [],
     visibility: [],
@@ -214,6 +223,19 @@ describe("structure change option previews", () => {
     expect(
       option(request, "CREATE_PARENT").createdContexts[0]!.memberUnits,
     ).toEqual([]);
+    const attached = {
+      ...request,
+      newParent: {
+        contextId: "parent-new",
+        name: "work",
+        attachUnderId: "root",
+      },
+    };
+    expect(option(attached, "CREATE_PARENT").baseRevisions).toContainEqual({
+      contextId: "root",
+      identityRevision: 4,
+      membershipRevision: 5,
+    });
   });
   it("keeps old context identities in merge and blocks different-purpose or parent-child merges", () => {
     const merge = option(request, "MERGE");
