@@ -1,0 +1,1 @@
+export const EXTRACTION_RUNTIME = Symbol("EXTRACTION_RUNTIME");

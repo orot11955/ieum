@@ -56,6 +56,10 @@
       "types": "./dist/judgement/judgement-worker.d.ts",
       "default": "./dist/judgement/judgement-worker.js"
     },
+    "./extraction/extraction-service": {
+      "types": "./dist/extraction/extraction-service.d.ts",
+      "default": "./dist/extraction/extraction-service.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"

@@ -28,6 +28,10 @@
       "types": "./dist/judgement.d.ts",
       "default": "./dist/judgement.js"
     },
+    "./extraction": {
+      "types": "./dist/extraction.d.ts",
+      "default": "./dist/extraction.js"
+    },
     "./delivery": {
       "types": "./dist/delivery.d.ts",
       "default": "./dist/delivery.js"

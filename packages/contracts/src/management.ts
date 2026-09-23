@@ -5,6 +5,7 @@ import { knowledgeOpenApiPaths } from "./knowledge.js";
 import { taskOpenApiPaths } from "./tasks.js";
 import { calendarOpenApiPaths } from "./calendar.js";
 import { judgementOpenApiPaths } from "./judgement.js";
+import { extractionOpenApiPaths } from "./extraction.js";
 
 export const createCapturePath = "/api/v1/workspaces/{wid}/captures" as const;
 export const capturePath = "/api/v1/workspaces/{wid}/captures/{id}" as const;
@@ -188,6 +189,7 @@ export const managementOpenApi = {
     ...taskOpenApiPaths,
     ...calendarOpenApiPaths,
     ...judgementOpenApiPaths,
+    ...extractionOpenApiPaths,
     [createCapturePath]: {
       post: {
         operationId: "createCapture",

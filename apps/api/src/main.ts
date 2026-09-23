@@ -9,6 +9,7 @@ import { TaskService } from "@ieum/backend/tasks";
 import { CalendarService } from "@ieum/backend/calendar";
 import { JudgementService } from "@ieum/backend/judgement/judgement-service";
 import { ProposalService } from "@ieum/backend/judgement/proposals";
+import { ExtractionService } from "@ieum/backend/extraction/extraction-service";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { createApiApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
@@ -62,6 +63,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
         calendar: new CalendarService(service, commands),
         judgement: new JudgementService(businessPool, commands),
         proposals: new ProposalService(businessPool, commands),
+        extraction: new ExtractionService(service, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin: new URL(baseUrl).origin,

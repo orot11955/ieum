@@ -199,6 +199,46 @@ function audit(
 function scope(actual: string, expected: string): void {
   if (actual !== expected) throw new CalendarError("EVENT_NOT_FOUND");
 }
+/** Reuses calendar time/DST validation inside an authorized command transaction. */
+export async function insertExtractedEventInTransaction(
+  client: PoolClient,
+  input: {
+    workspaceId: string;
+    actorId: string;
+    title: string;
+    description: string;
+    schedule: EventSchedule;
+  },
+): Promise<string> {
+  const cleanName = cleanTitle(input.title);
+  const cleanBody = cleanDescription(input.description);
+  const schedule = scheduleValues(input.schedule);
+  const id = randomUUID();
+  await client.query(
+    `INSERT INTO business.calendar_event
+     (id,workspace_id,created_by_id,title,description,schedule_kind,time_zone,start_at,end_at,start_local,end_local,start_offset_minutes,end_offset_minutes,start_date,end_date_exclusive)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+    [
+      id,
+      input.workspaceId,
+      input.actorId,
+      cleanName,
+      cleanBody,
+      schedule.kind,
+      schedule.timeZone,
+      schedule.startAt,
+      schedule.endAt,
+      schedule.startLocal,
+      schedule.endLocal,
+      schedule.startOffsetMinutes,
+      schedule.endOffsetMinutes,
+      schedule.startDate,
+      schedule.endDateExclusive,
+    ],
+  );
+  return id;
+}
+
 export class CalendarService {
   constructor(
     private readonly identity: IdentityService,

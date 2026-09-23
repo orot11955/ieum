@@ -1073,6 +1073,69 @@ export const taskResult = business.table(
   ],
 );
 
+export const extractionCandidate = business.table(
+  "extraction_candidate",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    captureId: uuid("capture_id").notNull(),
+    captureRevision: integer("capture_revision").notNull(),
+    decisionKey: text("decision_key").notNull(),
+    targetKind: text("target_kind").notNull(),
+    payload: jsonb("payload").notNull(),
+    state: text("state").notNull().default("CANDIDATE"),
+    targetId: uuid("target_id"),
+    createdById: text("created_by_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("extraction_candidate_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    unique("extraction_candidate_source_decision_unique").on(
+      table.workspaceId,
+      table.captureId,
+      table.captureRevision,
+      table.decisionKey,
+    ),
+    index("extraction_candidate_capture_idx").on(
+      table.workspaceId,
+      table.captureId,
+      table.captureRevision,
+    ),
+    foreignKey({
+      name: "extraction_candidate_capture_revision_fk",
+      columns: [table.workspaceId, table.captureId, table.captureRevision],
+      foreignColumns: [
+        captureRevision.workspaceId,
+        captureRevision.captureId,
+        captureRevision.revision,
+      ],
+    }),
+    check("extraction_candidate_id_hash", sql`length(${table.id})=64`),
+    check(
+      "extraction_candidate_decision_hash",
+      sql`length(${table.decisionKey})=64`,
+    ),
+    check(
+      "extraction_candidate_kind_check",
+      sql`${table.targetKind} IN ('task','event','thought_unit')`,
+    ),
+    check(
+      "extraction_candidate_state_check",
+      sql`${table.state} IN ('CANDIDATE','ACCEPTED','REJECTED')`,
+    ),
+    check(
+      "extraction_candidate_target_check",
+      sql`(${table.state}='ACCEPTED')=(${table.targetId} IS NOT NULL)`,
+    ),
+  ],
+);
+
 export const invitation = business.table(
   "invitation",
   {

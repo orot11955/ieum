@@ -13,6 +13,7 @@ import { TaskService } from "@ieum/backend/tasks";
 import { CalendarService } from "@ieum/backend/calendar";
 import { JudgementService } from "@ieum/backend/judgement/judgement-service";
 import { ProposalService } from "@ieum/backend/judgement/proposals";
+import { ExtractionService } from "@ieum/backend/extraction/extraction-service";
 import { processJudgementJob } from "@ieum/backend/judgement/judgement-worker";
 import { withWorkspaceTransaction } from "@ieum/backend/platform/database/scope";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
@@ -147,6 +148,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         calendar: new CalendarService(identity, commands),
         judgement: new JudgementService(appPool, commands),
         proposals: new ProposalService(appPool, commands),
+        extraction: new ExtractionService(identity, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -920,6 +922,85 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
     });
     expect(eventTooLongPeriod.statusCode).toBe(422);
+    const extractionCapture = await app.inject({
+      method: "POST",
+      url: captureUrl,
+      headers: { ...captureHeaders, "idempotency-key": "be14-http-capture-01" },
+      payload: { title: "추출할 기록", rawBody: "TODO: 검증 보고서 작성" },
+    });
+    expect(extractionCapture.statusCode).toBe(201);
+    const extractionCaptureId = extractionCapture.json<{ id: string }>().id;
+    const extractionGenerated = await app.inject({
+      method: "POST",
+      url: `${captureUrl}/${extractionCaptureId}/extractions`,
+      headers: {
+        ...captureHeaders,
+        "idempotency-key": "be14-http-generate-01",
+      },
+    });
+    expect(extractionGenerated.statusCode).toBe(201);
+    const extractionCrossWorkspace = await app.inject({
+      method: "POST",
+      url: `${captureUrl}/${extractionCaptureId}/extractions`.replace(
+        operator.workspaceId,
+        invitedWorkspaceId,
+      ),
+      headers: {
+        host: "127.0.0.1:3000",
+        origin,
+        cookie: inviteeCookie,
+        "idempotency-key": "be14-http-cross-01",
+      },
+    });
+    expect(extractionCrossWorkspace.statusCode).toBe(404);
+    const extractionId = extractionGenerated.json<{ candidateIds: string[] }>()
+      .candidateIds[0]!;
+    const extractionUrl = `/api/v1/workspaces/${operator.workspaceId}/extractions/${extractionId}`;
+    const extractionPreview = await app.inject({
+      method: "GET",
+      url: extractionUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(extractionPreview.statusCode).toBe(200);
+    expect(extractionPreview.json()).toMatchObject({
+      state: "CANDIDATE",
+      sourceStale: false,
+      proposal: { targetKind: "task", suggestedTitle: "검증 보고서 작성" },
+    });
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: extractionUrl,
+          headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: `${extractionUrl}/accept`,
+          headers: {
+            ...captureHeaders,
+            origin: "http://other.example",
+            "idempotency-key": "be14-http-origin-01",
+          },
+          payload: { expectedCaptureRevision: 1, title: "검증 보고서 작성" },
+        })
+      ).statusCode,
+    ).toBe(403);
+    const extractionAccepted = await app.inject({
+      method: "POST",
+      url: `${extractionUrl}/accept`,
+      headers: { ...captureHeaders, "idempotency-key": "be14-http-accept-01" },
+      payload: { expectedCaptureRevision: 1, title: "검증 보고서 작성" },
+    });
+    expect(extractionAccepted.statusCode).toBe(200);
+    expect(extractionAccepted.json()).toMatchObject({
+      state: "ACCEPTED",
+      targetKind: "task",
+    });
     const badOrigin = await app.inject({
       method: "POST",
       url: contextUrl,

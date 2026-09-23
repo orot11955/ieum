@@ -7,6 +7,7 @@ import type { TaskService } from "@ieum/backend/tasks";
 import type { CalendarService } from "@ieum/backend/calendar";
 import type { JudgementService } from "@ieum/backend/judgement/judgement-service";
 import type { ProposalService } from "@ieum/backend/judgement/proposals";
+import type { ExtractionService } from "@ieum/backend/extraction/extraction-service";
 import type { createAccountAdministration } from "../auth/registration.js";
 
 export interface IdentityRuntime {
@@ -18,6 +19,7 @@ export interface IdentityRuntime {
   calendar: CalendarService;
   judgement: JudgementService;
   proposals: ProposalService;
+  extraction: ExtractionService;
   authPort: AuthPort;
   sessions: ReturnType<typeof createAccountAdministration>["sessions"];
   origin: string;

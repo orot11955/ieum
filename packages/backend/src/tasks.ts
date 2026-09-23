@@ -173,6 +173,37 @@ const transitions: Record<TaskState, readonly TaskState[]> = {
   DONE: ["TODO", "IN_PROGRESS"],
   CANCELED: ["TODO", "IN_PROGRESS"],
 };
+
+/** Reuses Task validation inside an already authorized command transaction. */
+export async function insertExtractedTaskInTransaction(
+  client: PoolClient,
+  input: {
+    workspaceId: string;
+    actorId: string;
+    title: string;
+    description: string;
+    originUnitId: string;
+  },
+): Promise<string> {
+  uuid(input.originUnitId);
+  const cleanTitle = title(input.title);
+  const cleanDescription = description(input.description);
+  const id = randomUUID();
+  await client.query(
+    `INSERT INTO business.task
+     (id,workspace_id,created_by_id,title,description,origin_unit_id,origin_unit_revision)
+     VALUES ($1,$2,$3,$4,$5,$6,1)`,
+    [
+      id,
+      input.workspaceId,
+      input.actorId,
+      cleanTitle,
+      cleanDescription,
+      input.originUnitId,
+    ],
+  );
+  return id;
+}
 export class TaskService {
   constructor(
     private readonly identity: IdentityService,

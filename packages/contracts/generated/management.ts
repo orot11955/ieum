@@ -559,6 +559,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/captures/{id}/extractions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["generateExtractionCandidates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/extractions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getExtractionCandidate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/extractions/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acceptExtractionCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/extractions/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["rejectExtractionCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -2492,6 +2556,236 @@ export interface operations {
                         proposalId: string;
                         /** @enum {string} */
                         state: "DISMISSED";
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    generateExtractionCandidates: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validated local parser candidates */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        captureId: string;
+                        captureRevision: number;
+                        candidateIds: string[];
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    getExtractionCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Candidate and prior target warnings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "CANDIDATE" | "ACCEPTED" | "REJECTED";
+                        /** Format: uuid */
+                        targetId: string | null;
+                        proposal: {
+                            proposalId: string;
+                            decisionKey: string;
+                            origin: {
+                                /** Format: uuid */
+                                workspaceId: string;
+                                /** Format: uuid */
+                                captureId: string;
+                                revision: number;
+                                originKey: string;
+                                sourceSpan: {
+                                    start: number;
+                                    end: number;
+                                    /** @enum {string} */
+                                    encoding: "utf16";
+                                };
+                                sourceText: string;
+                            };
+                            /** @enum {string} */
+                            targetKind: "task" | "event" | "thought_unit";
+                            suggestedTitle: string;
+                            suggestedBody: string | null;
+                            temporal: {
+                                expression: string;
+                                basisEpochMs: number;
+                                timeZone: string | null;
+                                proposedEpochMs: number | null;
+                                ambiguity: string[];
+                            } | null;
+                            unresolvedFields: ("title" | "body" | "time_zone" | "start_time" | "ambiguity")[];
+                            /** @enum {string} */
+                            status: "candidate";
+                        };
+                        sourceStale: boolean;
+                        priorTargets: {
+                            /** @enum {string} */
+                            kind: "task" | "event" | "thought_unit";
+                            /** Format: uuid */
+                            id: string;
+                            state: string | null;
+                            /** @enum {string} */
+                            match: "EXACT_SOURCE" | "SIMILAR_TITLE";
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    acceptExtractionCandidate: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedCaptureRevision: number;
+                    title: string;
+                    body?: string | null;
+                    schedule?: {
+                        /** @enum {string} */
+                        kind: "TIMED";
+                        timeZone: string;
+                        startLocal: string;
+                        endLocal: string;
+                        startOffsetMinutes?: number;
+                        endOffsetMinutes?: number;
+                    } | {
+                        /** @enum {string} */
+                        kind: "ALL_DAY";
+                        timeZone: string;
+                        /** Format: date */
+                        startDate: string;
+                        /** Format: date */
+                        endDateExclusive: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Confirmed source-backed command */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "ACCEPTED";
+                        /** @enum {string} */
+                        targetKind: "task" | "event" | "thought_unit";
+                        /** Format: uuid */
+                        targetId: string;
+                        /** Format: uuid */
+                        sourceUnitId: string;
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    } | {
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "REJECTED";
+                        /** @enum {string|null} */
+                        targetId: null;
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    rejectExtractionCandidate: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedCaptureRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Rejected candidate */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "ACCEPTED";
+                        /** @enum {string} */
+                        targetKind: "task" | "event" | "thought_unit";
+                        /** Format: uuid */
+                        targetId: string;
+                        /** Format: uuid */
+                        sourceUnitId: string;
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    } | {
+                        proposalId: string;
+                        /** @enum {string} */
+                        state: "REJECTED";
+                        /** @enum {string|null} */
+                        targetId: null;
                         /** Format: uuid */
                         commandId: string;
                         replayed: boolean;
