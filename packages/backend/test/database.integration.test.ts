@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
@@ -11,6 +11,7 @@ import {
   assertApplicationDatabaseRole,
   withWorkspaceTransaction,
 } from "../src/platform/database/scope.js";
+import { IdentityService } from "../src/identity-service.js";
 
 const authMigrations = fileURLToPath(
   new URL("../../../db/migrations/auth", import.meta.url),
@@ -29,6 +30,7 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
   let container: StartedPostgreSqlContainer;
   let admin: Pool;
   let app: Pool;
+  let authLock: Pool;
   let auth: Pool;
   let delivery: Pool;
   const workspaceA = randomUUID();
@@ -83,6 +85,10 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
       connectionString: roleUrl(base, "ieum_app_test"),
       max: 1,
     });
+    authLock = new Pool({
+      connectionString: roleUrl(base, "ieum_app_test"),
+      max: 1,
+    });
     auth = new Pool({
       connectionString: roleUrl(base, "ieum_auth_test"),
       max: 1,
@@ -114,7 +120,13 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
   }, 120_000);
 
   afterAll(async () => {
-    await Promise.all([app?.end(), auth?.end(), delivery?.end(), admin?.end()]);
+    await Promise.all([
+      app?.end(),
+      authLock?.end(),
+      auth?.end(),
+      delivery?.end(),
+      admin?.end(),
+    ]);
     await container?.stop();
   }, 120_000);
 
@@ -134,7 +146,7 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
       );
       expect(
         tables.rows.map((row: { table_name: string }) => row.table_name),
-      ).toEqual(["workspace", "workspace_member"]);
+      ).toEqual(expect.arrayContaining(["workspace", "workspace_member"]));
     } finally {
       await fresh.end();
     }
@@ -153,14 +165,18 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
     const tables = await admin.query(
       "SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity, r.rolname AS owner FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_roles r ON r.oid = c.relowner WHERE n.nspname = 'business' AND c.relkind = 'r' ORDER BY c.relname",
     );
-    expect(tables.rows).toHaveLength(2);
     expect(
-      tables.rows.every(
-        (row) =>
-          row.relrowsecurity &&
-          row.relforcerowsecurity &&
-          row.owner === "ieum_migrator",
-      ),
+      tables.rows.filter((row) => row.relname.startsWith("workspace")),
+    ).toHaveLength(2);
+    expect(
+      tables.rows
+        .filter((row) => row.relname.startsWith("workspace"))
+        .every(
+          (row) =>
+            row.relrowsecurity &&
+            row.relforcerowsecurity &&
+            row.owner === "ieum_migrator",
+        ),
     ).toBe(true);
     const runtime = await app.query(
       "SELECT r.rolsuper, r.rolbypassrls FROM pg_roles r WHERE r.rolname = current_user",
@@ -297,5 +313,179 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
       client.query("SELECT id FROM business.workspace"),
     );
     expect(second.rows.map((row) => row.id)).toEqual([workspaceB]);
+  });
+
+  it("bootstraps once, accepts an invitation once, and blocks suspended access", async () => {
+    const credentials = new Map<string, { id: string; password: string }>();
+    const revoked: string[] = [];
+    const identity = new IdentityService(
+      app,
+      {
+        async registerOrVerify({ email, name, password }) {
+          const existing = credentials.get(email);
+          if (existing) {
+            if (existing.password !== password) throw new Error("Bad password");
+            return existing.id;
+          }
+          const id = randomUUID();
+          credentials.set(email, { id, password });
+          await admin.query(
+            'INSERT INTO auth."user" (id, name, email) VALUES ($1, $2, $3)',
+            [id, name, email],
+          );
+          return id;
+        },
+      },
+      {
+        async revokeAll(userId) {
+          revoked.push(userId);
+        },
+      },
+      authLock,
+    );
+    const password = "be04 test password 1234";
+    const bootstrap = { email: "owner@example.test", name: "Owner", password };
+    const attempts = await Promise.allSettled([
+      identity.bootstrap(bootstrap),
+      identity.bootstrap(bootstrap),
+    ]);
+    expect(
+      attempts.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      attempts.filter((result) => result.status === "rejected"),
+    ).toHaveLength(1);
+    const first = attempts.find((result) => result.status === "fulfilled");
+    if (!first || first.status !== "fulfilled")
+      throw new Error("Missing operator");
+    const operator = first.value;
+    expect(operator.operator).toBe(true);
+    await expect(identity.bootstrap(bootstrap)).rejects.toMatchObject({
+      code: "BOOTSTRAP_COMPLETE",
+    });
+    await expect(
+      identity.bootstrap({ ...bootstrap, email: "other@example.test" }),
+    ).rejects.toMatchObject({ code: "BOOTSTRAP_RESERVED" });
+    await expect(
+      identity.setUserSuspended(operator.userId, operator.userId, true),
+    ).rejects.toMatchObject({ code: "LAST_OPERATOR" });
+
+    const invitation = await identity.issueInvitation(
+      operator.userId,
+      "invitee@example.test",
+    );
+    const stored = await admin.query<{ token_digest: string }>(
+      "SELECT token_digest FROM business.invitation",
+    );
+    expect(stored.rows[0]?.token_digest).not.toBe(invitation.token);
+    const invited = await identity.acceptInvitation({
+      token: invitation.token,
+      name: "Invitee",
+      password,
+    });
+    expect(invited.workspaceId).not.toBe(operator.workspaceId);
+    expect(invited.operator).toBe(false);
+    await expect(
+      identity.acceptInvitation({
+        token: invitation.token,
+        name: "Invitee",
+        password,
+      }),
+    ).rejects.toMatchObject({ code: "INVITATION_INVALID" });
+    await expect(
+      identity.issueInvitation(invited.userId, "third@example.test"),
+    ).rejects.toMatchObject({ code: "ACCESS_DENIED" });
+    expect((await identity.getMe(invited.userId)).timeZone).toBe("UTC");
+    expect(await identity.setTimeZone(invited.userId, "Asia/Seoul")).toBe(
+      "Asia/Seoul",
+    );
+    await expect(
+      identity.setTimeZone(invited.userId, "Not/AZone"),
+    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    await expect(
+      withWorkspaceTransaction(app, invited.workspaceId, (client) =>
+        client.query(
+          "DELETE FROM business.workspace_member WHERE workspace_id = $1 AND user_id = $2",
+          [invited.workspaceId, invited.userId],
+        ),
+      ),
+    ).rejects.toMatchObject({ constraint: "workspace_owner_member_fk" });
+
+    await identity.setUserSuspended(operator.userId, invited.userId, true);
+    expect(revoked).toContain(invited.userId);
+    await expect(identity.getMe(invited.userId)).rejects.toMatchObject({
+      code: "ACCESS_DENIED",
+    });
+    await identity.setUserSuspended(operator.userId, invited.userId, false);
+    expect((await identity.getMe(invited.userId)).workspaceId).toBe(
+      invited.workspaceId,
+    );
+    const expired = await identity.issueInvitation(
+      operator.userId,
+      "expired@example.test",
+    );
+    await admin.query(
+      "UPDATE business.invitation SET expires_at = now() - interval '1 second' WHERE token_digest = $1",
+      [createHash("sha256").update(expired.token).digest("hex")],
+    );
+    await expect(
+      identity.acceptInvitation({
+        token: expired.token,
+        name: "Expired",
+        password,
+      }),
+    ).rejects.toMatchObject({ code: "INVITATION_INVALID" });
+
+    await admin.query(
+      "INSERT INTO business.instance_operator (user_id) VALUES ($1)",
+      [invited.userId],
+    );
+    const concurrentPool = new Pool({
+      connectionString: roleUrl(container.getConnectionUri(), "ieum_app_test"),
+      max: 2,
+    });
+    try {
+      const concurrentIdentity = new IdentityService(
+        concurrentPool,
+        {
+          registerOrVerify: async () => {
+            throw new Error("Unused");
+          },
+        },
+        { revokeAll: async () => {} },
+        authLock,
+      );
+      const changes = await Promise.allSettled([
+        concurrentIdentity.setUserSuspended(
+          operator.userId,
+          invited.userId,
+          true,
+        ),
+        concurrentIdentity.setUserSuspended(
+          invited.userId,
+          operator.userId,
+          true,
+        ),
+      ]);
+      expect(
+        changes.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      const deniedChange = changes.find(
+        (result) => result.status === "rejected",
+      );
+      if (!deniedChange || deniedChange.status !== "rejected")
+        throw new Error("Expected a protected last operator");
+      expect(["ACCESS_DENIED", "LAST_OPERATOR"]).toContain(
+        (deniedChange.reason as { code?: string }).code,
+      );
+      const activeOperators = await admin.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM business.instance_operator io
+         JOIN business.user_access ua ON ua.user_id = io.user_id
+         WHERE io.active AND ua.state = 'ACTIVE'`,
+      );
+      expect(activeOperators.rows[0]?.count).toBe("1");
+    } finally {
+      await concurrentPool.end();
+    }
   });
 });

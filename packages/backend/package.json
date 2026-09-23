@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./identity-service": {
+      "types": "./dist/identity-service.d.ts",
+      "default": "./dist/identity-service.js"
+    },
     "./platform/database/scope": {
       "types": "./dist/platform/database/scope.d.ts",
       "default": "./dist/platform/database/scope.js"

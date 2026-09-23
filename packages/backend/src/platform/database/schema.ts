@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   integer,
   pgSchema,
@@ -7,6 +8,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -64,3 +66,100 @@ export const workspaceMember = business.table(
     ),
   ],
 );
+
+export const installation = business.table(
+  "installation",
+  {
+    id: integer("id").primaryKey(),
+    operatorEmail: text("operator_email").notNull(),
+    operatorUserId: text("operator_user_id"),
+    state: text("state").notNull().default("PENDING"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    check("installation_singleton", sql`${table.id} = 1`),
+    check(
+      "installation_state_check",
+      sql`${table.state} in ('PENDING', 'ACTIVE')`,
+    ),
+  ],
+);
+
+export const userAccess = business.table(
+  "user_access",
+  {
+    userId: text("user_id").primaryKey(),
+    personalWorkspaceId: uuid("personal_workspace_id").notNull(),
+    state: text("state").notNull().default("ACTIVE"),
+    authzVersion: integer("authz_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("user_access_personal_workspace_unique").on(
+      table.personalWorkspaceId,
+    ),
+    check(
+      "user_access_state_check",
+      sql`${table.state} in ('ACTIVE', 'SUSPENDED', 'DELETION_PENDING')`,
+    ),
+    check("user_access_version_positive", sql`${table.authzVersion} > 0`),
+  ],
+);
+
+export const instanceOperator = business.table("instance_operator", {
+  userId: text("user_id").primaryKey(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const userPreference = business.table("user_preference", {
+  userId: text("user_id").primaryKey(),
+  timeZone: text("time_zone").notNull().default("UTC"),
+  externalModelEnabled: boolean("external_model_enabled")
+    .notNull()
+    .default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const invitation = business.table(
+  "invitation",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tokenDigest: text("token_digest").notNull(),
+    email: text("email").notNull(),
+    issuerId: text("issuer_id").notNull(),
+    claimedUserId: text("claimed_user_id"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("invitation_token_digest_unique").on(table.tokenDigest),
+  ],
+);
+
+export const identityEvent = business.table("identity_event", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  actorId: text("actor_id"),
+  targetId: text("target_id"),
+  kind: text("kind").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
