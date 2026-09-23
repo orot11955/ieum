@@ -443,7 +443,7 @@
         "BE-05",
         "BE-07"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "시간 지정 일정과 종일 날짜 범위를 다른 타입으로 구현한다. 조회 기간·시간대·변경·취소·겹침 표시용 응답을 제공한다. 상대 날짜 해석은 명시적 확정 전 저장하지 않는다.",
       "contract": "모듈: planning/calendar. timed는 UTC instant+IANA timezone, all-day는 date와 exclusive end. 날짜 입력이 바뀌면 DST의 존재하지 않는/중복 local time을 판별한다.",
       "tests": "end<=start, 종일 하루, 서울/다른 시간대 표시, DST gap/fold, 월 경계, 취소/복구, 기간 조회 경계, timezone 없는 모델 후보.",
