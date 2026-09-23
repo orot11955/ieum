@@ -94,7 +94,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-05 · 점수·가용성·보류·설명 엔진
 
-**구간:** P1 · **상태:** IMPLEMENTED · **선행:** CORE-04
+**구간:** P1 · **상태:** VERIFIED · **선행:** CORE-04
 
 **구현 범위:** Evaluator→Scorer→Policy→Explain 단계를 분리한다. available/missing/not_applicable/error를 구분하고 contentScore, coverage, rankScore를 각각 반환한다. 초기 observe에서 candidate/abstain만 활성화한다.
 

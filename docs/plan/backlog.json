@@ -115,7 +115,7 @@
       "dependencies": [
         "CORE-04"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "Evaluator→Scorer→Policy→Explain 단계를 분리한다. available/missing/not_applicable/error를 구분하고 contentScore, coverage, rankScore를 각각 반환한다. 초기 observe에서 candidate/abstain만 활성화한다.",
       "contract": "위치: core/evaluation, scoring, policy, explanation. matchProbability=null. missing feature별 임의 가중치 재정규화 금지. recency/graph는 초기 off이며 내용 근거를 대체하지 않는다.",
       "tests": "측정된 0과 missing, coverage=0, NaN, recency만 높은 후보, 관련 맥락 2개, primary 없음, 잘못된 threshold config, 근거 없는 설명 문구.",

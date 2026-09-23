@@ -1,7 +1,8 @@
 # CORE-05 · 점수·가용성·보류·설명 엔진
 
-- 상태: **IMPLEMENTED**. 로컬 검증 완료; 원격 Linux CI 검증 전.
+- 상태: **VERIFIED**. 로컬 검증과 원격 Linux CI 성공; 사용자 ACCEPTED 전.
 - 선행: CORE-04 VERIFIED. 작업 기준 main `40807c796f7979c6ae2fed7d40b25001faca54e0`.
+- 기능 커밋: `f8fb26d2986c38cb6cd6d682a8e3b48f9e1ffee3`; [GitHub Actions 실행](https://github.com/orot11955/ieum/actions/runs/35853513391) `completed success` (Linux).
 - 환경: macOS arm64, Node 24.18.0, pnpm 11.24.0. 입력은 합성 fixture이며 사용자 자료가 아니다.
 
 ## 구현·계약
