@@ -117,6 +117,22 @@ describe("BE-07 immutable capture and unit revisions", () => {
       { start: 0, end: 4, encoding: "utf16" },
     ]);
     expect(initial.units[0]?.content.text).toBe("A😀B");
+    const commandMetadata = await withWorkspaceTransaction(
+      app,
+      workspaceId,
+      async (client) => {
+        const receipt = await client.query(
+          "SELECT response FROM business.command_receipt WHERE command_id = $1",
+          [created.commandId],
+        );
+        const audit = await client.query(
+          "SELECT action, target_id, changed_field_names FROM business.command_audit WHERE command_id = $1",
+          [created.commandId],
+        );
+        return { receipt: receipt.rows, audit: audit.rows };
+      },
+    );
+    expect(JSON.stringify(commandMetadata)).not.toContain("A😀B");
 
     await expect(
       captures.split({
@@ -260,6 +276,41 @@ describe("BE-07 immutable capture and unit revisions", () => {
   }, 30_000);
 
   it("deduplicates source keys, rejects cross-workspace reads and protects concurrent versions", async () => {
+    const sameTextFirst = await captures.create({
+      actorId,
+      workspaceId,
+      idempotencyKey: "same-text-first1",
+      title: "첫 입력",
+      rawBody: "같은 본문",
+      sourceKind: "manual",
+    });
+    const sameTextSecond = await captures.create({
+      actorId,
+      workspaceId,
+      idempotencyKey: "same-text-second",
+      title: "두 번째 입력",
+      rawBody: "같은 본문",
+      sourceKind: "manual",
+    });
+    expect(sameTextSecond.response.id).not.toBe(sameTextFirst.response.id);
+    expect(
+      (
+        await captures.get(
+          actorId,
+          workspaceId,
+          sameTextFirst.response.id as string,
+        )
+      ).rawBody,
+    ).toBe("같은 본문");
+    expect(
+      (
+        await captures.get(
+          actorId,
+          workspaceId,
+          sameTextSecond.response.id as string,
+        )
+      ).rawBody,
+    ).toBe("같은 본문");
     const sourceInput = {
       actorId,
       workspaceId,
