@@ -151,7 +151,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-09 · 할일·상태 전이·결과 기록
 
-**구간:** P3 · **상태:** PLANNED · **선행:** BE-07, BE-08
+**구간:** P3 · **상태:** IMPLEMENTED · **선행:** BE-07, BE-08
 
 **구현 범위:** 할일 생성/편집/기한/보류/완료/재개/취소와 activity result→새 capture 연결을 구현한다. 사용자의 명시적 action과 추출 origin을 구분한다.
 

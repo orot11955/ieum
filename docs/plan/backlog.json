@@ -427,7 +427,7 @@
         "BE-07",
         "BE-08"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "할일 생성/편집/기한/보류/완료/재개/취소와 activity result→새 capture 연결을 구현한다. 사용자의 명시적 action과 추출 origin을 구분한다.",
       "contract": "모듈: planning/tasks. TODO/IN_PROGRESS/ON_HOLD/DONE/CANCELED; due NONE/DATE/INSTANT. 완료 명령은 필요한 필드만 받고 본문·기한 전체를 낡은 폼 값으로 재전송하지 않는다.",
       "tests": "완료 연속 클릭, 동시 수정, 재개 이력, 날짜형/시각형 기한 보존, 결과 중복 저장, 원문 변경 후 DONE 유지.",

@@ -31,7 +31,7 @@
 | BE-06 | P4 | PLANNED | pg-boss worker·transactional outbox | BE-05 |
 | BE-07 | P3 | VERIFIED | Capture·원본 revision·ThoughtUnit | BE-05, CORE-01 |
 | BE-08 | P3 | VERIFIED | Context·다중 소속·관계·대표 맥락 | BE-07 |
-| BE-09 | P3 | PLANNED | 할일·상태 전이·결과 기록 | BE-07, BE-08 |
+| BE-09 | P3 | IMPLEMENTED | 할일·상태 전이·결과 기록 | BE-07, BE-08 |
 | BE-10 | P3 | PLANNED | 일정·시간대·종일·변경·취소 | BE-05, BE-07 |
 | BE-11 | P3 | PLANNED | 위키·문서 공통 draft/revision 엔진 | BE-05, FE-02 |
 | BE-12 | P4 | PLANNED | snapshot builder·profile·판단 job 연결 | BE-06, BE-07, BE-08, CORE-06 |
