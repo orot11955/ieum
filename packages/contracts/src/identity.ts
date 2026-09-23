@@ -18,6 +18,7 @@ export const MeResponseSchema = z.strictObject({
   preferences: z.strictObject({
     timeZone: z.string(),
     externalModelEnabled: z.literal(false),
+    version: z.int().positive(),
   }),
 });
 
@@ -36,10 +37,14 @@ export const SessionListResponseSchema = z.strictObject({
 
 export const PreferenceRequestSchema = z.strictObject({
   timeZone: z.string().min(1).max(100),
+  baseVersion: z.int().positive(),
 });
 export const PreferenceResponseSchema = z.strictObject({
   timeZone: z.string(),
   externalModelEnabled: z.literal(false),
+  version: z.int().positive(),
+  commandId: z.uuid(),
+  replayed: z.boolean(),
 });
 
 export const InvitationIssueRequestSchema = z.strictObject({
@@ -117,6 +122,14 @@ export const identityOpenApiPaths = {
   [IdentityPaths.preferences]: {
     patch: {
       operationId: "updateMyPreferences",
+      parameters: [
+        {
+          name: "Idempotency-Key",
+          in: "header",
+          required: true,
+          schema: { type: "string", minLength: 8, maxLength: 128 },
+        },
+      ],
       requestBody: request(PreferenceRequestSchema),
       responses: {
         "200": response(PreferenceResponseSchema, "Updated preferences"),

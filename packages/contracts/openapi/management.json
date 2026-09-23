@@ -69,11 +69,18 @@
                           "enum": [
                             false
                           ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
                         "timeZone",
-                        "externalModelEnabled"
+                        "externalModelEnabled",
+                        "version"
                       ],
                       "additionalProperties": false
                     }
@@ -189,6 +196,18 @@
     "/api/v1/me/preferences": {
       "patch": {
         "operationId": "updateMyPreferences",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -200,10 +219,17 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100
+                  },
+                  "baseVersion": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
-                  "timeZone"
+                  "timeZone",
+                  "baseVersion"
                 ],
                 "additionalProperties": false
               }
@@ -226,11 +252,28 @@
                       "enum": [
                         false
                       ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991
+                    },
+                    "commandId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "replayed": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
                     "timeZone",
-                    "externalModelEnabled"
+                    "externalModelEnabled",
+                    "version",
+                    "commandId",
+                    "replayed"
                   ],
                   "additionalProperties": false
                 }

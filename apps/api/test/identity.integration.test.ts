@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { IdentityService } from "@ieum/backend/identity-service";
+import { CommandCoordinator } from "@ieum/backend/command-coordinator";
+import { PreferenceCommands } from "@ieum/backend/preferences";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -129,6 +131,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       baseUrl: origin,
       identity: {
         service: identity,
+        preferences: new PreferenceCommands(new CommandCoordinator(identity)),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -199,6 +202,68 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       headers: { host: "127.0.0.1:3000", origin, cookie: operatorCookie },
     });
     expect(activity.statusCode).toBe(204);
+    const preferenceHeaders = {
+      host: "127.0.0.1:3000",
+      origin,
+      cookie: operatorCookie,
+      "idempotency-key": "operator-timezone-01",
+    };
+    const preferencePayload = { timeZone: "Asia/Seoul", baseVersion: 1 };
+    const preferenceUpdate = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/me/preferences",
+      headers: preferenceHeaders,
+      payload: preferencePayload,
+    });
+    expect(preferenceUpdate.statusCode).toBe(200);
+    expect(preferenceUpdate.json()).toMatchObject({
+      timeZone: "Asia/Seoul",
+      version: 2,
+      replayed: false,
+    });
+    const preferenceReplay = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/me/preferences",
+      headers: preferenceHeaders,
+      payload: preferencePayload,
+    });
+    expect(preferenceReplay.statusCode).toBe(200);
+    expect(preferenceReplay.json()).toMatchObject({
+      commandId: preferenceUpdate.json<{ commandId: string }>().commandId,
+      version: 2,
+      replayed: true,
+    });
+    const keyConflict = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/me/preferences",
+      headers: preferenceHeaders,
+      payload: { timeZone: "Asia/Tokyo", baseVersion: 1 },
+    });
+    expect(keyConflict.statusCode).toBe(409);
+    expect(keyConflict.json<{ code: string }>().code).toBe(
+      "IDEMPOTENCY_CONFLICT",
+    );
+    const staleVersion = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/me/preferences",
+      headers: {
+        ...preferenceHeaders,
+        "idempotency-key": "operator-timezone-02",
+      },
+      payload: preferencePayload,
+    });
+    expect(staleVersion.statusCode).toBe(409);
+    expect(staleVersion.json()).toMatchObject({
+      code: "VERSION_CONFLICT",
+      currentVersion: 2,
+    });
+    const noKey = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/me/preferences",
+      headers: { host: "127.0.0.1:3000", origin, cookie: operatorCookie },
+      payload: preferencePayload,
+    });
+    expect(noKey.statusCode).toBe(422);
     const sessions = await app.inject({
       method: "GET",
       url: "/api/v1/me/sessions",

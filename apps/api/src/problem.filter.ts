@@ -2,6 +2,7 @@ import { Catch, HttpException, HttpStatus } from "@nestjs/common";
 import type { ArgumentsHost, ExceptionFilter } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { IdentityError } from "@ieum/backend/identity-service";
+import { CommandError } from "@ieum/backend/command-coordinator";
 
 type FieldErrors = Record<string, string[]>;
 
@@ -38,17 +39,21 @@ export class ProblemFilter implements ExceptionFilter {
     const request = host.switchToHttp().getRequest<FastifyRequest>();
     const reply = host.switchToHttp().getResponse<FastifyReply>();
     const status =
-      exception instanceof IdentityError
-        ? exception.code === "INVALID_INPUT"
+      exception instanceof CommandError
+        ? exception.code === "INVALID_COMMAND"
           ? 422
-          : exception.code === "INVITATION_INVALID"
-            ? 404
-            : exception.code === "ACCESS_DENIED"
-              ? 403
-              : 409
-        : exception instanceof HttpException
-          ? exception.getStatus()
-          : HttpStatus.INTERNAL_SERVER_ERROR;
+          : 409
+        : exception instanceof IdentityError
+          ? exception.code === "INVALID_INPUT"
+            ? 422
+            : exception.code === "INVITATION_INVALID"
+              ? 404
+              : exception.code === "ACCESS_DENIED"
+                ? 403
+                : 409
+          : exception instanceof HttpException
+            ? exception.getStatus()
+            : HttpStatus.INTERNAL_SERVER_ERROR;
     const title =
       status === 422
         ? "Unprocessable Content"
@@ -56,15 +61,17 @@ export class ProblemFilter implements ExceptionFilter {
           ? "Internal Server Error"
           : "Request Error";
     const code =
-      exception instanceof IdentityError
+      exception instanceof CommandError
         ? exception.code
-        : status === 422
-          ? "VALIDATION_ERROR"
-          : status === 404
-            ? "NOT_FOUND"
-            : status >= 500
-              ? "INTERNAL_ERROR"
-              : "HTTP_ERROR";
+        : exception instanceof IdentityError
+          ? exception.code
+          : status === 422
+            ? "VALIDATION_ERROR"
+            : status === 404
+              ? "NOT_FOUND"
+              : status >= 500
+                ? "INTERNAL_ERROR"
+                : "HTTP_ERROR";
     const fieldErrors =
       exception instanceof HttpException
         ? fieldErrorsFor(exception)
@@ -84,6 +91,9 @@ export class ProblemFilter implements ExceptionFilter {
               ? "Unexpected server error"
               : "Request could not be processed",
         requestId: request.id,
+        ...(exception instanceof CommandError && exception.currentVersion
+          ? { currentVersion: exception.currentVersion }
+          : {}),
         ...(fieldErrors ? { fieldErrors } : {}),
       });
   }

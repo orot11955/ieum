@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   Header,
+  Headers,
   Inject,
   Param,
   Patch,
@@ -107,7 +108,11 @@ export class IdentityController {
       user: { id: session.userId, email: session.email },
       workspace: { id: me.workspaceId, role: "OWNER" as const },
       operator: me.operator,
-      preferences: { timeZone: me.timeZone, externalModelEnabled: false },
+      preferences: {
+        timeZone: me.timeZone,
+        externalModelEnabled: false,
+        version: me.preferenceVersion,
+      },
     });
   }
 
@@ -139,16 +144,28 @@ export class IdentityController {
   }
 
   @Patch("me/preferences")
-  async preferences(@Req() request: FastifyRequest, @Body() body: unknown) {
+  async preferences(
+    @Req() request: FastifyRequest,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
     this.mutation(request);
     const { session } = await this.current(request, true);
-    const { timeZone } = parseRequest(PreferenceRequestSchema, body);
+    const { timeZone, baseVersion } = parseRequest(
+      PreferenceRequestSchema,
+      body,
+    );
+    const outcome = await this.runtime.preferences.setTimeZone({
+      actorId: session.userId,
+      idempotencyKey: idempotencyKey ?? "",
+      baseVersion,
+      timeZone,
+      requestId: request.id,
+    });
     return PreferenceResponseSchema.parse({
-      timeZone: await this.runtime.service.setTimeZone(
-        session.userId,
-        timeZone,
-      ),
-      externalModelEnabled: false,
+      ...outcome.response,
+      commandId: outcome.commandId,
+      replayed: outcome.replayed,
     });
   }
 

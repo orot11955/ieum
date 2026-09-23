@@ -1,6 +1,8 @@
 import "reflect-metadata";
 import { Pool } from "pg";
 import { IdentityService } from "@ieum/backend/identity-service";
+import { CommandCoordinator } from "@ieum/backend/command-coordinator";
+import { PreferenceCommands } from "@ieum/backend/preferences";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { createApiApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
@@ -46,6 +48,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
       baseUrl,
       identity: {
         service,
+        preferences: new PreferenceCommands(new CommandCoordinator(service)),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin: new URL(baseUrl).origin,

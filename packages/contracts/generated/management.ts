@@ -187,6 +187,7 @@ export interface operations {
                             timeZone: string;
                             /** @enum {boolean} */
                             externalModelEnabled: false;
+                            version: number;
                         };
                     };
                 };
@@ -265,7 +266,9 @@ export interface operations {
     updateMyPreferences: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -273,6 +276,7 @@ export interface operations {
             content: {
                 "application/json": {
                     timeZone: string;
+                    baseVersion: number;
                 };
             };
         };
@@ -287,6 +291,10 @@ export interface operations {
                         timeZone: string;
                         /** @enum {boolean} */
                         externalModelEnabled: false;
+                        version: number;
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
                     };
                 };
             };
