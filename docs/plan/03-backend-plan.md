@@ -231,7 +231,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-14 · 추출 후보 승인→업무 항목 생성
 
-**구간:** P4 · **상태:** PLANNED · **선행:** BE-13, BE-09, BE-10, CORE-11
+**구간:** P4 · **상태:** IMPLEMENTED · **선행:** BE-13, BE-09, BE-10, CORE-11
 
 **구현 범위:** 허용된 추출 provider/파서를 application adapter로 호출한다. 후보별 source revision과 unresolved field를 보존하고 사용자가 편집한 승인 payload를 기존 Task/Event/Unit 명령으로 변환한다.
 
