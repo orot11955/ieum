@@ -237,9 +237,7 @@ describe("bounded context structure diagnosis", () => {
       ...input,
       members: [{ ...signals[0]!, vector: [0.9, 0.1] }, ...signals.slice(1)],
     });
-    expect(changed.signalHash).not.toBe(
-      diagnose(input).signalHash,
-    );
+    expect(changed.signalHash).not.toBe(diagnose(input).signalHash);
     expect(changed.runKey).not.toBe(diagnose(input).runKey);
   });
 });

@@ -19,6 +19,7 @@
 - stale membership, 누락·scope 밖 멤버, zero vector, 유효하지 않은 hash 함수 결과와 변경된 벡터의 run key, 64명 예산 초과를 거부했다.
 - 같은 입력 세 번 실행의 결과와 run key가 완전히 일치했다.
 - 첫 테스트는 `StructureDiagnosticConfig`가 상수 리터럴 타입으로 좁혀져 예산 반례 설정의 TypeScript 검사가 실패했다. 숫자 설정을 명시적인 config 타입으로 분리한 후 타입 검사와 테스트가 통과했다.
+- 첫 원격 CI [실행 35866702115](https://github.com/orot11955/ieum/actions/runs/35866702115)은 최종 `signalHash` 이름 변경 후 테스트 파일 한 줄의 Prettier 형식 차이로 실패했다. 해당 줄을 정리하고 `pnpm format:check` exit 0을 다시 확인했다.
 
 | 실제 명령 | exit | 결과 |
 | --- | ---: | --- |
