@@ -12,6 +12,10 @@
       "types": "./dist/management.d.ts",
       "default": "./dist/management.js"
     },
+    "./knowledge": {
+      "types": "./dist/knowledge.d.ts",
+      "default": "./dist/knowledge.js"
+    },
     "./delivery": {
       "types": "./dist/delivery.d.ts",
       "default": "./dist/delivery.js"

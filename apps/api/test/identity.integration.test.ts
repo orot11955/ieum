@@ -8,6 +8,7 @@ import { IdentityService } from "@ieum/backend/identity-service";
 import { CommandCoordinator } from "@ieum/backend/command-coordinator";
 import { PreferenceCommands } from "@ieum/backend/preferences";
 import { CaptureService } from "@ieum/backend/captures";
+import { KnowledgeService } from "@ieum/backend/knowledge";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -135,6 +136,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         service: identity,
         preferences: new PreferenceCommands(commands),
         captures: new CaptureService(identity, commands),
+        knowledge: new KnowledgeService(identity, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -462,6 +464,117 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(
       visibleCaptures.json<{ captures: unknown[] }>().captures,
     ).toHaveLength(0);
+    const contextUrl = `/api/v1/workspaces/${operator.workspaceId}/contexts`;
+    const contextCreated = await app.inject({
+      method: "POST",
+      url: contextUrl,
+      headers: { ...captureHeaders, "idempotency-key": "be08-http-context-01" },
+      payload: {
+        name: "계획",
+        purpose: "실행",
+        scope: "개인",
+        kind: "PROJECT",
+      },
+    });
+    expect(contextCreated.statusCode).toBe(201);
+    const contextId = contextCreated.json<{ id: string }>().id;
+    const contextRead = await app.inject({
+      method: "GET",
+      url: `${contextUrl}/${contextId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(contextRead.statusCode).toBe(200);
+    expect(contextRead.headers["cache-control"]).toBe("no-store");
+    const unitId = revisedCapture.json<{ unitId: string }>().unitId;
+    const membershipUrl = `/api/v1/workspaces/${operator.workspaceId}/units/${unitId}/memberships`;
+    const membershipCreated = await app.inject({
+      method: "POST",
+      url: membershipUrl,
+      headers: {
+        ...captureHeaders,
+        "idempotency-key": "be08-http-membership-01",
+      },
+      payload: {
+        baseVersion: 1,
+        memberships: [{ contextId, role: "PRIMARY" }],
+      },
+    });
+    expect(membershipCreated.statusCode).toBe(201);
+    expect(membershipCreated.json()).toMatchObject({ membershipVersion: 2 });
+    const secondContext = await app.inject({
+      method: "POST",
+      url: contextUrl,
+      headers: { ...captureHeaders, "idempotency-key": "be08-http-context-03" },
+      payload: {
+        name: "다른 계획",
+        purpose: "정리",
+        scope: "개인",
+        kind: "TOPIC",
+      },
+    });
+    expect(secondContext.statusCode).toBe(201);
+    const secondContextId = secondContext.json<{ id: string }>().id;
+    const relationUrl = `/api/v1/workspaces/${operator.workspaceId}/context-relations`;
+    const relationCreated = await app.inject({
+      method: "POST",
+      url: relationUrl,
+      headers: {
+        ...captureHeaders,
+        "idempotency-key": "be08-http-relation-01",
+      },
+      payload: {
+        fromContextId: contextId,
+        toContextId: secondContextId,
+        type: "PARENT_OF",
+      },
+    });
+    expect(relationCreated.statusCode).toBe(201);
+    const relationId = relationCreated.json<{ id: string }>().id;
+    const relationVisible = await app.inject({
+      method: "GET",
+      url: `${contextUrl}/${contextId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(
+      relationVisible
+        .json<{ relations: Array<{ id: string }> }>()
+        .relations.map((r) => r.id),
+    ).toContain(relationId);
+    const relationEnded = await app.inject({
+      method: "POST",
+      url: `${relationUrl}/${relationId}/end`,
+      headers: {
+        ...captureHeaders,
+        "idempotency-key": "be08-http-end-relation-01",
+      },
+    });
+    expect(relationEnded.statusCode).toBe(201);
+    expect(relationEnded.json()).toMatchObject({ id: relationId, ended: true });
+    const badOrigin = await app.inject({
+      method: "POST",
+      url: contextUrl,
+      headers: {
+        ...captureHeaders,
+        origin: "http://other.example",
+        "idempotency-key": "be08-http-context-02",
+      },
+      payload: {
+        name: "차단",
+        purpose: "차단",
+        scope: "차단",
+        kind: "PROJECT",
+      },
+    });
+    expect(badOrigin.statusCode).toBe(403);
+    const crossWorkspaceContext = await app.inject({
+      method: "GET",
+      url: `${contextUrl}/${contextId}`.replace(
+        operator.workspaceId,
+        invitedWorkspaceId,
+      ),
+      headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+    });
+    expect(crossWorkspaceContext.statusCode).toBe(404);
     const denied = await app.inject({
       method: "POST",
       url: "/api/v1/ops/invitations",

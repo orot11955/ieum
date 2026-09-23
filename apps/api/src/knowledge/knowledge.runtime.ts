@@ -1,0 +1,1 @@
+export const KNOWLEDGE_RUNTIME = Symbol("KNOWLEDGE_RUNTIME");
