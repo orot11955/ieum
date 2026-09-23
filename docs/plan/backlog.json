@@ -477,7 +477,7 @@
         "BE-08",
         "CORE-06"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "권한과 recordedAt으로 DB 데이터를 배치 조회해 core snapshot을 만든다. membership/source/model 변경 시 profile watermark와 embedding cache를 무효화한다. 판단 요청은 202 job 응답으로 저장과 분리한다.",
       "contract": "모듈: judgement/application + infrastructure. snapshot/input/config hash, eligible counts, candidate truncation, stage latency 기록. 긴 feature 계산과 provider 호출은 transaction 밖; 저장 전 revision 재검사.",
       "tests": "최신 자료가 과거 snapshot에 유입, 삭제 뒤 cache 재등장, LIMIT으로 후보가 잘리는 경우 표시, profile 지연, 연속 수정, 권한 없는 embedding 조회.",

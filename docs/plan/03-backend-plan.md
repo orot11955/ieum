@@ -199,7 +199,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-12 · snapshot builder·profile·판단 job 연결
 
-**구간:** P4 · **상태:** PLANNED · **선행:** BE-06, BE-07, BE-08, CORE-06
+**구간:** P4 · **상태:** IMPLEMENTED · **선행:** BE-06, BE-07, BE-08, CORE-06
 
 **구현 범위:** 권한과 recordedAt으로 DB 데이터를 배치 조회해 core snapshot을 만든다. membership/source/model 변경 시 profile watermark와 embedding cache를 무효화한다. 판단 요청은 202 job 응답으로 저장과 분리한다.
 
