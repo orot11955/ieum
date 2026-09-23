@@ -254,7 +254,7 @@ Core는 의미적 연결·구조·정제의 **판단 재료를 계산하고 검�
 
 ### CORE-15 · 모델 초안·claim map 검증
 
-**구간:** P6 · **상태:** PLANNED · **선행:** CORE-14, CORE-11
+**구간:** P6 · **상태:** IMPLEMENTED · **선행:** CORE-14, CORE-11
 
 **구현 범위:** 모델 초안의 blockId/claimId, source refs, quote/paraphrase/synthesis/author_added를 검증한다. source allowlist·정확 인용·존재 revision·내용 변경에 따른 mapping 재검토를 처리한다.
 

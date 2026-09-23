@@ -24,6 +24,15 @@ export type {
   PlannedOutlineEntry,
   SourceRole,
 } from "./derivation/planning/index.js";
+export { validateDraftClaims } from "./derivation/validation/index.js";
+export type {
+  ClaimValidation,
+  CurrentSourceState,
+  DraftClaimKind,
+  DraftValidationReport,
+  ModelDraft,
+  PreviousClaimMapping,
+} from "./derivation/validation/index.js";
 export {
   prepareExtractCommand,
   validateExtractProposals,

@@ -269,7 +269,7 @@
         "CORE-14",
         "CORE-11"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "모델 초안의 blockId/claimId, source refs, quote/paraphrase/synthesis/author_added를 검증한다. source allowlist·정확 인용·존재 revision·내용 변경에 따른 mapping 재검토를 처리한다.",
       "contract": "위치: core/derivation/validation. 참조 유효성, 의미 검토 상태, 작성자 주장 상태를 분리한다. 유효한 JSON이나 출처 존재를 사실 검증 완료로 표시하지 않는다.",
       "tests": "지어낸 source ID, 원문과 다른 직접 인용, 독립 근거 중복, source 본문의 prompt injection, 수정된 block의 stale claim, 모델 실패.",

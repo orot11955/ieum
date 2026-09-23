@@ -21,7 +21,7 @@
 | CORE-12 | P5 | VERIFIED | 맥락의 구조 진단 | CORE-09 |
 | CORE-13 | P5 | PLANNED | 분리·병합·상위 묶음 변경안 | CORE-12 |
 | CORE-14 | P6 | VERIFIED | 문서 목적·관점·개요·readiness | CORE-08 |
-| CORE-15 | P6 | PLANNED | 모델 초안·claim map 검증 | CORE-14, CORE-11 |
+| CORE-15 | P6 | IMPLEMENTED | 모델 초안·claim map 검증 | CORE-14, CORE-11 |
 | CORE-16 | P9 | PLANNED | 실제 판단·정리 효용 최종 평가 | CORE-10, CORE-13, CORE-15, FE-14, FE-16 |
 | BE-01 | P0 | PLANNED | NestJS + Fastify 통합과 composition root | BASE-02 |
 | BE-02 | P0 | PLANNED | 인증 adapter의 실제 호환성 검증 | BE-01, BASE-03 |
