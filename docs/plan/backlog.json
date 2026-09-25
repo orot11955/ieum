@@ -737,7 +737,7 @@
       "dependencies": [
         "BASE-02"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "다크 기준선의 tokens/themes/lock/recipes를 보존하고 Button/Field/Check/Select/Dialog/Notice/Status/Card/Table/layout wrapper를 기능에 맞게 검증한다. page는 배치만 맡고 appearance는 recipe를 사용한다.",
       "contract": "위치: packages/ui, design-system. theme system/light/dark 선호와 초기 적용을 유지한다. 새 브랜드/색 체계는 도입하지 않는다.",
       "tests": "light/dark/system, FOUC, focus/invalid/busy/disabled/readOnly 조합, keyboard dialog, forced-colors, reduced-motion, 긴 한글·URL, 좁은 viewport.",

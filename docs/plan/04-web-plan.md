@@ -31,7 +31,7 @@ Paper와 Dark를 같은 token/recipe 체계에서 관리한다. 외부 editor/pi
 
 ### FE-01 · Paper/Dark 토큰·공통 UI·상태 gallery
 
-**구간:** P0 · **상태:** IMPLEMENTED · **선행:** BASE-02
+**구간:** P0 · **상태:** VERIFIED · **선행:** BASE-02
 
 **화면:** W01, W26
 
