@@ -295,7 +295,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-18 · 비공개 첨부·안전 검증·공개 파생물
 
-**구간:** P6 · **상태:** PLANNED · **선행:** BE-05, BE-11, BE-06
+**구간:** P6 · **상태:** VERIFIED · **선행:** BE-05, BE-11, BE-06
 
 **구현 범위:** 파일 업로드/검증/다운로드/사용처를 구현한다. 초기 허용 형식을 텍스트·검증 가능한 이미지로 제한하고 크기·MIME·확장자·경로·메타데이터를 검사한다. private 원본과 public derivative를 분리한다.
 

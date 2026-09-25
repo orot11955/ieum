@@ -581,7 +581,7 @@
         "BE-11",
         "BE-06"
       ],
-      "status": "PLANNED",
+      "status": "VERIFIED",
       "scope": "파일 업로드/검증/다운로드/사용처를 구현한다. 초기 허용 형식을 텍스트·검증 가능한 이미지로 제한하고 크기·MIME·확장자·경로·메타데이터를 검사한다. private 원본과 public derivative를 분리한다.",
       "contract": "모듈: assets, AssetStoragePort. PENDING→VERIFIED/REJECTED; 검증 전 문서 사용/공개 불가. content hash와 reference manifest를 기록하고 저장소 파일명은 서버가 생성.",
       "tests": "path traversal, fake MIME, SVG/HTML script, 큰 이미지/압축 폭탄, 다른 사용자 다운로드, EXIF 등 공개 metadata, 사용 중 asset 삭제.",
