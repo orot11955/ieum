@@ -799,6 +799,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/external-excerpts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createExternalExcerpt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/external-excerpts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getExternalExcerpt"];
+        put: operations["reviseExternalExcerpt"];
+        post?: never;
+        delete: operations["deleteExternalExcerpt"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/evidence-packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createEvidencePack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/evidence-packs/{packId}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reviseEvidencePack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/evidence-packs/{packId}/revisions/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getEvidencePackRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/workbench": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDocumentWorkbench"];
+        put: operations["saveDocumentWorkbench"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -3816,6 +3912,636 @@ export interface operations {
                         id: string;
                         linkVersion: number;
                         targetIds: string[];
+                    };
+                };
+            };
+        };
+    };
+    createExternalExcerpt: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    /** Format: uri */
+                    url: string;
+                    author: string;
+                    /** Format: date */
+                    publishedAt: string | null;
+                    excerpt: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Excerpt created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        revision: number;
+                        /** @enum {string} */
+                        state: "ACTIVE" | "DELETED";
+                        contentHash: string;
+                    };
+                };
+            };
+        };
+    };
+    getExternalExcerpt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private excerpt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        workspaceId: string;
+                        version: number;
+                        revision: number;
+                        /** @enum {string} */
+                        state: "ACTIVE" | "DELETED";
+                        title: string;
+                        /** Format: uri */
+                        url: string;
+                        author: string;
+                        /** Format: date */
+                        publishedAt: string | null;
+                        excerpt: string;
+                        contentHash: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                    };
+                };
+            };
+        };
+    };
+    reviseExternalExcerpt: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    /** Format: uri */
+                    url: string;
+                    author: string;
+                    /** Format: date */
+                    publishedAt: string | null;
+                    excerpt: string;
+                    baseVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Excerpt revised */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        revision: number;
+                        /** @enum {string} */
+                        state: "ACTIVE" | "DELETED";
+                        contentHash: string;
+                    };
+                };
+            };
+        };
+    };
+    deleteExternalExcerpt: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Excerpt hidden */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        revision: number;
+                        /** @enum {string} */
+                        state: "ACTIVE" | "DELETED";
+                        contentHash: string;
+                    };
+                };
+            };
+        };
+    };
+    createEvidencePack: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    sources: ({
+                        /** @enum {string} */
+                        kind: "capture_revision";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    } | {
+                        /** @enum {string} */
+                        kind: "unit";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span?: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    } | {
+                        /** @enum {string} */
+                        kind: "document_revision";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span?: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    } | {
+                        /** @enum {string} */
+                        kind: "task_result";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span?: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    } | {
+                        /** @enum {string} */
+                        kind: "external_excerpt";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span?: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    })[];
+                };
+            };
+        };
+        responses: {
+            /** @description Pack created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        documentId: string;
+                        revision: number;
+                        manifestHash: string;
+                    };
+                };
+            };
+        };
+    };
+    reviseEvidencePack: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+                packId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    sources: ({
+                        /** @enum {string} */
+                        kind: "capture_revision";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    } | {
+                        /** @enum {string} */
+                        kind: "unit";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span?: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    } | {
+                        /** @enum {string} */
+                        kind: "document_revision";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span?: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    } | {
+                        /** @enum {string} */
+                        kind: "task_result";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span?: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    } | {
+                        /** @enum {string} */
+                        kind: "external_excerpt";
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        span?: {
+                            start: number;
+                            end: number;
+                            /** @enum {string} */
+                            encoding: "utf16";
+                        };
+                    })[];
+                    baseRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Pack revision created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        documentId: string;
+                        revision: number;
+                        manifestHash: string;
+                    };
+                };
+            };
+        };
+    };
+    getEvidencePackRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+                packId: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable pack revision with live source states */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        documentId: string;
+                        revision: number;
+                        currentRevision: number;
+                        title: string;
+                        manifestHash: string;
+                        sources: {
+                            /** @enum {string} */
+                            kind: "capture_revision" | "unit" | "document_revision" | "task_result" | "external_excerpt";
+                            /** Format: uuid */
+                            id: string;
+                            revision: number;
+                            originKey: string;
+                            contentHash: string;
+                            span: {
+                                start: number;
+                                end: number;
+                                /** @enum {string} */
+                                encoding: "utf16";
+                            } | null;
+                            text: string;
+                            title: string;
+                            /** Format: uri */
+                            url: string | null;
+                            author: string | null;
+                            /** Format: date */
+                            publishedAt: string | null;
+                        }[];
+                        sourceStates: ("fresh" | "stale" | "unresolved")[];
+                        originFamilies: string[];
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+        };
+    };
+    getDocumentWorkbench: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Workbench and live review states */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        documentId: string;
+                        version: number;
+                        draftVersion: number;
+                        currentDraftVersion: number;
+                        /** Format: uuid */
+                        packId: string;
+                        packRevision: number;
+                        /** @enum {string} */
+                        purpose: "guide" | "experiment_note" | "decision_record" | "comparison";
+                        audience: string;
+                        outline: {
+                            itemId: string;
+                            citations: {
+                                sourceIndex: number;
+                                /** @enum {string} */
+                                role: "personal_observation" | "external_claim" | "counterargument";
+                            }[];
+                            authorInterpretation: string | null;
+                        }[];
+                        conflicts: {
+                            leftSourceIndex: number;
+                            rightSourceIndex: number;
+                            note: string;
+                        }[];
+                        claims: {
+                            /** Format: uuid */
+                            blockId: string;
+                            /** Format: uuid */
+                            claimId: string;
+                            textHash: string;
+                            blockHash: string;
+                            /** @enum {string} */
+                            transform: "quote" | "paraphrase" | "synthesis" | "author_added";
+                            sourceIndices: number[];
+                            /** @enum {string} */
+                            semanticReview: "unreviewed" | "supported" | "disputed" | "author_asserted";
+                        }[];
+                        claimStates: {
+                            /** Format: uuid */
+                            claimId: string;
+                            /** @enum {string} */
+                            state: "current" | "needs_remap" | "source_stale" | "source_unresolved";
+                        }[];
+                        sourceStates: ("fresh" | "stale" | "unresolved")[];
+                        sourceManifest: {
+                            /** @enum {string} */
+                            kind: "capture_revision" | "unit" | "document_revision" | "task_result" | "external_excerpt";
+                            /** Format: uuid */
+                            id: string;
+                            revision: number;
+                            originKey: string;
+                            contentHash: string;
+                            span: {
+                                start: number;
+                                end: number;
+                                /** @enum {string} */
+                                encoding: "utf16";
+                            } | null;
+                            text: string;
+                            title: string;
+                            /** Format: uri */
+                            url: string | null;
+                            author: string | null;
+                            /** Format: date */
+                            publishedAt: string | null;
+                        }[];
+                        readiness: {
+                            /** @enum {string} */
+                            status: "needs_material" | "needs_author_review";
+                            missingItems: string[];
+                            authorDraftItems: string[];
+                            missingCounterargument: boolean;
+                            independentOriginFamilies: string[];
+                            unresolvedConflicts: {
+                                leftSourceIndex: number;
+                                rightSourceIndex: number;
+                                note: string;
+                            }[];
+                            /** @enum {boolean} */
+                            reviewRequired: true;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+        };
+    };
+    saveDocumentWorkbench: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                    draftVersion: number;
+                    /** Format: uuid */
+                    packId: string;
+                    packRevision: number;
+                    /** @enum {string} */
+                    purpose: "guide" | "experiment_note" | "decision_record" | "comparison";
+                    audience: string;
+                    outline: {
+                        itemId: string;
+                        citations: {
+                            sourceIndex: number;
+                            /** @enum {string} */
+                            role: "personal_observation" | "external_claim" | "counterargument";
+                        }[];
+                        authorInterpretation: string | null;
+                    }[];
+                    conflicts: {
+                        leftSourceIndex: number;
+                        rightSourceIndex: number;
+                        note: string;
+                    }[];
+                    claims: {
+                        /** Format: uuid */
+                        blockId: string;
+                        /** Format: uuid */
+                        claimId: string;
+                        textHash: string;
+                        blockHash: string;
+                        /** @enum {string} */
+                        transform: "quote" | "paraphrase" | "synthesis" | "author_added";
+                        sourceIndices: number[];
+                        /** @enum {string} */
+                        semanticReview: "unreviewed" | "supported" | "disputed" | "author_asserted";
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Workbench snapshot saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        documentId: string;
+                        version: number;
+                        draftVersion: number;
+                        /** Format: uuid */
+                        packId: string;
+                        packRevision: number;
                     };
                 };
             };

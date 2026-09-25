@@ -92,6 +92,13 @@
       "when": 1790309210889,
       "tag": "0012_acoustic_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790310727633,
+      "tag": "0013_stale_johnny_blaze",
+      "breakpoints": true
     }
   ]
 }

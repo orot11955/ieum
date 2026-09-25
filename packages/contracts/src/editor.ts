@@ -90,6 +90,23 @@ export type EditorBlock = NonNullable<
 >[number];
 export type EditorSourceRef = z.infer<typeof EditorSourceRefSchema>;
 
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  return `{${Object.keys(value)
+    .sort()
+    .map(
+      (key) =>
+        `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
+    )
+    .join(",")}}`;
+}
+
+/** Stable UTF-8 SHA-256 input for a claim's complete block, including source references. */
+export function canonicalEditorBlock(block: EditorBlock): string {
+  return canonicalJson(BlockSchema.parse(block));
+}
+
 // Any changed block, including a changed source ref, needs claim/source review.
 export function compareEditorBlocks(
   before: EditorEnvelope,

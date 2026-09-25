@@ -46,6 +46,10 @@
     "./documents": {
       "types": "./dist/documents.d.ts",
       "default": "./dist/documents.js"
+    },
+    "./workbench": {
+      "types": "./dist/workbench.d.ts",
+      "default": "./dist/workbench.js"
     }
   },
   "scripts": {

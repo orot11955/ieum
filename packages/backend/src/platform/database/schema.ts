@@ -1119,6 +1119,239 @@ export const documentLink = business.table(
   ],
 );
 
+export const externalExcerpt = business.table(
+  "external_excerpt",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    createdById: text("created_by_id").notNull(),
+    state: text("state").notNull().default("ACTIVE"),
+    version: integer("version").notNull().default(1),
+    currentRevision: integer("current_revision").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("external_excerpt_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    check(
+      "external_excerpt_state_check",
+      sql`${table.state} IN ('ACTIVE','DELETED')`,
+    ),
+    check(
+      "external_excerpt_versions_positive",
+      sql`${table.version}>0 AND ${table.currentRevision}>0`,
+    ),
+  ],
+);
+
+export const externalExcerptRevision = business.table(
+  "external_excerpt_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    excerptId: uuid("excerpt_id").notNull(),
+    revision: integer("revision").notNull(),
+    title: text("title").notNull(),
+    url: text("url").notNull(),
+    author: text("author").notNull(),
+    publishedAt: date("published_at", { mode: "string" }),
+    excerpt: text("excerpt").notNull(),
+    contentHash: text("content_hash").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "external_excerpt_revision_pk",
+      columns: [table.workspaceId, table.excerptId, table.revision],
+    }),
+    foreignKey({
+      name: "external_excerpt_revision_excerpt_fk",
+      columns: [table.workspaceId, table.excerptId],
+      foreignColumns: [externalExcerpt.workspaceId, externalExcerpt.id],
+    }),
+    check("external_excerpt_revision_positive", sql`${table.revision}>0`),
+    check(
+      "external_excerpt_revision_title_check",
+      sql`length(trim(${table.title})) BETWEEN 1 AND 300`,
+    ),
+    check(
+      "external_excerpt_revision_url_check",
+      sql`length(${table.url}) BETWEEN 1 AND 2000`,
+    ),
+    check(
+      "external_excerpt_revision_author_check",
+      sql`length(trim(${table.author})) BETWEEN 1 AND 300`,
+    ),
+    check(
+      "external_excerpt_revision_excerpt_check",
+      sql`length(${table.excerpt}) BETWEEN 1 AND 200000`,
+    ),
+    check(
+      "external_excerpt_revision_hash_check",
+      sql`length(${table.contentHash})=64`,
+    ),
+  ],
+);
+
+export const evidencePack = business.table(
+  "evidence_pack",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    currentRevision: integer("current_revision").notNull().default(1),
+    createdById: text("created_by_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("evidence_pack_workspace_id_unique").on(table.workspaceId, table.id),
+    unique("evidence_pack_document_identity_unique").on(
+      table.workspaceId,
+      table.id,
+      table.documentId,
+    ),
+    foreignKey({
+      name: "evidence_pack_document_fk",
+      columns: [table.workspaceId, table.documentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    check("evidence_pack_revision_positive", sql`${table.currentRevision}>0`),
+  ],
+);
+
+export const evidencePackRevision = business.table(
+  "evidence_pack_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    packId: uuid("pack_id").notNull(),
+    revision: integer("revision").notNull(),
+    manifest: jsonb("manifest").notNull(),
+    manifestHash: text("manifest_hash").notNull(),
+    createdById: text("created_by_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "evidence_pack_revision_pk",
+      columns: [table.workspaceId, table.packId, table.revision],
+    }),
+    foreignKey({
+      name: "evidence_pack_revision_pack_fk",
+      columns: [table.workspaceId, table.packId],
+      foreignColumns: [evidencePack.workspaceId, evidencePack.id],
+    }),
+    check("evidence_pack_revision_positive", sql`${table.revision}>0`),
+    check(
+      "evidence_pack_revision_hash_check",
+      sql`length(${table.manifestHash})=64`,
+    ),
+  ],
+);
+
+export const documentWorkbench = business.table(
+  "document_workbench",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    currentRevision: integer("current_revision").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "document_workbench_pk",
+      columns: [table.workspaceId, table.documentId],
+    }),
+    foreignKey({
+      name: "document_workbench_document_fk",
+      columns: [table.workspaceId, table.documentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    check(
+      "document_workbench_revision_nonnegative",
+      sql`${table.currentRevision}>=0`,
+    ),
+  ],
+);
+
+export const documentWorkbenchRevision = business.table(
+  "document_workbench_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    revision: integer("revision").notNull(),
+    packId: uuid("pack_id").notNull(),
+    packRevision: integer("pack_revision").notNull(),
+    draftVersion: integer("draft_version").notNull(),
+    purpose: text("purpose").notNull(),
+    audience: text("audience").notNull(),
+    outline: jsonb("outline").notNull(),
+    claims: jsonb("claims").notNull(),
+    sourceManifest: jsonb("source_manifest").notNull(),
+    createdById: text("created_by_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "document_workbench_revision_pk",
+      columns: [table.workspaceId, table.documentId, table.revision],
+    }),
+    foreignKey({
+      name: "document_workbench_revision_workbench_fk",
+      columns: [table.workspaceId, table.documentId],
+      foreignColumns: [
+        documentWorkbench.workspaceId,
+        documentWorkbench.documentId,
+      ],
+    }),
+    foreignKey({
+      name: "document_workbench_revision_pack_document_fk",
+      columns: [table.workspaceId, table.packId, table.documentId],
+      foreignColumns: [
+        evidencePack.workspaceId,
+        evidencePack.id,
+        evidencePack.documentId,
+      ],
+    }),
+    foreignKey({
+      name: "document_workbench_revision_pack_fk",
+      columns: [table.workspaceId, table.packId, table.packRevision],
+      foreignColumns: [
+        evidencePackRevision.workspaceId,
+        evidencePackRevision.packId,
+        evidencePackRevision.revision,
+      ],
+    }),
+    check(
+      "document_workbench_revision_positive",
+      sql`${table.revision}>0 AND ${table.packRevision}>0 AND ${table.draftVersion}>0`,
+    ),
+    check(
+      "document_workbench_purpose_check",
+      sql`${table.purpose} IN ('guide','experiment_note','decision_record','comparison')`,
+    ),
+    check(
+      "document_workbench_audience_check",
+      sql`length(trim(${table.audience})) BETWEEN 1 AND 300`,
+    ),
+  ],
+);
+
 export const task = business.table(
   "task",
   {
