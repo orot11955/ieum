@@ -1437,8 +1437,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(issuedCredential.statusCode, issuedCredential.body).toBe(201);
     expect(issuedCredential.headers["cache-control"]).toBe("no-store");
-    const credential = issuedCredential.json<{ id: string; token: string }>();
-    const deliveryHeaders = { authorization: `Bearer ${credential.token}` };
+    let credential = issuedCredential.json<{ id: string; token: string }>();
+    let deliveryHeaders = { authorization: `Bearer ${credential.token}` };
     const credentialList = await app.inject({
       method: "GET",
       url: credentialUrl,
@@ -1544,7 +1544,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     ).toBe(503);
     await writeFile(join(assetRoot, "derivative", derivativeKey), assetBytes);
     await admin.query(
-      "UPDATE business.user_access SET state='SUSPENDED' WHERE user_id=$1",
+      "UPDATE business.user_access SET state='SUSPENDED',authz_version=authz_version+1 WHERE user_id=$1",
       [operator.userId],
     );
     const suspendedDelivery = await deliveryApp.inject({
@@ -1554,9 +1554,27 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(suspendedDelivery.statusCode).toBe(401);
     await admin.query(
-      "UPDATE business.user_access SET state='ACTIVE' WHERE user_id=$1",
+      "UPDATE business.user_access SET state='ACTIVE',authz_version=authz_version+1 WHERE user_id=$1",
       [operator.userId],
     );
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: publicDeliveryUrl,
+          headers: deliveryHeaders,
+        })
+      ).statusCode,
+    ).toBe(401);
+    const resumedCredential = await app.inject({
+      method: "POST",
+      url: `${credentialUrl}/${credential.id}/rotate`,
+      headers: { ...assetHeaders, origin },
+      payload: { expiresInDays: 30 },
+    });
+    expect(resumedCredential.statusCode, resumedCredential.body).toBe(201);
+    credential = resumedCredential.json<{ id: string; token: string }>();
+    deliveryHeaders = { authorization: `Bearer ${credential.token}` };
     await admin.query(
       "UPDATE business.workspace SET state='SUSPENDED' WHERE id=$1",
       [operator.workspaceId],

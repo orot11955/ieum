@@ -44,11 +44,27 @@ async function issue(
   const id = randomUUID();
   const token = `ieum_dlv_${id}.${randomBytes(32).toString("base64url")}`;
   const expiresAt = new Date(Date.now() + expiresInDays * 86_400_000);
+  const access = await client.query<{ authz_version: number }>(
+    `SELECT authz_version FROM business.user_access
+     WHERE user_id=$1 AND personal_workspace_id=$2 AND state='ACTIVE' FOR SHARE`,
+    [actorId, workspaceId],
+  );
+  const authzVersion = access.rows[0]?.authz_version;
+  if (!authzVersion) throw new DeliveryCredentialError("CREDENTIAL_NOT_FOUND");
   const inserted = await client.query<CredentialRow>(
     `INSERT INTO delivery.client_credential
-     (id,workspace_id,channel_id,name,token_hash,created_by_id,expires_at)
-     VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,channel_id,name,state,expires_at,revoked_at,created_at`,
-    [id, workspaceId, channelId, name, sha(token), actorId, expiresAt],
+     (id,workspace_id,channel_id,name,token_hash,created_by_id,issued_authz_version,expires_at)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,channel_id,name,state,expires_at,revoked_at,created_at`,
+    [
+      id,
+      workspaceId,
+      channelId,
+      name,
+      sha(token),
+      actorId,
+      authzVersion,
+      expiresAt,
+    ],
   );
   return { ...result(inserted.rows[0]!), token };
 }

@@ -127,6 +127,13 @@
       "when": 1790318675956,
       "tag": "0017_long_the_professor",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790320633850,
+      "tag": "0018_bored_bastion",
+      "breakpoints": true
     }
   ]
 }

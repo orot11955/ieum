@@ -2094,6 +2094,7 @@ export const deliveryClientCredential = delivery.table(
     name: text("name").notNull(),
     tokenHash: text("token_hash").notNull(),
     createdById: text("created_by_id").notNull(),
+    issuedAuthzVersion: integer("issued_authz_version").notNull().default(0),
     state: text("state").notNull().default("ACTIVE"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
