@@ -279,7 +279,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-17 · 선택적 모델 정제 adapter·비용·실패 격리
 
-**구간:** P6 · **상태:** PLANNED · **선행:** BE-16, BE-06, CORE-15
+**구간:** P6 · **상태:** IMPLEMENTED · **선행:** BE-16, BE-06, CORE-15
 
 **구현 범위:** 하나의 허용 provider부터 outline/문장 정제/초안 생성에 연결한다. 입력 source allowlist, 외부 전송 opt-in, timeout/token·비용 budget, 취소, model/prompt revision을 둔다. 사용자 문서를 즉시 교체하지 않는다.
 
