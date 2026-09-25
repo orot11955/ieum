@@ -229,7 +229,7 @@ describe("BE-21 portable capture manifest", () => {
     expect(readCaptureBundle(bundle).manifest.version).toBe(2);
   });
 
-  it("round trips version 3 Context identity and rejects invalid supersession", () => {
+  it("round trips version 3 Context identity and accepts split supersession", () => {
     const contextId = randomUUID();
     const context = {
       id: contextId,
@@ -253,6 +253,15 @@ describe("BE-21 portable capture manifest", () => {
       unpackTransferArchive(bundle).get("manifest.json")!.toString("utf8"),
     );
     manifest.contexts[0].state = "SUPERSEDED";
+    const splitBundle = packTransferArchive([
+      {
+        path: "manifest.json",
+        bytes: Buffer.from(JSON.stringify(manifest)),
+      },
+    ]);
+    expect(readCaptureBundle(splitBundle).manifest.version).toBe(3);
+    manifest.contexts[0].state = "ACTIVE";
+    manifest.contexts[0].supersededById = randomUUID();
     expect(() =>
       readCaptureBundle(
         packTransferArchive([

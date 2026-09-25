@@ -257,8 +257,7 @@ export function readCaptureBundle(packed: Buffer): {
         !validText(context.name, 200) ||
         !validText(context.purpose, 2000) ||
         !validText(context.scope, 2000) ||
-        (context.state === "SUPERSEDED") !==
-          (context.supersededById !== null) ||
+        (context.state !== "SUPERSEDED" && context.supersededById !== null) ||
         context.supersededById === context.id
       )
         throw new TransferManifestError("INVALID_BUNDLE");
