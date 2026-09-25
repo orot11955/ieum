@@ -32,6 +32,7 @@ import { DataTransferService } from "@ieum/backend/data-transfer/service";
 import { LocalTransferStorage } from "@ieum/backend/data-transfer/storage";
 import {
   createCaptureBundle,
+  createCaptureHistoryBundle,
   createContextBundle,
   createPersonalBundle,
   createTaskHistoryBundle,
@@ -3993,7 +3994,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(
       transferPreview.rows
         .filter((row) => row.recordKind === "capture")
-        .every((row) => row.state === "NEW"),
+        .every((row) => row.state === "DUPLICATE"),
     ).toBe(true);
     expect(
       transferPreview.rows
@@ -4031,6 +4032,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     );
     expect(missingTransferReferences.rows).toEqual([
       { record_kind: "task", reason_code: "MISSING_REFERENCE" },
+      { record_kind: "task_result", reason_code: "CONTENT_CONFLICT" },
     ]);
     const linkedImportedTasks = await admin.query<{ count: string }>(
       `SELECT count(*)::text AS count FROM business.transfer_row tr
@@ -4062,7 +4064,10 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       repeatedPreview
         .json<{ rows: { recordKind: string; state: string }[] }>()
         .rows.every(
-          (row) => row.state === "FAILED" || row.state === "IMPORTED",
+          (row) =>
+            row.state === "FAILED" ||
+            row.state === "IMPORTED" ||
+            row.state === "SKIPPED",
         ),
     ).toBe(true);
     const reexport = await app.inject({
@@ -4076,6 +4081,9 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       url: `${transferBase}/exports/${reexport.json<{ id: string }>().id}/download`,
       headers: transferHeaders,
     });
+    expect(readCaptureBundle(reexportBytes.rawPayload).manifest.version).toBe(
+      6,
+    );
     const restaged = await app.inject({
       method: "POST",
       url: `${transferBase}/imports`,
@@ -4091,14 +4099,39 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       url: `${transferBase}/imports/${restaged.json<{ id: string }>().id}/preview`,
       headers: transferHeaders,
     });
+    const transitiveRows = transitivePreview.json<{
+      rows: { recordKind: string; state: string }[];
+    }>().rows;
     expect(
-      transitivePreview
-        .json<{ rows: { recordKind: string; state: string }[] }>()
-        .rows.every(
-          (row) =>
-            row.state === "MISSING_REFERENCE" || row.state === "DUPLICATE",
-        ),
+      transitiveRows.every(
+        (row) =>
+          row.state === "MISSING_REFERENCE" ||
+          row.state === "DUPLICATE" ||
+          row.state === "CONFLICT",
+      ),
     ).toBe(true);
+    expect(
+      transitiveRows.some(
+        (row) => row.recordKind === "task_result" && row.state === "CONFLICT",
+      ),
+    ).toBe(true);
+    const transitiveApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${restaged.json<{ id: string }>().id}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: transitivePreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(transitiveApplied.statusCode, transitiveApplied.body).toBe(201);
+    expect(transitiveApplied.json<{ state: string }>().state).toBe("PARTIAL");
+    const repeatedResults = await admin.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM business.transfer_row
+       WHERE run_id=$1 AND record_kind='task_result' AND state='FAILED'`,
+      [restaged.json<{ id: string }>().id],
+    );
+    expect(Number(repeatedResults.rows[0]?.count)).toBeGreaterThan(0);
     const portableSource = randomUUID();
     const portableTaskId = randomUUID();
     const portableEventId = randomUUID();
@@ -4312,8 +4345,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const linkedManifest = readCaptureBundle(
       linkedDownload.rawPayload,
     ).manifest;
-    expect(linkedManifest.version).toBe(5);
-    if (linkedManifest.version !== 5) throw new Error("expected v5");
+    expect(linkedManifest.version).toBe(6);
+    if (linkedManifest.version !== 6) throw new Error("expected v6");
     expect(
       linkedManifest.contexts.find(
         (context) => context.id === linkedTargets.rows[0]?.context_id,
@@ -4558,6 +4591,181 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(resultTargets.rows[0]?.capture_id).toBe(
       resultTargets.rows[0]?.mapped_capture_id,
     );
+    const historicalSource = randomUUID();
+    const historicalCaptureId = randomUUID();
+    const historicalBundle = createCaptureHistoryBundle(
+      historicalSource,
+      [
+        {
+          id: historicalCaptureId,
+          revision: 3,
+          title: "현재 원문",
+          rawBody: "셋째 본문",
+          recordedAt: "2026-09-25T00:00:00.000Z",
+        },
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          captureId: historicalCaptureId,
+          revision: 1,
+          title: "첫 원문",
+          rawBody: "첫 본문",
+          recordedAt: "2026-09-23T00:00:00.000Z",
+        },
+        {
+          captureId: historicalCaptureId,
+          revision: 2,
+          title: "둘째 원문",
+          rawBody: "둘째 본문",
+          recordedAt: "2026-09-24T00:00:00.000Z",
+        },
+      ],
+    );
+    const historicalStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: historicalBundle,
+    });
+    expect(historicalStage.statusCode, historicalStage.body).toBe(201);
+    expect(historicalStage.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY",
+    );
+    const historicalRunId = historicalStage.json<{ id: string }>().id;
+    const historicalPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${historicalRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(
+      historicalPreview
+        .json<{ rows: { state: string }[] }>()
+        .rows.map((row) => row.state),
+    ).toEqual(["NEW"]);
+    const historicalApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${historicalRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: historicalPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(historicalApplied.statusCode, historicalApplied.body).toBe(201);
+    expect(historicalApplied.json<{ state: string }>().state).toBe("APPLIED");
+    const historyRows = await admin.query<{
+      revision: number;
+      title: string;
+      raw_body: string;
+      recorded_at: Date;
+    }>(
+      `SELECT r.revision,r.title,r.raw_body,r.recorded_at
+       FROM business.transfer_origin o JOIN business.capture_revision r
+         ON r.workspace_id=o.workspace_id AND r.capture_id=o.target_id
+       WHERE o.workspace_id=$1 AND o.record_kind='capture' AND o.source_workspace_id=$2 AND o.source_id=$3
+       ORDER BY r.revision`,
+      [operator.workspaceId, historicalSource, historicalCaptureId],
+    );
+    expect(
+      historyRows.rows.map((row) => [
+        row.revision,
+        row.title,
+        row.raw_body,
+        row.recorded_at.toISOString(),
+      ]),
+    ).toEqual([
+      [1, "첫 원문", "첫 본문", "2026-09-23T00:00:00.000Z"],
+      [2, "둘째 원문", "둘째 본문", "2026-09-24T00:00:00.000Z"],
+      [3, "현재 원문", "셋째 본문", "2026-09-25T00:00:00.000Z"],
+    ]);
+    const historicalReplay = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${historicalRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(
+      historicalReplay
+        .json<{ rows: { state: string }[] }>()
+        .rows.map((row) => row.state),
+    ).toEqual(["IMPORTED"]);
+    const changedHistory = createCaptureHistoryBundle(
+      historicalSource,
+      [
+        {
+          id: historicalCaptureId,
+          revision: 3,
+          title: "현재 원문",
+          rawBody: "셋째 본문",
+          recordedAt: "2026-09-25T00:00:00.000Z",
+        },
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          captureId: historicalCaptureId,
+          revision: 1,
+          title: "첫 원문",
+          rawBody: "변경된 첫 본문",
+          recordedAt: "2026-09-23T00:00:00.000Z",
+        },
+        {
+          captureId: historicalCaptureId,
+          revision: 2,
+          title: "둘째 원문",
+          rawBody: "둘째 본문",
+          recordedAt: "2026-09-24T00:00:00.000Z",
+        },
+      ],
+    );
+    const changedHistoryStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: changedHistory,
+    });
+    expect(changedHistoryStage.statusCode, changedHistoryStage.body).toBe(201);
+    const changedHistoryPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${changedHistoryStage.json<{ id: string }>().id}/preview`,
+      headers: transferHeaders,
+    });
+    expect(
+      changedHistoryPreview
+        .json<{ rows: { state: string }[] }>()
+        .rows.map((row) => row.state),
+    ).toEqual(["CONFLICT"]);
+    const historicalStorage = await admin.query<{ storage_key: string }>(
+      "SELECT storage_key FROM business.transfer_run WHERE id=ANY($1::uuid[])",
+      [[historicalRunId, changedHistoryStage.json<{ id: string }>().id]],
+    );
+    await admin.query(
+      "DELETE FROM business.transfer_row WHERE run_id=ANY($1::uuid[])",
+      [[historicalRunId, changedHistoryStage.json<{ id: string }>().id]],
+    );
+    await admin.query(
+      "DELETE FROM business.transfer_run WHERE id=ANY($1::uuid[])",
+      [[historicalRunId, changedHistoryStage.json<{ id: string }>().id]],
+    );
+    const historicalFiles = await LocalTransferStorage.create(
+      join(assetRoot, "transfer"),
+    );
+    for (const row of historicalStorage.rows)
+      await historicalFiles.remove(row.storage_key);
     await admin.query("DELETE FROM business.task WHERE id=$1", [
       transferredTask.rows[0]?.target_id,
     ]);
@@ -4835,6 +5043,105 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         })
       ).statusCode,
     ).toBe(410);
+
+    const sharedResultOrigin = randomUUID();
+    const duplicateSource = randomUUID();
+    const duplicateTaskIds = [randomUUID(), randomUUID()];
+    const duplicateCaptureIds = [randomUUID(), randomUUID()];
+    const duplicateResultIds = [randomUUID(), randomUUID()];
+    const duplicateBundle = createTaskResultBundle(
+      duplicateSource,
+      duplicateCaptureIds.map((captureId, index) => ({
+        id: captureId,
+        revision: 1,
+        title: `중복 출처 원문 ${index + 1}`,
+        rawBody: `서로 다른 결과 ${index + 1}`,
+      })),
+      duplicateTaskIds.map((taskId, index) => ({
+        id: taskId,
+        originWorkspaceId: duplicateSource,
+        originId: taskId,
+        title: `중복 출처 할일 ${index + 1}`,
+        description: "",
+        state: "DONE" as const,
+        version: 2,
+        dueKind: "NONE" as const,
+        dueDate: null,
+        dueAt: null,
+        dueTimeZone: null,
+        contextId: null,
+        originUnitId: null,
+        originUnitRevision: null,
+        completedAt: "2026-09-25T00:00:00.000Z",
+        completionVersion: 2,
+      })),
+      [],
+      [],
+      duplicateTaskIds.map((taskId) => ({
+        taskId,
+        version: 2,
+        fromState: "TODO" as const,
+        toState: "DONE" as const,
+        recordedAt: "2026-09-25T00:00:00.000Z",
+      })),
+      duplicateResultIds.map((resultId, index) => ({
+        id: resultId,
+        originWorkspaceId: duplicateSource,
+        originId: sharedResultOrigin,
+        taskId: duplicateTaskIds[index]!,
+        captureId: duplicateCaptureIds[index]!,
+        completionVersion: 2,
+        recordedAt: "2026-09-25T00:01:00.000Z",
+      })),
+    );
+    const duplicateStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: duplicateBundle,
+    });
+    expect(duplicateStage.statusCode, duplicateStage.body).toBe(201);
+    const duplicateRunId = duplicateStage.json<{ id: string }>().id;
+    const duplicatePreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${duplicateRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(
+      duplicatePreview
+        .json<{ rows: { recordKind: string; state: string }[] }>()
+        .rows.filter((row) => row.recordKind === "task_result")
+        .map((row) => row.state),
+    ).toEqual(["NEW", "CONFLICT"]);
+    const duplicateApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${duplicateRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: duplicatePreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(duplicateApplied.statusCode, duplicateApplied.body).toBe(201);
+    expect(duplicateApplied.json<{ state: string }>().state).toBe("PARTIAL");
+    const duplicateRows = await admin.query<{
+      state: string;
+      reason_code: string | null;
+    }>(
+      `SELECT state,reason_code FROM business.transfer_row
+       WHERE run_id=$1 AND record_kind='task_result' ORDER BY source_id`,
+      [duplicateRunId],
+    );
+    expect(duplicateRows.rows.map((row) => row.state).sort()).toEqual([
+      "FAILED",
+      "IMPORTED",
+    ]);
+    expect(
+      duplicateRows.rows.find((row) => row.state === "FAILED")?.reason_code,
+    ).toBe("ORIGIN_DUPLICATE");
 
     let resetToken: string | null = null;
     const recovery = createAuth({

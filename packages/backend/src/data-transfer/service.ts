@@ -4,13 +4,17 @@ import type {
   TransferManifestV3,
   TransferManifestV4,
   TransferManifestV5,
+  TransferManifestV6,
 } from "@ieum/contracts/data-transfer";
 import type { PoolClient } from "pg";
 import { CommandCoordinator } from "../command-coordinator.js";
-import { insertCaptureInTransaction } from "../captures.js";
+import {
+  insertCaptureHistoryInTransaction,
+  insertCaptureInTransaction,
+} from "../captures.js";
 import { IdentityService } from "../identity-service.js";
 import { transferHash } from "./archive.js";
-import { createTaskResultBundle, readCaptureBundle } from "./manifest.js";
+import { createCaptureHistoryBundle, readCaptureBundle } from "./manifest.js";
 import type { TransferStoragePort } from "./storage.js";
 
 const UUID =
@@ -83,7 +87,8 @@ type TransferScope =
   | "CAPTURES_TASKS_EVENTS"
   | "CAPTURES_TASKS_EVENTS_CONTEXTS"
   | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY"
-  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS";
+  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS"
+  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY";
 function publicRun(run: Run, scope: TransferScope) {
   return {
     id: run.id,
@@ -122,15 +127,115 @@ function previewHash(rows: TransferPreviewRow[]): string {
 }
 
 function bundleScope(version: number): TransferScope {
-  return version === 5
-    ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS"
-    : version === 4
-      ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY"
-      : version === 3
-        ? "CAPTURES_TASKS_EVENTS_CONTEXTS"
-        : version === 2
-          ? "CAPTURES_TASKS_EVENTS"
-          : "CAPTURES_ONLY";
+  return version === 6
+    ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY"
+    : version === 5
+      ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS"
+      : version === 4
+        ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY"
+        : version === 3
+          ? "CAPTURES_TASKS_EVENTS_CONTEXTS"
+          : version === 2
+            ? "CAPTURES_TASKS_EVENTS"
+            : "CAPTURES_ONLY";
+}
+
+type CaptureHistoryRecord = TransferManifestV6["captures"][number] & {
+  rawBody: string;
+};
+type PriorCaptureRevision = {
+  captureId: string;
+  revision: number;
+  title: string;
+  recordedAt: string;
+  rawBody: string;
+};
+
+async function sameCaptureHistory(
+  client: PoolClient,
+  workspaceId: string,
+  targetId: string,
+  current: CaptureHistoryRecord,
+  history: PriorCaptureRevision[],
+): Promise<boolean> {
+  const rows = await client.query<{
+    revision: number;
+    title: string;
+    raw_body: string;
+    recorded_at: Date;
+  }>(
+    `SELECT revision,title,raw_body,recorded_at FROM business.capture_revision
+     WHERE workspace_id=$1 AND capture_id=$2 ORDER BY revision`,
+    [workspaceId, targetId],
+  );
+  const expected = [
+    ...history
+      .filter((row) => row.captureId.toLowerCase() === current.id.toLowerCase())
+      .sort((a, b) => a.revision - b.revision),
+    {
+      revision: current.revision,
+      title: current.title,
+      rawBody: current.rawBody,
+      recordedAt: current.recordedAt,
+    },
+  ];
+  return (
+    rows.rows.length === expected.length &&
+    rows.rows.every(
+      (row, index) =>
+        row.revision === expected[index]!.revision &&
+        row.title === expected[index]!.title &&
+        row.raw_body === expected[index]!.rawBody &&
+        row.recorded_at.toISOString() ===
+          new Date(expected[index]!.recordedAt).toISOString(),
+    )
+  );
+}
+
+type ExistingCapture = { id: string; title: string; raw_body: string };
+
+async function findCaptureOrigin(
+  client: PoolClient,
+  workspaceId: string,
+  originWorkspaceId: string,
+  originCaptureId: string,
+  lock: boolean,
+): Promise<{ previous: ExistingCapture | null; staleTargetId: string | null }> {
+  const current = `SELECT c.id,c.title,r.raw_body FROM business.capture c
+    JOIN business.capture_revision r
+      ON r.workspace_id=c.workspace_id AND r.capture_id=c.id
+     AND r.revision=c.current_revision`;
+  const imported = await client.query<ExistingCapture>(
+    `${current} WHERE c.workspace_id=$1 AND c.source_kind='import' AND c.source_key=$2${lock ? " FOR UPDATE OF c" : ""}`,
+    [workspaceId, sourceKey(originWorkspaceId, originCaptureId)],
+  );
+  if (imported.rows[0])
+    return { previous: imported.rows[0], staleTargetId: null };
+  const origin = await client.query<{ target_id: string }>(
+    `SELECT target_id FROM business.transfer_origin
+     WHERE workspace_id=$1 AND record_kind='capture'
+       AND source_workspace_id=$2 AND source_id=$3`,
+    [workspaceId, originWorkspaceId, originCaptureId],
+  );
+  if (origin.rows[0]) {
+    const mapped = await client.query<ExistingCapture>(
+      `${current} WHERE c.workspace_id=$1 AND c.id=$2${lock ? " FOR UPDATE OF c" : ""}`,
+      [workspaceId, origin.rows[0].target_id],
+    );
+    return {
+      previous: mapped.rows[0] ?? null,
+      staleTargetId: mapped.rows[0] ? null : origin.rows[0].target_id,
+    };
+  }
+  if (originWorkspaceId.toLowerCase() === workspaceId.toLowerCase()) {
+    const native = await client.query<ExistingCapture>(
+      `${current} WHERE c.workspace_id=$1 AND c.id=$2${lock ? " FOR UPDATE OF c" : ""}`,
+      [workspaceId, originCaptureId],
+    );
+    if (native.rows[0])
+      return { previous: native.rows[0], staleTargetId: null };
+  }
+  return { previous: null, staleTargetId: null };
 }
 
 function dateOnly(value: string | Date | null): string | null {
@@ -204,8 +309,9 @@ export class DataTransferService {
           raw_body: string;
           source_kind: string;
           source_key: string | null;
+          recorded_at: Date;
         }>(
-          `SELECT c.id,c.current_revision AS revision,r.title,r.raw_body,c.source_kind,c.source_key
+          `SELECT c.id,c.current_revision AS revision,r.title,r.raw_body,r.recorded_at,c.source_kind,c.source_key
            FROM business.capture c
            JOIN business.capture_revision r
              ON r.workspace_id=c.workspace_id AND r.capture_id=c.id
@@ -225,10 +331,27 @@ export class DataTransferService {
             revision: row.revision,
             title: row.title,
             rawBody: row.raw_body,
+            recordedAt: row.recorded_at.toISOString(),
             originWorkspaceId: origin?.[1] ?? workspaceId,
             originCaptureId: origin?.[2] ?? row.id,
           };
         });
+        const captureRevisions = await client.query<{
+          capture_id: string;
+          revision: number;
+          title: string;
+          raw_body: string;
+          recorded_at: Date;
+        }>(
+          `SELECT r.capture_id,r.revision,r.title,r.raw_body,r.recorded_at
+           FROM business.capture_revision r JOIN business.capture c
+             ON c.workspace_id=r.workspace_id AND c.id=r.capture_id
+           WHERE r.workspace_id=$1 AND r.revision<c.current_revision
+           ORDER BY r.capture_id,r.revision LIMIT 255`,
+          [workspaceId],
+        );
+        if (captures.length + captureRevisions.rows.length > 255)
+          throw new DataTransferError("TRANSFER_UNAVAILABLE");
         const tasks = await client.query<{
           id: string;
           title: string;
@@ -357,6 +480,13 @@ export class DataTransferService {
           throw new DataTransferError("TRANSFER_UNAVAILABLE");
         return {
           captures,
+          captureRevisions: captureRevisions.rows.map((row) => ({
+            captureId: row.capture_id,
+            revision: row.revision,
+            title: row.title,
+            rawBody: row.raw_body,
+            recordedAt: row.recorded_at.toISOString(),
+          })),
           tasks: tasks.rows.map((row) => ({
             id: row.id,
             originWorkspaceId: row.origin_workspace_id ?? workspaceId,
@@ -427,15 +557,22 @@ export class DataTransferService {
       },
       "REPEATABLE READ",
     );
-    const bytes = createTaskResultBundle(
-      workspaceId,
-      snapshot.captures,
-      snapshot.tasks,
-      snapshot.events,
-      snapshot.contexts,
-      snapshot.taskTransitions,
-      snapshot.taskResults,
-    );
+    let bytes: Buffer;
+    try {
+      bytes = createCaptureHistoryBundle(
+        workspaceId,
+        snapshot.captures,
+        snapshot.tasks,
+        snapshot.events,
+        snapshot.contexts,
+        snapshot.taskTransitions,
+        snapshot.taskResults,
+        snapshot.captureRevisions,
+      );
+      readCaptureBundle(bytes);
+    } catch {
+      throw new DataTransferError("TRANSFER_UNAVAILABLE");
+    }
     const id = randomUUID();
     const storageKey = randomUUID();
     let wrote = false;
@@ -464,7 +601,7 @@ export class DataTransferService {
           );
           return publicRun(
             result.rows[0]!,
-            "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS",
+            "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY",
           );
         },
       );
@@ -576,7 +713,8 @@ export class DataTransferService {
           if (
             manifest.version === 3 ||
             manifest.version === 4 ||
-            manifest.version === 5
+            manifest.version === 5 ||
+            manifest.version === 6
           ) {
             for (const context of manifest.contexts)
               await client.query(
@@ -586,7 +724,7 @@ export class DataTransferService {
                 [workspaceId, id, context.id, context.identityRevision],
               );
           }
-          if (manifest.version === 5) {
+          if (manifest.version === 5 || manifest.version === 6) {
             for (const result of manifest.taskResults)
               await client.query(
                 `INSERT INTO business.transfer_row
@@ -661,49 +799,44 @@ export class DataTransferService {
             });
             continue;
           }
-          const existing = await client.query<{
-            id: string;
-            title: string;
-            raw_body: string;
-          }>(
-            `SELECT c.id,c.title,r.raw_body FROM business.capture c
-           JOIN business.capture_revision r
-             ON r.workspace_id=c.workspace_id AND r.capture_id=c.id
-            AND r.revision=c.current_revision
-           WHERE c.workspace_id=$1 AND c.source_kind='import' AND c.source_key=$2`,
-            [
-              workspaceId,
-              sourceKey(record.originWorkspaceId, record.originCaptureId),
-            ],
+          const { previous, staleTargetId } = await findCaptureOrigin(
+            client,
+            workspaceId,
+            record.originWorkspaceId,
+            record.originCaptureId,
+            false,
           );
-          const previous = existing.rows[0];
-          const stale = !previous
-            ? await client.query<{ target_id: string }>(
-                `SELECT target_id FROM business.transfer_origin
-             WHERE workspace_id=$1 AND record_kind='capture'
-               AND source_workspace_id=$2 AND source_id=$3`,
-                [workspaceId, record.originWorkspaceId, record.originCaptureId],
-              )
-            : null;
+          const same =
+            previous &&
+            previous.title === record.title &&
+            previous.raw_body === record.rawBody &&
+            (bundle.manifest.version !== 6 ||
+              (await sameCaptureHistory(
+                client,
+                workspaceId,
+                previous.id,
+                record as CaptureHistoryRecord,
+                bundle.captureRevisions,
+              )));
           rows.push({
             recordKind: "capture",
             sourceId: record.id,
             sourceRevision: record.revision,
             state: !previous
-              ? stale?.rows[0]
+              ? staleTargetId
                 ? "CONFLICT"
                 : "NEW"
-              : previous.title === record.title &&
-                  previous.raw_body === record.rawBody
+              : same
                 ? "DUPLICATE"
                 : "CONFLICT",
-            targetId: previous?.id ?? stale?.rows[0]?.target_id ?? null,
+            targetId: previous?.id ?? staleTargetId,
           });
         }
         if (
           bundle.manifest.version === 3 ||
           bundle.manifest.version === 4 ||
-          bundle.manifest.version === 5
+          bundle.manifest.version === 5 ||
+          bundle.manifest.version === 6
         ) {
           for (const record of bundle.manifest.contexts)
             rows.push(
@@ -720,10 +853,13 @@ export class DataTransferService {
                 record,
                 bundle.manifest.version === 3 ||
                   bundle.manifest.version === 4 ||
-                  bundle.manifest.version === 5
+                  bundle.manifest.version === 5 ||
+                  bundle.manifest.version === 6
                   ? bundle.manifest.contexts
                   : [],
-                bundle.manifest.version === 4 || bundle.manifest.version === 5
+                bundle.manifest.version === 4 ||
+                  bundle.manifest.version === 5 ||
+                  bundle.manifest.version === 6
                   ? bundle.manifest.taskTransitions.filter(
                       (transition) =>
                         transition.taskId.toLowerCase() ===
@@ -735,8 +871,21 @@ export class DataTransferService {
           for (const record of bundle.manifest.events)
             rows.push(await this.previewEvent(client, workspaceId, id, record));
         }
-        if (bundle.manifest.version === 5) {
-          for (const record of bundle.manifest.taskResults)
+        if (bundle.manifest.version === 5 || bundle.manifest.version === 6) {
+          const seenOrigins = new Set<string>();
+          for (const record of bundle.manifest.taskResults) {
+            const origin = `${record.originWorkspaceId.toLowerCase()}:${record.originId.toLowerCase()}`;
+            if (seenOrigins.has(origin)) {
+              rows.push({
+                recordKind: "task_result",
+                sourceId: record.id,
+                sourceRevision: record.completionVersion,
+                state: "CONFLICT",
+                targetId: null,
+              });
+              continue;
+            }
+            seenOrigins.add(origin);
             rows.push(
               await this.previewTaskResult(
                 client,
@@ -746,6 +895,7 @@ export class DataTransferService {
                 rows,
               ),
             );
+          }
         }
         return {
           run: publicRun(run, bundleScope(bundle.manifest.version)),
@@ -1181,55 +1331,70 @@ export class DataTransferService {
               ),
             ],
           );
-          const existing = await client.query<{
-            id: string;
-            title: string;
-            raw_body: string;
-          }>(
-            `SELECT c.id,c.title,r.raw_body FROM business.capture c
-             JOIN business.capture_revision r
-               ON r.workspace_id=c.workspace_id AND r.capture_id=c.id
-              AND r.revision=c.current_revision
-             WHERE c.workspace_id=$1 AND c.source_kind='import' AND c.source_key=$2 FOR UPDATE OF c`,
-            [
-              workspaceId,
-              sourceKey(record.originWorkspaceId, record.originCaptureId),
-            ],
+          const { previous, staleTargetId } = await findCaptureOrigin(
+            client,
+            workspaceId,
+            record.originWorkspaceId,
+            record.originCaptureId,
+            true,
           );
-          const previous = existing.rows[0];
-          const stale = !previous
-            ? await client.query<{ target_id: string }>(
-                `SELECT target_id FROM business.transfer_origin
-             WHERE workspace_id=$1 AND record_kind='capture'
-               AND source_workspace_id=$2 AND source_id=$3`,
-                [workspaceId, record.originWorkspaceId, record.originCaptureId],
-              )
-            : null;
+          const same =
+            previous &&
+            previous.title === record.title &&
+            previous.raw_body === record.rawBody &&
+            (bundle.manifest.version !== 6 ||
+              (await sameCaptureHistory(
+                client,
+                workspaceId,
+                previous.id,
+                record as CaptureHistoryRecord,
+                bundle.captureRevisions,
+              )));
           const state = previous
-            ? previous.title === record.title &&
-              previous.raw_body === record.rawBody
+            ? same
               ? "SKIPPED"
               : "FAILED"
-            : stale?.rows[0]
+            : staleTargetId
               ? "FAILED"
               : "IMPORTED";
           const targetId = previous
             ? previous.id
-            : stale?.rows[0]
-              ? stale.rows[0].target_id
-              : (
-                  await insertCaptureInTransaction(client, {
-                    workspaceId,
-                    actorId,
-                    title: record.title,
-                    rawBody: record.rawBody,
-                    sourceKind: "import",
-                    sourceKey: sourceKey(
-                      record.originWorkspaceId,
-                      record.originCaptureId,
-                    ),
-                  })
-                ).id;
+            : staleTargetId
+              ? staleTargetId
+              : bundle.manifest.version === 6
+                ? (
+                    await insertCaptureHistoryInTransaction(client, {
+                      workspaceId,
+                      actorId,
+                      sourceKey: sourceKey(
+                        record.originWorkspaceId,
+                        record.originCaptureId,
+                      ),
+                      revisions: [
+                        ...bundle.captureRevisions
+                          .filter(
+                            (revision) =>
+                              revision.captureId.toLowerCase() ===
+                              record.id.toLowerCase(),
+                          )
+                          .sort((a, b) => a.revision - b.revision),
+                        record as CaptureHistoryRecord,
+                      ],
+                    })
+                  ).id
+                : (
+                    await insertCaptureInTransaction(client, {
+                      workspaceId,
+                      actorId,
+                      title: record.title,
+                      rawBody: record.rawBody,
+                      sourceKind: "import",
+                      sourceKey: sourceKey(
+                        record.originWorkspaceId,
+                        record.originCaptureId,
+                      ),
+                    })
+                  ).id;
           if (state !== "FAILED") {
             const origin = await client.query(
               `INSERT INTO business.transfer_origin
@@ -1276,7 +1441,12 @@ export class DataTransferService {
               targetType: state === "IMPORTED" ? "capture" : "transfer_row",
               targetId: state === "IMPORTED" ? targetId : record.id,
               beforeVersion: null,
-              afterVersion: state === "IMPORTED" ? 1 : null,
+              afterVersion:
+                state === "IMPORTED"
+                  ? bundle.manifest.version === 6
+                    ? record.revision
+                    : 1
+                  : null,
               changedFieldNames:
                 state === "IMPORTED"
                   ? ["title", "raw_body", "source"]
@@ -1289,7 +1459,8 @@ export class DataTransferService {
     if (
       bundle.manifest.version === 3 ||
       bundle.manifest.version === 4 ||
-      bundle.manifest.version === 5
+      bundle.manifest.version === 5 ||
+      bundle.manifest.version === 6
     ) {
       for (const record of bundle.manifest.contexts)
         await this.applyContext(actorId, workspaceId, id, record);
@@ -1303,10 +1474,13 @@ export class DataTransferService {
           record,
           bundle.manifest.version === 3 ||
             bundle.manifest.version === 4 ||
-            bundle.manifest.version === 5
+            bundle.manifest.version === 5 ||
+            bundle.manifest.version === 6
             ? bundle.manifest.contexts
             : [],
-          bundle.manifest.version === 4 || bundle.manifest.version === 5
+          bundle.manifest.version === 4 ||
+            bundle.manifest.version === 5 ||
+            bundle.manifest.version === 6
             ? bundle.manifest.taskTransitions.filter(
                 (transition) =>
                   transition.taskId.toLowerCase() === record.id.toLowerCase(),
@@ -1316,9 +1490,20 @@ export class DataTransferService {
       for (const record of bundle.manifest.events)
         await this.applyEvent(actorId, workspaceId, id, record);
     }
-    if (bundle.manifest.version === 5) {
-      for (const record of bundle.manifest.taskResults)
-        await this.applyTaskResult(actorId, workspaceId, id, record);
+    if (bundle.manifest.version === 5 || bundle.manifest.version === 6) {
+      const seenOrigins = new Set<string>();
+      for (const record of bundle.manifest.taskResults) {
+        const origin = `${record.originWorkspaceId.toLowerCase()}:${record.originId.toLowerCase()}`;
+        const duplicateOrigin = seenOrigins.has(origin);
+        seenOrigins.add(origin);
+        await this.applyTaskResult(
+          actorId,
+          workspaceId,
+          id,
+          record,
+          duplicateOrigin,
+        );
+      }
     }
     return this.identity.withPersonalWorkspace(
       actorId,
@@ -1802,6 +1987,7 @@ export class DataTransferService {
     workspaceId: string,
     runId: string,
     record: TransferManifestV5["taskResults"][number],
+    duplicateOrigin = false,
   ): Promise<void> {
     await this.commands.execute({
       actorId,
@@ -1843,6 +2029,24 @@ export class DataTransferService {
               changedFieldNames: [],
             },
           };
+        if (duplicateOrigin) {
+          await client.query(
+            `UPDATE business.transfer_row SET state='FAILED',reason_code='ORIGIN_DUPLICATE'
+             WHERE workspace_id=$1 AND run_id=$2 AND record_kind='task_result' AND source_id=$3`,
+            [workspaceId, runId, record.id],
+          );
+          return {
+            response: { id: null, state: "FAILED" },
+            audit: {
+              action: "transfer.task_result.reject",
+              targetType: "transfer_row",
+              targetId: record.id,
+              beforeVersion: null,
+              afterVersion: null,
+              changedFieldNames: ["state"],
+            },
+          };
+        }
         await client.query(
           "SELECT pg_advisory_xact_lock(hashtextextended($1, 2122))",
           [

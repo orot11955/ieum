@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { packTransferArchive, unpackTransferArchive } from "./archive.js";
 import {
   createCaptureBundle,
+  createCaptureHistoryBundle,
   createContextBundle,
   createPersonalBundle,
   createTaskHistoryBundle,
@@ -32,7 +33,7 @@ describe("BE-21 portable capture manifest", () => {
     const bundle = createCaptureBundle(workspaceId, [record]);
     const files = unpackTransferArchive(bundle);
     const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
-    manifest.version = 6;
+    manifest.version = 7;
     expect(() =>
       readCaptureBundle(
         packTransferArchive([
@@ -507,7 +508,7 @@ describe("BE-21 portable capture manifest", () => {
     });
     duplicate.taskResults[1].captureId = otherCaptureId;
     duplicate.taskResults[1].originId = resultId.toUpperCase();
-    expect(() =>
+    expect(
       readCaptureBundle(
         packTransferArchive([
           {
@@ -521,6 +522,67 @@ describe("BE-21 portable capture manifest", () => {
             path: otherCapturePath,
             bytes: files.get(`captures/${captureId}.md`)!,
           },
+        ]),
+      ).manifest.version,
+    ).toBe(5);
+  });
+
+  it("keeps version 6 Capture revisions and rejects a missing historical revision", () => {
+    const id = randomUUID();
+    const bundle = createCaptureHistoryBundle(
+      workspaceId,
+      [
+        {
+          id,
+          revision: 3,
+          title: "현재",
+          rawBody: "셋째",
+          recordedAt: "2026-09-25T00:00:00.000Z",
+        },
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          captureId: id,
+          revision: 1,
+          title: "첫째",
+          rawBody: "첫째",
+          recordedAt: "2026-09-23T00:00:00.000Z",
+        },
+        {
+          captureId: id,
+          revision: 2,
+          title: "둘째",
+          rawBody: "둘째",
+          recordedAt: "2026-09-24T00:00:00.000Z",
+        },
+      ],
+    );
+    const parsed = readCaptureBundle(bundle);
+    expect(parsed.manifest.version).toBe(6);
+    expect(parsed.captureRevisions.map((revision) => revision.rawBody)).toEqual(
+      ["첫째", "둘째"],
+    );
+    const files = unpackTransferArchive(bundle);
+    const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
+    manifest.captureRevisions.pop();
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+          ...[...files]
+            .filter(
+              ([path]) =>
+                path !== "manifest.json" && path !== `captures/${id}/2.md`,
+            )
+            .map(([path, bytes]) => ({ path, bytes })),
         ]),
       ),
     ).toThrow("INVALID_BUNDLE");

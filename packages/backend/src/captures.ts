@@ -197,6 +197,81 @@ export async function insertCaptureInTransaction(
   return { id, unitId };
 }
 
+/** Import a complete, ordered Capture revision chain inside one command transaction. */
+export async function insertCaptureHistoryInTransaction(
+  client: PoolClient,
+  input: {
+    workspaceId: string;
+    actorId: string;
+    sourceKey: string;
+    revisions: { title: string; rawBody: string; recordedAt: string }[];
+  },
+): Promise<{ id: string }> {
+  if (
+    !validText(input.sourceKey, 300) ||
+    input.revisions.length < 1 ||
+    input.revisions.length > 255 ||
+    input.revisions.some(
+      (revision) =>
+        !validText(revision.title, 300) ||
+        !validRawBody(revision.rawBody) ||
+        !Number.isFinite(Date.parse(revision.recordedAt)),
+    )
+  )
+    throw new CommandError("INVALID_COMMAND");
+  const prior = await client.query(
+    "SELECT id FROM business.capture WHERE workspace_id=$1 AND source_kind='import' AND source_key=$2",
+    [input.workspaceId, input.sourceKey],
+  );
+  if (prior.rowCount) throw new CaptureError("SOURCE_DUPLICATE");
+  const id = randomUUID();
+  const current = input.revisions.at(-1)!;
+  const originKey = `import:${input.sourceKey}`;
+  await client.query(
+    `INSERT INTO business.capture
+     (id,workspace_id,created_by_id,title,source_kind,source_key,origin_key,
+      version,current_revision,unit_set_version,created_at,updated_at)
+     VALUES($1,$2,$3,$4,'import',$5,$6,$7,$7,$7,$8,$9)`,
+    [
+      id,
+      input.workspaceId,
+      input.actorId,
+      current.title.trim(),
+      input.sourceKey,
+      originKey,
+      input.revisions.length,
+      input.revisions[0]!.recordedAt,
+      current.recordedAt,
+    ],
+  );
+  for (const [index, revision] of input.revisions.entries()) {
+    const number = index + 1;
+    await client.query(
+      `INSERT INTO business.capture_revision
+       (workspace_id,capture_id,revision,title,raw_body,recorded_at)
+       VALUES($1,$2,$3,$4,$5,$6)`,
+      [
+        input.workspaceId,
+        id,
+        number,
+        revision.title.trim(),
+        revision.rawBody,
+        revision.recordedAt,
+      ],
+    );
+    await insertUnit(
+      client,
+      input.workspaceId,
+      id,
+      number,
+      originKey,
+      { start: 0, end: revision.rawBody.length, encoding: "utf16" },
+      revision.rawBody,
+    );
+  }
+  return { id };
+}
+
 function requiredUuid(value: string): void {
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
