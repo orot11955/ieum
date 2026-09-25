@@ -54,6 +54,22 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
     });
   }
 
+  async function closePool(pool: Pool | undefined): Promise<void> {
+    if (!pool) return;
+    let remaining = pool.totalCount;
+    const disconnected =
+      remaining === 0
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            pool.on("remove", () => {
+              remaining--;
+              if (remaining === 0) resolve();
+            });
+          });
+    await pool.end();
+    await disconnected;
+  }
+
   beforeAll(async () => {
     container = await new PostgreSqlContainer(postgresImage)
       .withDatabase("ieum_be03")
@@ -123,11 +139,11 @@ describe("BE-03 PostgreSQL ownership and RLS", () => {
 
   afterAll(async () => {
     await Promise.all([
-      app?.end(),
-      authLock?.end(),
-      auth?.end(),
-      delivery?.end(),
-      admin?.end(),
+      closePool(app),
+      closePool(authLock),
+      closePool(auth),
+      closePool(delivery),
+      closePool(admin),
     ]);
     await container?.stop();
   }, 120_000);
