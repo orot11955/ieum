@@ -614,7 +614,7 @@
         "BE-19",
         "BASE-03"
       ],
-      "status": "PLANNED",
+      "status": "VERIFIED",
       "scope": "관리 API와 분리된 public projection 전용 module/bootstrap·DB role을 구성한다. 목록/상세/개정/철회 계약, client credential 발급·회전·폐기, pagination·ETag·cache 정책을 구현한다.",
       "contract": "apps/api/delivery-main 및 contracts/delivery. private table SELECT 권한 없음. 기본은 외부 블로그 서버의 제한된 credential; 브라우저에 secret 노출 금지. 공개 익명 모드는 별도 정책으로만 활성화.",
       "tests": "Delivery credential로 관리 API 접근, 미발행/철회/이전 alias 조회, 공개 asset 제공 중단, 잘못된 cache 304, key 철회, 독립 소비자의 schema 테스트.",

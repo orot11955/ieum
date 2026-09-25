@@ -42,7 +42,7 @@
 | BE-17 | P6 | VERIFIED | 선택적 모델 정제 adapter·비용·실패 격리 | BE-16, BE-06, CORE-15 |
 | BE-18 | P6 | VERIFIED | 비공개 첨부·안전 검증·공개 파생물 | BE-05, BE-11, BE-06 |
 | BE-19 | P7 | VERIFIED | 봉인·검토·발행·개정·철회 | BE-16, BE-18, BE-05 |
-| BE-20 | P7 | PLANNED | Delivery 전용 API·읽기 권한·클라이언트 | BE-19, BASE-03 |
+| BE-20 | P7 | VERIFIED | Delivery 전용 API·읽기 권한·클라이언트 | BE-19, BASE-03 |
 | BE-21 | P8 | PLANNED | 개인 Import/Export·dry-run·중복 처리 | BE-07, BE-11, BE-18, BE-06 |
 | BE-22 | P8 | PLANNED | 휴지통·복원·삭제 영향·영구 삭제 | BE-07, BE-08, BE-11, BE-18, BE-19 |
 | BE-23 | P8 | PLANNED | 운영·계정 관리·작업·설정·알림 | BE-04, BE-06, BE-20 |

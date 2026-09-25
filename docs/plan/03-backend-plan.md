@@ -327,7 +327,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-20 · Delivery 전용 API·읽기 권한·클라이언트
 
-**구간:** P7 · **상태:** PLANNED · **선행:** BE-19, BASE-03
+**구간:** P7 · **상태:** VERIFIED · **선행:** BE-19, BASE-03
 
 **구현 범위:** 관리 API와 분리된 public projection 전용 module/bootstrap·DB role을 구성한다. 목록/상세/개정/철회 계약, client credential 발급·회전·폐기, pagination·ETag·cache 정책을 구현한다.
 
