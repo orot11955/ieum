@@ -136,7 +136,22 @@ test("merge preserves the surviving ID; clipboard paste and cut keep a valid dra
   await page.keyboard.press("End");
   await page.keyboard.press("ControlOrMeta+v");
   await expect(editor).toContainText("붙여넣기");
-  await page.keyboard.press("Shift+Home");
+  await editor.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let textNode: Node | null;
+    while ((textNode = walker.nextNode())) {
+      const start = textNode.textContent?.indexOf("붙여넣기") ?? -1;
+      if (start < 0) continue;
+      const range = document.createRange();
+      range.setStart(textNode, start);
+      range.setEnd(textNode, start + "붙여넣기".length);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      return;
+    }
+    throw new Error("Pasted text was not found in the editor");
+  });
   await page.keyboard.press("ControlOrMeta+x");
   await expect(editor).not.toContainText("붙여넣기");
   expect(
