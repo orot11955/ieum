@@ -215,21 +215,27 @@ export class IdentityService {
     return withActivePersonalWorkspace(this.pool, userId, operation);
   }
 
-  async getMe(
-    userId: string,
-  ): Promise<PersonalAccess & { timeZone: string; preferenceVersion: number }> {
+  async getMe(userId: string): Promise<
+    PersonalAccess & {
+      timeZone: string;
+      externalModelEnabled: boolean;
+      preferenceVersion: number;
+    }
+  > {
     return this.withPersonalWorkspace(userId, async (client, access) => {
       const preference = await client.query<{
         time_zone: string;
+        external_model_enabled: boolean;
         version: number;
       }>(
-        "SELECT time_zone, version FROM business.user_preference WHERE user_id = $1",
+        "SELECT time_zone, external_model_enabled, version FROM business.user_preference WHERE user_id = $1",
         [userId],
       );
       if (!preference.rows[0]) throw new IdentityError("ACCESS_DENIED");
       return {
         ...access,
         timeZone: preference.rows[0].time_zone,
+        externalModelEnabled: preference.rows[0].external_model_enabled,
         preferenceVersion: preference.rows[0].version,
       };
     });

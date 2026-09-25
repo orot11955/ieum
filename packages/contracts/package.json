@@ -50,6 +50,10 @@
     "./workbench": {
       "types": "./dist/workbench.d.ts",
       "default": "./dist/workbench.js"
+    },
+    "./generation": {
+      "types": "./dist/generation.d.ts",
+      "default": "./dist/generation.js"
     }
   },
   "scripts": {

@@ -79,6 +79,22 @@ export interface paths {
         patch: operations["updateMyPreferences"];
         trace?: never;
     };
+    "/api/v1/me/preferences/model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateModelPreference"];
+        trace?: never;
+    };
     "/api/v1/ops/invitations": {
         parameters: {
             query?: never;
@@ -895,6 +911,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/documents/{id}/generations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestGeneration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/generations/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getGeneration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/generations/{requestId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelGeneration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/generations/{requestId}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["applyGeneration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -1033,8 +1113,7 @@ export interface operations {
                         operator: boolean;
                         preferences: {
                             timeZone: string;
-                            /** @enum {boolean} */
-                            externalModelEnabled: false;
+                            externalModelEnabled: boolean;
                             version: number;
                         };
                     };
@@ -1137,8 +1216,43 @@ export interface operations {
                 content: {
                     "application/json": {
                         timeZone: string;
-                        /** @enum {boolean} */
-                        externalModelEnabled: false;
+                        externalModelEnabled: boolean;
+                        version: number;
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    updateModelPreference: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    externalModelEnabled: boolean;
+                    baseVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated external model preference */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        timeZone: string;
+                        externalModelEnabled: boolean;
                         version: number;
                         /** Format: uuid */
                         commandId: string;
@@ -4542,6 +4656,208 @@ export interface operations {
                         /** Format: uuid */
                         packId: string;
                         packRevision: number;
+                    };
+                };
+            };
+        };
+    };
+    requestGeneration: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    packId: string;
+                    packRevision: number;
+                    draftVersion: number;
+                    /** @enum {string} */
+                    mode: "outline" | "refine" | "draft";
+                    sourceIndices: number[];
+                    targetBlockIds: string[];
+                    /** @enum {boolean} */
+                    consent: true;
+                    maxInputTokens: number;
+                    maxOutputTokens: number;
+                    maxCostMicrousd: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Generation queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        requestId: string;
+                        /** @enum {string} */
+                        state: "QUEUED";
+                    };
+                };
+            };
+        };
+    };
+    getGeneration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private generation status and artifact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        requestId: string;
+                        /** Format: uuid */
+                        documentId: string;
+                        /** @enum {string} */
+                        state: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELED" | "STALE";
+                        /** @enum {string} */
+                        mode: "outline" | "refine" | "draft";
+                        /** Format: uuid */
+                        packId: string;
+                        packRevision: number;
+                        draftVersion: number;
+                        sourceIndices: number[];
+                        retryCount: number;
+                        errorCode: string | null;
+                        actualCostMicrousd: number | null;
+                        artifact: {
+                            modelId: string;
+                            promptRevision: string;
+                            inputHash: string;
+                            /** Format: uuid */
+                            packId: string;
+                            packRevision: number;
+                            draftVersion: number;
+                            proposals: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                kind: "heading" | "paragraph";
+                                /** Format: uuid */
+                                targetBlockId: string | null;
+                                text: string;
+                                sourceIndices: number[];
+                                /** @enum {boolean} */
+                                reviewRequired: true;
+                            }[];
+                            diff: {
+                                /** Format: uuid */
+                                proposalId: string;
+                                /** Format: uuid */
+                                targetBlockId: string | null;
+                                beforeText: string | null;
+                                afterText: string;
+                            }[];
+                            inputTokens: number;
+                            outputTokens: number;
+                            estimatedCostMicrousd: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                        } | null;
+                    };
+                };
+            };
+        };
+    };
+    cancelGeneration: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cancellation requested */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        requestId: string;
+                        /** @enum {string} */
+                        state: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELED" | "STALE";
+                    };
+                };
+            };
+        };
+    };
+    applyGeneration: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseDraftVersion: number;
+                    proposalIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Selected proposals applied */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        documentId: string;
+                        draftVersion: number;
+                        appliedProposalIds: string[];
+                        recheckBlockIds: string[];
                     };
                 };
             };

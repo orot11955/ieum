@@ -1352,6 +1352,151 @@ export const documentWorkbenchRevision = business.table(
   ],
 );
 
+export const generationRequest = business.table(
+  "generation_request",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    packId: uuid("pack_id").notNull(),
+    packRevision: integer("pack_revision").notNull(),
+    draftVersion: integer("draft_version").notNull(),
+    mode: text("mode").notNull(),
+    sourceIndices: jsonb("source_indices").notNull(),
+    targetBlockIds: jsonb("target_block_ids").notNull(),
+    state: text("state").notNull().default("QUEUED"),
+    retryCount: integer("retry_count").notNull().default(0),
+    errorCode: text("error_code"),
+    modelId: text("model_id").notNull(),
+    promptRevision: text("prompt_revision").notNull(),
+    inputHash: text("input_hash").notNull(),
+    maxInputTokens: integer("max_input_tokens").notNull(),
+    maxOutputTokens: integer("max_output_tokens").notNull(),
+    maxCostMicrousd: integer("max_cost_microusd").notNull(),
+    reservedCostMicrousd: integer("reserved_cost_microusd").notNull(),
+    actualCostMicrousd: integer("actual_cost_microusd"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("generation_request_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    foreignKey({
+      name: "generation_request_document_fk",
+      columns: [table.workspaceId, table.documentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    foreignKey({
+      name: "generation_request_pack_document_fk",
+      columns: [table.workspaceId, table.packId, table.documentId],
+      foreignColumns: [
+        evidencePack.workspaceId,
+        evidencePack.id,
+        evidencePack.documentId,
+      ],
+    }),
+    foreignKey({
+      name: "generation_request_pack_revision_fk",
+      columns: [table.workspaceId, table.packId, table.packRevision],
+      foreignColumns: [
+        evidencePackRevision.workspaceId,
+        evidencePackRevision.packId,
+        evidencePackRevision.revision,
+      ],
+    }),
+    check(
+      "generation_request_state_check",
+      sql`${table.state} IN ('QUEUED','RUNNING','SUCCEEDED','FAILED','CANCELED','STALE')`,
+    ),
+    check(
+      "generation_request_mode_check",
+      sql`${table.mode} IN ('outline','refine','draft')`,
+    ),
+    check(
+      "generation_request_positive",
+      sql`${table.packRevision}>0 AND ${table.draftVersion}>0 AND ${table.maxInputTokens}>0 AND ${table.maxOutputTokens}>0 AND ${table.maxCostMicrousd}>0 AND ${table.reservedCostMicrousd}>0 AND ${table.retryCount}>=0 AND (${table.actualCostMicrousd} IS NULL OR ${table.actualCostMicrousd}>=0)`,
+    ),
+    check("generation_request_hash_check", sql`length(${table.inputHash})=64`),
+  ],
+);
+
+export const generationArtifact = business.table(
+  "generation_artifact",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    requestId: uuid("request_id").notNull(),
+    output: jsonb("output").notNull(),
+    diff: jsonb("diff").notNull(),
+    sourceManifest: jsonb("source_manifest").notNull(),
+    inputHash: text("input_hash").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    estimatedCostMicrousd: integer("estimated_cost_microusd").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "generation_artifact_pk",
+      columns: [table.workspaceId, table.requestId],
+    }),
+    foreignKey({
+      name: "generation_artifact_request_fk",
+      columns: [table.workspaceId, table.requestId],
+      foreignColumns: [generationRequest.workspaceId, generationRequest.id],
+    }),
+    check("generation_artifact_hash_check", sql`length(${table.inputHash})=64`),
+    check(
+      "generation_artifact_usage_check",
+      sql`${table.inputTokens}>=0 AND ${table.outputTokens}>=0 AND ${table.estimatedCostMicrousd}>=0`,
+    ),
+  ],
+);
+
+export const generationApplication = business.table(
+  "generation_application",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    requestId: uuid("request_id").notNull(),
+    proposalId: uuid("proposal_id").notNull(),
+    commandId: uuid("command_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    baseDraftVersion: integer("base_draft_version").notNull(),
+    resultingDraftVersion: integer("resulting_draft_version").notNull(),
+    appliedAt: timestamp("applied_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "generation_application_pk",
+      columns: [table.workspaceId, table.requestId, table.proposalId],
+    }),
+    foreignKey({
+      name: "generation_application_request_fk",
+      columns: [table.workspaceId, table.requestId],
+      foreignColumns: [generationRequest.workspaceId, generationRequest.id],
+    }),
+    foreignKey({
+      name: "generation_application_document_fk",
+      columns: [table.workspaceId, table.documentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    check(
+      "generation_application_versions_check",
+      sql`${table.baseDraftVersion}>0 AND ${table.resultingDraftVersion}=${table.baseDraftVersion}+1`,
+    ),
+  ],
+);
+
 export const task = business.table(
   "task",
   {

@@ -23,6 +23,7 @@ import {
   InvitationIssueRequestSchema,
   InvitationIssueResponseSchema,
   MeResponseSchema,
+  ModelPreferenceRequestSchema,
   PreferenceRequestSchema,
   PreferenceResponseSchema,
   SessionListResponseSchema,
@@ -110,7 +111,7 @@ export class IdentityController {
       operator: me.operator,
       preferences: {
         timeZone: me.timeZone,
-        externalModelEnabled: false,
+        externalModelEnabled: me.externalModelEnabled,
         version: me.preferenceVersion,
       },
     });
@@ -160,6 +161,28 @@ export class IdentityController {
       idempotencyKey: idempotencyKey ?? "",
       baseVersion,
       timeZone,
+      requestId: request.id,
+    });
+    return PreferenceResponseSchema.parse({
+      ...outcome.response,
+      commandId: outcome.commandId,
+      replayed: outcome.replayed,
+    });
+  }
+
+  @Patch("me/preferences/model")
+  async modelPreference(
+    @Req() request: FastifyRequest,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    this.mutation(request);
+    const { session } = await this.current(request, true);
+    const fields = parseRequest(ModelPreferenceRequestSchema, body);
+    const outcome = await this.runtime.preferences.setExternalModelEnabled({
+      actorId: session.userId,
+      idempotencyKey: idempotencyKey ?? "",
+      ...fields,
       requestId: request.id,
     });
     return PreferenceResponseSchema.parse({

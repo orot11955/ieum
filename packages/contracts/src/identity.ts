@@ -6,6 +6,7 @@ export const IdentityPaths = {
   sessions: "/api/v1/me/sessions",
   session: "/api/v1/me/sessions/{sessionId}",
   preferences: "/api/v1/me/preferences",
+  modelPreference: "/api/v1/me/preferences/model",
   invitations: "/api/v1/ops/invitations",
   acceptInvitation: "/api/v1/invitations/accept",
   userState: "/api/v1/ops/users/{userId}/state",
@@ -17,7 +18,7 @@ export const MeResponseSchema = z.strictObject({
   operator: z.boolean(),
   preferences: z.strictObject({
     timeZone: z.string(),
-    externalModelEnabled: z.literal(false),
+    externalModelEnabled: z.boolean(),
     version: z.int().positive(),
   }),
 });
@@ -41,10 +42,14 @@ export const PreferenceRequestSchema = z.strictObject({
 });
 export const PreferenceResponseSchema = z.strictObject({
   timeZone: z.string(),
-  externalModelEnabled: z.literal(false),
+  externalModelEnabled: z.boolean(),
   version: z.int().positive(),
   commandId: z.uuid(),
   replayed: z.boolean(),
+});
+export const ModelPreferenceRequestSchema = z.strictObject({
+  externalModelEnabled: z.boolean(),
+  baseVersion: z.int().positive(),
 });
 
 export const InvitationIssueRequestSchema = z.strictObject({
@@ -133,6 +138,26 @@ export const identityOpenApiPaths = {
       requestBody: request(PreferenceRequestSchema),
       responses: {
         "200": response(PreferenceResponseSchema, "Updated preferences"),
+      },
+    },
+  },
+  [IdentityPaths.modelPreference]: {
+    patch: {
+      operationId: "updateModelPreference",
+      parameters: [
+        {
+          name: "Idempotency-Key",
+          in: "header",
+          required: true,
+          schema: { type: "string", minLength: 8, maxLength: 128 },
+        },
+      ],
+      requestBody: request(ModelPreferenceRequestSchema),
+      responses: {
+        "200": response(
+          PreferenceResponseSchema,
+          "Updated external model preference",
+        ),
       },
     },
   },
