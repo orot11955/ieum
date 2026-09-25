@@ -598,7 +598,7 @@
         "BE-18",
         "BE-05"
       ],
-      "status": "PLANNED",
+      "status": "VERIFIED",
       "scope": "문서 seal→공개 manifest→검토 READY→Publish를 구현한다. READY는 정확한 body/source/public-asset/policy hash에 묶고 발행 순간 권한과 유효성을 재검사한다. 공개본은 별도 immutable projection으로 만든다.",
       "contract": "모듈: publishing. publication identity와 immutable public revisions, current pointer, slug/alias namespace, review record. draft 변경은 공개본을 수정하지 않으며 새 발행 명령으로만 current를 이동한다.",
       "tests": "검토 뒤 본문/출처/asset 변경, 중복 발행, slug 동시 충돌, 발행과 철회 경쟁, private 필드·내부 ID·source pack 유입, stale READY, Core/worker 불가 중 명시적 발행.",

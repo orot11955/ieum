@@ -311,7 +311,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-19 · 봉인·검토·발행·개정·철회
 
-**구간:** P7 · **상태:** PLANNED · **선행:** BE-16, BE-18, BE-05
+**구간:** P7 · **상태:** VERIFIED · **선행:** BE-16, BE-18, BE-05
 
 **구현 범위:** 문서 seal→공개 manifest→검토 READY→Publish를 구현한다. READY는 정확한 body/source/public-asset/policy hash에 묶고 발행 순간 권한과 유효성을 재검사한다. 공개본은 별도 immutable projection으로 만든다.
 
