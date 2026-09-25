@@ -49,7 +49,7 @@ Paper와 Dark를 같은 token/recipe 체계에서 관리한다. 외부 editor/pi
 
 ### FE-02 · 편집기·폼·HTTP 계약 spike
 
-**구간:** P0 · **상태:** IMPLEMENTED · **선행:** FE-01, BASE-03
+**구간:** P0 · **상태:** VERIFIED · **선행:** FE-01, BASE-03
 
 **화면:** W13, W14
 
