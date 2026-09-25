@@ -23,6 +23,7 @@ import { AssetValidationError } from "@ieum/backend/assets/validation";
 import { DocumentAssetError } from "@ieum/backend/assets/document-usage";
 import { PublicationError } from "@ieum/backend/publishing/publication-service";
 import { PublicationManifestError } from "@ieum/backend/publishing/manifest";
+import { DeliveryCredentialError } from "@ieum/backend/delivery/credential-service";
 
 type FieldErrors = Record<string, string[]>;
 
@@ -188,6 +189,7 @@ export class ProblemFilter implements ExceptionFilter {
           : exception.code === "DOCUMENT_INVALID"
             ? 422
             : 409;
+    if (exception instanceof DeliveryCredentialError) status = 404;
     const title =
       status === 422
         ? "Unprocessable Content"
@@ -247,6 +249,7 @@ export class ProblemFilter implements ExceptionFilter {
       exception instanceof PublicationManifestError
     )
       code = exception.code;
+    if (exception instanceof DeliveryCredentialError) code = exception.code;
     const fieldErrors =
       exception instanceof HttpException
         ? fieldErrorsFor(exception)

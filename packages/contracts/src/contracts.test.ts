@@ -98,6 +98,8 @@ describe("Delivery contract isolation", () => {
       bodyFormat: "markdown",
       body: "# 공개",
       publishedAt: "2026-09-23T09:00:00Z",
+      updatedAt: "2026-09-23T09:00:00Z",
+      assets: [],
     };
     expect(
       PublicPublicationSchema.safeParse({

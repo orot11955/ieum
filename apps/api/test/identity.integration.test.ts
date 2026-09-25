@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,6 +27,12 @@ import { AssetService } from "@ieum/backend/assets/asset-service";
 import { DocumentAssetService } from "@ieum/backend/assets/document-usage";
 import { LocalAssetStorage } from "@ieum/backend/assets/storage";
 import { PublicationService } from "@ieum/backend/publishing/publication-service";
+import { DeliveryCredentialService } from "@ieum/backend/delivery/credential-service";
+import {
+  assertDeliveryDatabaseRole,
+  DeliveryReader,
+  LocalDeliveryAssetReader,
+} from "@ieum/backend/delivery/reader";
 import {
   processGenerationJob,
   reconcileAbandonedGeneration,
@@ -43,6 +49,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApiApp } from "../src/app.js";
+import { createDeliveryApp } from "../src/delivery/app.js";
 import { createAuth } from "../src/auth/auth.js";
 import { createAuthPort } from "../src/auth/fastify.js";
 import { createAccountAdministration } from "../src/auth/registration.js";
@@ -108,8 +115,10 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
   let container: StartedPostgreSqlContainer;
   let admin: Pool;
   let appPool: Pool;
+  let deliveryPool: Pool;
   let authLockPool: Pool;
   let app: Awaited<ReturnType<typeof createApiApp>>;
+  let deliveryApp: Awaited<ReturnType<typeof createDeliveryApp>>;
   let identity: IdentityService;
   let assetRoot: string;
 
@@ -131,6 +140,18 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     );
     await admin.query(
       "CREATE ROLE ieum_be04_auth LOGIN PASSWORD 'be04_fixture_only' IN ROLE ieum_auth_runtime",
+    );
+    await admin.query(
+      "CREATE ROLE ieum_be20_delivery LOGIN PASSWORD 'be04_fixture_only' IN ROLE ieum_delivery",
+    );
+    await admin.query(
+      "CREATE ROLE ieum_be20_replica LOGIN REPLICATION PASSWORD 'be04_fixture_only' IN ROLE ieum_delivery",
+    );
+    await admin.query(
+      "CREATE ROLE ieum_be20_writer LOGIN PASSWORD 'be04_fixture_only' IN ROLE ieum_delivery",
+    );
+    await admin.query(
+      "GRANT TRUNCATE ON delivery.publication_asset TO ieum_be20_writer",
     );
     const base = container.getConnectionUri();
     appPool = new Pool({
@@ -163,6 +184,41 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       join(assetRoot, "private"),
       join(assetRoot, "derivative"),
     );
+    deliveryPool = new Pool({
+      connectionString: roleUrl(base, "ieum_be20_delivery"),
+      max: 2,
+      connectionTimeoutMillis: 2_000,
+    });
+    await assertDeliveryDatabaseRole(deliveryPool);
+    const unsafeDeliveryPool = new Pool({
+      connectionString: roleUrl(base, "ieum_be20_replica"),
+      max: 1,
+    });
+    try {
+      await expect(
+        assertDeliveryDatabaseRole(unsafeDeliveryPool),
+      ).rejects.toThrow("Delivery database role is not isolated");
+    } finally {
+      await unsafeDeliveryPool.end();
+    }
+    const unsafeWriterPool = new Pool({
+      connectionString: roleUrl(base, "ieum_be20_writer"),
+      max: 1,
+    });
+    try {
+      await expect(
+        assertDeliveryDatabaseRole(unsafeWriterPool),
+      ).rejects.toThrow("Delivery database role is not isolated");
+    } finally {
+      await unsafeWriterPool.end();
+    }
+    deliveryApp = await createDeliveryApp(
+      new DeliveryReader(
+        deliveryPool,
+        await LocalDeliveryAssetReader.create(join(assetRoot, "derivative")),
+      ),
+      () => deliveryPool.end(),
+    );
     app = await createApiApp({
       auth: auth.auth,
       baseUrl: origin,
@@ -191,6 +247,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         assets: new AssetService(identity, commands, assetStorage),
         documentAssets: new DocumentAssetService(identity, commands),
         publications: new PublicationService(identity, commands),
+        deliveryCredentials: new DeliveryCredentialService(identity),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -213,6 +270,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
   }, 120_000);
 
   afterAll(async () => {
+    await deliveryApp?.close();
+    if (!deliveryApp) await deliveryPool?.end();
     await app?.close();
     await admin?.end();
     await container?.stop();
@@ -1369,6 +1428,186 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     const publicationId = published.json<{ publicationId: string }>()
       .publicationId;
+    const credentialUrl = `/api/v1/workspaces/${operator.workspaceId}/delivery-credentials`;
+    const issuedCredential = await app.inject({
+      method: "POST",
+      url: credentialUrl,
+      headers: { ...assetHeaders, origin },
+      payload: { name: "blog-server", expiresInDays: 30 },
+    });
+    expect(issuedCredential.statusCode, issuedCredential.body).toBe(201);
+    expect(issuedCredential.headers["cache-control"]).toBe("no-store");
+    const credential = issuedCredential.json<{ id: string; token: string }>();
+    const deliveryHeaders = { authorization: `Bearer ${credential.token}` };
+    const credentialList = await app.inject({
+      method: "GET",
+      url: credentialUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(credentialList.statusCode).toBe(200);
+    expect(credentialList.body).not.toContain(credential.token);
+    const noManagementAccess = await app.inject({
+      method: "GET",
+      url: publicationUrl,
+      headers: { host: "127.0.0.1:3000", ...deliveryHeaders },
+    });
+    expect(noManagementAccess.statusCode).toBe(401);
+    await expect(
+      deliveryPool.query("SELECT * FROM business.capture LIMIT 1"),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      deliveryPool.query("SELECT * FROM delivery.client_credential LIMIT 1"),
+    ).rejects.toMatchObject({ code: "42501" });
+    const publicDeliveryUrl = `/delivery/v1/publications/${publicationId}`;
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: publicDeliveryUrl,
+          headers: { cookie: operatorCookie },
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: `/delivery/v1/publications/${randomUUID()}`,
+          headers: deliveryHeaders,
+        })
+      ).statusCode,
+    ).toBe(404);
+    const deliveryDetail = await deliveryApp.inject({
+      method: "GET",
+      url: publicDeliveryUrl,
+      headers: deliveryHeaders,
+    });
+    expect(deliveryDetail.statusCode, deliveryDetail.body).toBe(200);
+    expect(deliveryDetail.json()).toMatchObject({
+      id: publicationId,
+      publicRevision: 1,
+      slug: "asset-note",
+      assets: [
+        { id: uploaded.json<{ publicAssetId: string }>().publicAssetId },
+      ],
+    });
+    expect(deliveryDetail.body).not.toContain(assetId);
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: publicDeliveryUrl,
+          headers: { authorization: `bearer ${credential.token}` },
+        })
+      ).statusCode,
+    ).toBe(200);
+    const firstDeliveryEtag = deliveryDetail.headers.etag as string;
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: publicDeliveryUrl,
+          headers: { ...deliveryHeaders, "if-none-match": firstDeliveryEtag },
+        })
+      ).statusCode,
+    ).toBe(304);
+    const deliveryAssetUrl = `${publicDeliveryUrl}/assets/${uploaded.json<{ publicAssetId: string }>().publicAssetId}`;
+    const deliveredAsset = await deliveryApp.inject({
+      method: "GET",
+      url: deliveryAssetUrl,
+      headers: deliveryHeaders,
+    });
+    expect(deliveredAsset.statusCode, deliveredAsset.body).toBe(200);
+    expect(deliveredAsset.body).toBe(assetBytes.toString());
+    expect(deliveredAsset.headers["content-type"]).toContain("text/plain");
+    const deliveryAssetEtag = deliveredAsset.headers.etag as string;
+    const derivativeKey = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      async (client) => {
+        const rows = await client.query<{ storage_key: string }>(
+          "SELECT storage_key FROM delivery.publication_asset WHERE workspace_id=$1 AND publication_id=$2 AND revision=1",
+          [operator.workspaceId, publicationId],
+        );
+        return rows.rows[0]!.storage_key;
+      },
+    );
+    await writeFile(join(assetRoot, "derivative", derivativeKey), "corrupt");
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: deliveryAssetUrl,
+          headers: deliveryHeaders,
+        })
+      ).statusCode,
+    ).toBe(503);
+    await writeFile(join(assetRoot, "derivative", derivativeKey), assetBytes);
+    await admin.query(
+      "UPDATE business.user_access SET state='SUSPENDED' WHERE user_id=$1",
+      [operator.userId],
+    );
+    const suspendedDelivery = await deliveryApp.inject({
+      method: "GET",
+      url: publicDeliveryUrl,
+      headers: { ...deliveryHeaders, "if-none-match": firstDeliveryEtag },
+    });
+    expect(suspendedDelivery.statusCode).toBe(401);
+    await admin.query(
+      "UPDATE business.user_access SET state='ACTIVE' WHERE user_id=$1",
+      [operator.userId],
+    );
+    await admin.query(
+      "UPDATE business.workspace SET state='SUSPENDED' WHERE id=$1",
+      [operator.workspaceId],
+    );
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: deliveryAssetUrl,
+          headers: { ...deliveryHeaders, "if-none-match": deliveryAssetEtag },
+        })
+      ).statusCode,
+    ).toBe(401);
+    await admin.query(
+      "UPDATE business.workspace SET state='ACTIVE' WHERE id=$1",
+      [operator.workspaceId],
+    );
+    await admin.query(
+      "UPDATE business.workspace_member SET state='SUSPENDED' WHERE workspace_id=$1 AND user_id=$2",
+      [operator.workspaceId, operator.userId],
+    );
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: publicDeliveryUrl,
+          headers: deliveryHeaders,
+        })
+      ).statusCode,
+    ).toBe(401);
+    await admin.query(
+      "UPDATE business.workspace_member SET state='ACTIVE' WHERE workspace_id=$1 AND user_id=$2",
+      [operator.workspaceId, operator.userId],
+    );
+    await admin.query(
+      "UPDATE business.publication_channel SET state='DISABLED' WHERE workspace_id=$1 AND name='default'",
+      [operator.workspaceId],
+    );
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: publicDeliveryUrl,
+          headers: deliveryHeaders,
+        })
+      ).statusCode,
+    ).toBe(401);
+    await admin.query(
+      "UPDATE business.publication_channel SET state='ACTIVE' WHERE workspace_id=$1 AND name='default'",
+      [operator.workspaceId],
+    );
     const duplicatePublish = await app.inject({
       method: "POST",
       url: publicationUrl,
@@ -1462,6 +1701,56 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       slug: "asset-note-updated",
       state: "PUBLISHED",
     });
+    const refreshedDelivery = await deliveryApp.inject({
+      method: "GET",
+      url: publicDeliveryUrl,
+      headers: { ...deliveryHeaders, "if-none-match": firstDeliveryEtag },
+    });
+    expect(refreshedDelivery.statusCode, refreshedDelivery.body).toBe(200);
+    expect(refreshedDelivery.headers.etag).not.toBe(firstDeliveryEtag);
+    expect(refreshedDelivery.json()).toMatchObject({
+      publicRevision: 2,
+      slug: "asset-note-updated",
+      assets: [],
+    });
+    const priorAlias = await deliveryApp.inject({
+      method: "GET",
+      url: "/delivery/v1/publications/by-slug/asset-note",
+      headers: deliveryHeaders,
+    });
+    expect(priorAlias.statusCode).toBe(200);
+    expect(priorAlias.json()).toMatchObject({
+      id: publicationId,
+      publicRevision: 2,
+    });
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: `${publicDeliveryUrl}/revisions/1`,
+          headers: deliveryHeaders,
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: deliveryAssetUrl,
+          headers: { ...deliveryHeaders, "if-none-match": deliveryAssetEtag },
+        })
+      ).statusCode,
+    ).toBe(404);
+    const oldRevisionFromDeliveryRole = await withWorkspaceTransaction(
+      deliveryPool,
+      operator.workspaceId,
+      (client) =>
+        client.query(
+          "SELECT revision FROM delivery.publication_revision WHERE workspace_id=$1 AND publication_id=$2 AND revision=1",
+          [operator.workspaceId, publicationId],
+        ),
+    );
+    expect(oldRevisionFromDeliveryRole.rowCount).toBe(0);
     const oldAlias = await withWorkspaceTransaction(
       appPool,
       operator.workspaceId,
@@ -1493,6 +1782,28 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         ),
     );
     expect(withdrawnRow.rows[0]).toMatchObject({ state: "WITHDRAWN" });
+    const withdrawnFromDeliveryRole = await withWorkspaceTransaction(
+      deliveryPool,
+      operator.workspaceId,
+      (client) =>
+        client.query(
+          "SELECT revision FROM delivery.publication_revision WHERE workspace_id=$1 AND publication_id=$2",
+          [operator.workspaceId, publicationId],
+        ),
+    );
+    expect(withdrawnFromDeliveryRole.rowCount).toBe(0);
+    for (const url of [
+      publicDeliveryUrl,
+      "/delivery/v1/publications/by-slug/asset-note",
+      deliveryAssetUrl,
+    ]) {
+      const unavailable = await deliveryApp.inject({
+        method: "GET",
+        url,
+        headers: { ...deliveryHeaders, "if-none-match": firstDeliveryEtag },
+      });
+      expect(unavailable.statusCode, url).toBe(404);
+    }
     const aliasDocument = await app.inject({
       method: "POST",
       url: documentUrl,
@@ -1627,6 +1938,55 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       publicationId: string;
       accessEpoch: number;
     }>();
+    const racingLoserIndex = 1 - racingWinnerIndex;
+    const racingLoser = racingPublishRequests[racingLoserIndex]!;
+    const secondRacingPublication = await app.inject({
+      method: "POST",
+      url: publicationUrl,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be20-second-racing-publication",
+      },
+      payload: {
+        ...racingLoser,
+        documentRevision: 1,
+        slug: "second-racing-slug",
+      },
+    });
+    expect(
+      secondRacingPublication.statusCode,
+      secondRacingPublication.body,
+    ).toBe(201);
+    const deliveryFirstPage = await deliveryApp.inject({
+      method: "GET",
+      url: "/delivery/v1/publications?limit=1",
+      headers: deliveryHeaders,
+    });
+    expect(deliveryFirstPage.statusCode, deliveryFirstPage.body).toBe(200);
+    const firstPage = deliveryFirstPage.json<{
+      items: { id: string }[];
+      nextCursor: string;
+    }>();
+    expect(firstPage.items).toHaveLength(1);
+    expect(firstPage.nextCursor).toBeTruthy();
+    const deliverySecondPage = await deliveryApp.inject({
+      method: "GET",
+      url: `/delivery/v1/publications?limit=1&cursor=${encodeURIComponent(firstPage.nextCursor)}`,
+      headers: deliveryHeaders,
+    });
+    expect(deliverySecondPage.statusCode, deliverySecondPage.body).toBe(200);
+    expect(
+      deliverySecondPage.json<{ items: { id: string }[] }>().items[0]?.id,
+    ).not.toBe(firstPage.items[0]?.id);
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: "/delivery/v1/publications?limit=1&cursor=modified.invalid",
+          headers: deliveryHeaders,
+        })
+      ).statusCode,
+    ).toBe(400);
     const winnerDocumentId =
       racingPublishRequests[racingWinnerIndex]!.documentId;
     const racingSave = await app.inject({
@@ -1732,6 +2092,73 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       slug: winningTransition.slug,
       accessEpoch: winningTransition.accessEpoch,
     });
+    const rotatedCredential = await app.inject({
+      method: "POST",
+      url: `${credentialUrl}/${credential.id}/rotate`,
+      headers: { ...assetHeaders, origin },
+      payload: { expiresInDays: 30 },
+    });
+    expect(rotatedCredential.statusCode, rotatedCredential.body).toBe(201);
+    const rotated = rotatedCredential.json<{ id: string; token: string }>();
+    expect(rotated.token).not.toBe(credential.token);
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: "/delivery/v1/publications",
+          headers: deliveryHeaders,
+        })
+      ).statusCode,
+    ).toBe(401);
+    const rotatedHeaders = { authorization: `Bearer ${rotated.token}` };
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: "/delivery/v1/publications",
+          headers: rotatedHeaders,
+        })
+      ).statusCode,
+    ).toBe(200);
+    const revokedCredential = await app.inject({
+      method: "POST",
+      url: `${credentialUrl}/${rotated.id}/revoke`,
+      headers: { ...assetHeaders, origin },
+    });
+    expect(revokedCredential.statusCode).toBe(201);
+    expect(revokedCredential.json()).toMatchObject({ state: "REVOKED" });
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: "/delivery/v1/publications",
+          headers: rotatedHeaders,
+        })
+      ).statusCode,
+    ).toBe(401);
+    const expiringCredential = await app.inject({
+      method: "POST",
+      url: credentialUrl,
+      headers: { ...assetHeaders, origin },
+      payload: { name: "expired-fixture", expiresInDays: 1 },
+    });
+    expect(expiringCredential.statusCode).toBe(201);
+    const expired = expiringCredential.json<{ id: string; token: string }>();
+    await admin.query(
+      `UPDATE delivery.client_credential
+       SET created_at=now()-interval '2 days',expires_at=now()-interval '1 day'
+       WHERE id=$1`,
+      [expired.id],
+    );
+    expect(
+      (
+        await deliveryApp.inject({
+          method: "GET",
+          url: "/delivery/v1/publications",
+          headers: { authorization: `Bearer ${expired.token}` },
+        })
+      ).statusCode,
+    ).toBe(401);
     await admin.query(
       "UPDATE auth.session SET created_at=now()-interval '6 minutes' WHERE user_id=$1",
       [operator.userId],

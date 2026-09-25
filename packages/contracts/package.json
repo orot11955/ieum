@@ -62,6 +62,10 @@
     "./publishing": {
       "types": "./dist/publishing.d.ts",
       "default": "./dist/publishing.js"
+    },
+    "./delivery-management": {
+      "types": "./dist/delivery-management.d.ts",
+      "default": "./dist/delivery-management.js"
     }
   },
   "scripts": {

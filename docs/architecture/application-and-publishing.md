@@ -114,7 +114,7 @@ READY는 검토 가능한 특정 버전의 워크플로 상태다. 모델이 높
 
 ## 7. 두 API의 계약
 
-아래 경로는 설명용 초안이다. 실제 endpoint 구현과 OpenAPI 파일은 아직 없다.
+아래 경로는 기능별 예시다. 구현된 관리 발행·Delivery endpoint와 응답 스키마의 정본은 `packages/contracts/openapi/management.json`, `packages/contracts/openapi/delivery.json`이다.
 
 | API | 소비자 | 예시 경로 | 접근 데이터 |
 | --- | --- | --- | --- |

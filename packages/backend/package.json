@@ -92,6 +92,14 @@
       "types": "./dist/publishing/publication-service.d.ts",
       "default": "./dist/publishing/publication-service.js"
     },
+    "./delivery/credential-service": {
+      "types": "./dist/delivery/credential-service.d.ts",
+      "default": "./dist/delivery/credential-service.js"
+    },
+    "./delivery/reader": {
+      "types": "./dist/delivery/reader.d.ts",
+      "default": "./dist/delivery/reader.js"
+    },
     "./platform/jobs/generation": {
       "types": "./dist/platform/jobs/generation.d.ts",
       "default": "./dist/platform/jobs/generation.js"

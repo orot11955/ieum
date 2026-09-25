@@ -1151,6 +1151,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/delivery-credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listDeliveryCredentials"];
+        put?: never;
+        post: operations["createDeliveryCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/delivery-credentials/{id}/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["rotateDeliveryCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/delivery-credentials/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revokeDeliveryCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -5639,6 +5687,171 @@ export interface operations {
                         state: "PUBLISHED" | "WITHDRAWN";
                         slug: string;
                         accessEpoch: number;
+                    };
+                };
+            };
+        };
+    };
+    listDeliveryCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential metadata */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        credentials: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            channelId: string;
+                            name: string;
+                            /** @enum {string} */
+                            state: "ACTIVE" | "REVOKED";
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: date-time */
+                            revokedAt: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    createDeliveryCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    expiresInDays: number;
+                };
+            };
+        };
+        responses: {
+            /** @description One-time bearer token */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        channelId: string;
+                        name: string;
+                        /** @enum {string} */
+                        state: "ACTIVE" | "REVOKED";
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** Format: date-time */
+                        revokedAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: starts_with */
+                        token: string;
+                    };
+                };
+            };
+        };
+    };
+    rotateDeliveryCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expiresInDays: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Replacement token */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        channelId: string;
+                        name: string;
+                        /** @enum {string} */
+                        state: "ACTIVE" | "REVOKED";
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** Format: date-time */
+                        revokedAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: starts_with */
+                        token: string;
+                    };
+                };
+            };
+        };
+    };
+    revokeDeliveryCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked token */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        channelId: string;
+                        name: string;
+                        /** @enum {string} */
+                        state: "ACTIVE" | "REVOKED";
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** Format: date-time */
+                        revokedAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
                     };
                 };
             };

@@ -11,6 +11,7 @@ import { workbenchOpenApiPaths } from "./workbench.js";
 import { generationOpenApiPaths } from "./generation.js";
 import { assetOpenApiPaths } from "./assets.js";
 import { publishingOpenApiPaths } from "./publishing.js";
+import { deliveryManagementOpenApiPaths } from "./delivery-management.js";
 
 export const createCapturePath = "/api/v1/workspaces/{wid}/captures" as const;
 export const capturePath = "/api/v1/workspaces/{wid}/captures/{id}" as const;
@@ -200,6 +201,7 @@ export const managementOpenApi = {
     ...generationOpenApiPaths,
     ...assetOpenApiPaths,
     ...publishingOpenApiPaths,
+    ...deliveryManagementOpenApiPaths,
     [createCapturePath]: {
       post: {
         operationId: "createCapture",

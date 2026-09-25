@@ -6,6 +6,7 @@ import { WorkbenchController } from "./workbench.controller.js";
 import { GenerationController } from "./generation.controller.js";
 import { AssetController } from "./asset.controller.js";
 import { PublicationController } from "./publication.controller.js";
+import { DeliveryCredentialController } from "../delivery/credential.controller.js";
 import { DOCUMENT_RUNTIME } from "./document.runtime.js";
 
 @Module({})
@@ -19,6 +20,7 @@ export class DocumentModule {
         GenerationController,
         AssetController,
         PublicationController,
+        DeliveryCredentialController,
       ],
       providers: [{ provide: DOCUMENT_RUNTIME, useValue: runtime }],
     };

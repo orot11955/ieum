@@ -70,7 +70,7 @@ pnpm lab:smoke
 pnpm api:smoke
 ```
 
-`pnpm api:smoke`는 빌드된 API를 로컬 루프백 포트에서 띄워 종료까지 검사한다. 인증·업무 DB는 `pnpm --filter @ieum/api test:auth`, `pnpm --filter @ieum/backend test:db`, `pnpm --filter @ieum/api test:identity`로 격리 PostgreSQL에서 검사한다. 현재 업무 API는 계정·개인 설정·원문/단위 관리까지 제공한다.
+`pnpm api:smoke`는 빌드된 관리 API를 로컬 루프백 포트에서 띄워 종료까지 검사한다. 인증·업무 DB는 `pnpm --filter @ieum/api test:auth`, `pnpm --filter @ieum/backend test:db`, `pnpm --filter @ieum/api test:identity`로 격리 PostgreSQL에서 검사한다. 구현 범위와 단계별 증거는 [프로젝트 상태](docs/status/project-state.md)와 `docs/evidence/`를 따른다. Delivery는 별도 `pnpm --filter @ieum/api start:delivery` bootstrap으로 실행하며 `DELIVERY_DATABASE_URL`과 공개 파생 파일 volume의 `IEUM_ASSET_DERIVATIVE_ROOT`가 필요하다. 이 명령은 운영 배포·DB migration을 수행하지 않는다.
 
 Lab CLI는 빌드 뒤 `node apps/lab-cli/dist/main.js run <snapshot.json>`으로 실행한다. 기본 artifact는 저장소 밖의 `~/.local/share/ieum-lab/runs/`에 보관한다. 생성된 경로로 `replay <run-directory>`, `inspect <run-directory>`, `compare <run-a> <run-b>`를 호출할 수 있다. 입력 형식과 private artifact 범위는 [CORE-06 증거](docs/evidence/core-06.md)를 따른다.
 

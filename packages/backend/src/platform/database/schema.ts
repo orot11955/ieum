@@ -2084,6 +2084,52 @@ export const deliveryPublicationAsset = delivery.table(
   ],
 );
 
+/** A server-side Delivery credential. The bearer value is never persisted. */
+export const deliveryClientCredential = delivery.table(
+  "client_credential",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    channelId: uuid("channel_id").notNull(),
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    createdById: text("created_by_id").notNull(),
+    state: text("state").notNull().default("ACTIVE"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("delivery_client_credential_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    foreignKey({
+      name: "delivery_client_credential_channel_fk",
+      columns: [table.workspaceId, table.channelId],
+      foreignColumns: [publicationChannel.workspaceId, publicationChannel.id],
+    }),
+    check(
+      "delivery_client_credential_hash_check",
+      sql`length(${table.tokenHash})=64`,
+    ),
+    check(
+      "delivery_client_credential_state_check",
+      sql`${table.state} IN ('ACTIVE','REVOKED')`,
+    ),
+    check(
+      "delivery_client_credential_expiry_check",
+      sql`${table.expiresAt}>${table.createdAt}`,
+    ),
+    check(
+      "delivery_client_credential_revoked_check",
+      sql`(${table.state}='REVOKED')=(${table.revokedAt} IS NOT NULL)`,
+    ),
+  ],
+);
+
 export const task = business.table(
   "task",
   {
