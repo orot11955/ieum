@@ -234,3 +234,31 @@ export async function sourceState(
     return "stale";
   return "fresh";
 }
+
+/** Hold the mutable source pointer until an explicit draft apply commits. */
+export async function lockSourceForFreshness(
+  client: PoolClient,
+  workspaceId: string,
+  manifest: PackSourceManifest,
+): Promise<void> {
+  if (!UUID.test(manifest.id)) throw new CommandError("INVALID_COMMAND");
+  if (manifest.kind === "task_result") {
+    await client.query(
+      `SELECT c.id FROM business.task_result tr JOIN business.capture c
+       ON c.workspace_id=tr.workspace_id AND c.id=tr.capture_id
+       WHERE tr.workspace_id=$1 AND tr.id=$2 FOR SHARE OF c`,
+      [workspaceId, manifest.id],
+    );
+    return;
+  }
+  const table = {
+    capture_revision: "capture",
+    unit: "thought_unit",
+    document_revision: "document",
+    external_excerpt: "external_excerpt",
+  }[manifest.kind];
+  await client.query(
+    `SELECT id FROM business.${table} WHERE workspace_id=$1 AND id=$2 FOR SHARE`,
+    [workspaceId, manifest.id],
+  );
+}

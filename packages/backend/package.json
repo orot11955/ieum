@@ -52,6 +52,26 @@
       "types": "./dist/documents/source-resolver.d.ts",
       "default": "./dist/documents/source-resolver.js"
     },
+    "./generation/generation-service": {
+      "types": "./dist/generation/generation-service.d.ts",
+      "default": "./dist/generation/generation-service.js"
+    },
+    "./generation/generation-worker": {
+      "types": "./dist/generation/generation-worker.d.ts",
+      "default": "./dist/generation/generation-worker.js"
+    },
+    "./generation/input": {
+      "types": "./dist/generation/input.d.ts",
+      "default": "./dist/generation/input.js"
+    },
+    "./generation/openai-provider": {
+      "types": "./dist/generation/openai-provider.d.ts",
+      "default": "./dist/generation/openai-provider.js"
+    },
+    "./platform/jobs/generation": {
+      "types": "./dist/platform/jobs/generation.d.ts",
+      "default": "./dist/platform/jobs/generation.js"
+    },
     "./calendar": {
       "types": "./dist/calendar.d.ts",
       "default": "./dist/calendar.js"

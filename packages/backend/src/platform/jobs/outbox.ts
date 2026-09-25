@@ -8,6 +8,7 @@ import { withWorkspaceTransaction } from "../database/scope.js";
 
 export const CONTEXT_MEMBERSHIP_QUEUE = "context-membership-invalidation";
 export const JUDGEMENT_QUEUE = "judgement-run";
+export const GENERATION_QUEUE = "generation-run";
 const uuid =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -127,15 +128,17 @@ export async function relayOutboxOnce(
       `SELECT o.id,o.workspace_id,o.command_id,o.event_type,o.payload_ref
        FROM business.command_outbox o
        LEFT JOIN business.command_dispatch d ON d.outbox_id=o.id
-       WHERE d.outbox_id IS NULL AND o.event_type IN ('context.membership.changed','judgement.requested')
+       WHERE d.outbox_id IS NULL AND o.event_type IN ('context.membership.changed','judgement.requested','generation.requested')
        ORDER BY o.created_at,o.id LIMIT $1`,
       [limit],
     );
     for (const row of pending.rows) {
       const queue =
-        row.event_type === "judgement.requested"
-          ? JUDGEMENT_QUEUE
-          : CONTEXT_MEMBERSHIP_QUEUE;
+        row.event_type === "generation.requested"
+          ? GENERATION_QUEUE
+          : row.event_type === "judgement.requested"
+            ? JUDGEMENT_QUEUE
+            : CONTEXT_MEMBERSHIP_QUEUE;
       const jobId = await boss.send(
         queue,
         { outboxId: row.id, workspaceId: row.workspace_id },
@@ -144,10 +147,10 @@ export async function relayOutboxOnce(
             executeSql: (text: string, values: unknown[]) =>
               client.query(text, values),
           },
-          retryLimit: 3,
+          retryLimit: row.event_type === "generation.requested" ? 0 : 3,
           retryDelay: 1,
           retryBackoff: true,
-          expireInSeconds: 60,
+          expireInSeconds: row.event_type === "generation.requested" ? 180 : 60,
         },
       );
       if (!jobId) throw new Error("QUEUE_SEND_REJECTED");

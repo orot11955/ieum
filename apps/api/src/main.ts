@@ -15,6 +15,8 @@ import { DocumentService } from "@ieum/backend/documents";
 import { ExternalExcerptService } from "@ieum/backend/documents/external-excerpts";
 import { EvidencePackService } from "@ieum/backend/documents/evidence-packs";
 import { DocumentWorkbenchService } from "@ieum/backend/documents/workbench";
+import { GenerationService } from "@ieum/backend/generation/generation-service";
+import { generationPolicyFromEnv } from "@ieum/backend/generation/input";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { createApiApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
@@ -22,6 +24,14 @@ import { createAuthPort } from "./auth/fastify.js";
 import { createAccountAdministration } from "./auth/registration.js";
 
 const port = Number(process.env.PORT ?? "3000");
+let generationPolicy: ReturnType<typeof generationPolicyFromEnv> = null;
+try {
+  generationPolicy = generationPolicyFromEnv(process.env);
+} catch {
+  process.stderr.write(
+    "Generation configuration invalid; generation disabled\n",
+  );
+}
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORT must be an integer between 1 and 65535");
 }
@@ -74,6 +84,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
         externalExcerpts: new ExternalExcerptService(service, commands),
         evidencePacks: new EvidencePackService(service, commands),
         workbench: new DocumentWorkbenchService(service, commands),
+        generation: new GenerationService(service, commands, generationPolicy),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin: new URL(baseUrl).origin,

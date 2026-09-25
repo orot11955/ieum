@@ -7,6 +7,13 @@ import {
   relayOutboxOnce,
 } from "@ieum/backend/platform/jobs/outbox";
 import { registerJudgementWorker } from "@ieum/backend/platform/jobs/judgement";
+import { registerGenerationWorker } from "@ieum/backend/platform/jobs/generation";
+import { generationPolicyFromEnv } from "@ieum/backend/generation/input";
+import {
+  GenerationProviderError,
+  OpenAiResponsesProvider,
+} from "@ieum/backend/generation/openai-provider";
+import { reconcileAbandonedGeneration } from "@ieum/backend/generation/generation-worker";
 import { NestFactory } from "@nestjs/core";
 import { PgBoss } from "pg-boss";
 import { Pool } from "pg";
@@ -45,7 +52,29 @@ if (!relayUrl && !applicationUrl) {
     await boss.start();
     await registerContextMembershipWorker(boss, applicationPool);
     await registerJudgementWorker(boss, applicationPool);
+    let generationPolicy: ReturnType<typeof generationPolicyFromEnv> = null;
+    try {
+      generationPolicy = generationPolicyFromEnv(process.env);
+    } catch {
+      process.stderr.write(
+        "Generation configuration invalid; generation disabled\n",
+      );
+    }
+    await registerGenerationWorker(
+      boss,
+      applicationPool,
+      process.env.IEUM_OPENAI_API_KEY
+        ? new OpenAiResponsesProvider(process.env.IEUM_OPENAI_API_KEY)
+        : {
+            generate: async () => {
+              throw new GenerationProviderError("PROVIDER_UNAVAILABLE");
+            },
+          },
+      generationPolicy,
+    );
     let relayPass: Promise<void> | undefined;
+    let generationSweep: Promise<void> | undefined;
+    let generationCursor: string | null = null;
     const timer = setInterval(() => {
       if (relayPass) return;
       relayPass = relayOutboxOnce(relayPool, boss)
@@ -57,12 +86,30 @@ if (!relayUrl && !applicationUrl) {
           relayPass = undefined;
         });
     }, 1000);
+    const sweepTimer = setInterval(() => {
+      if (generationSweep) return;
+      generationSweep = reconcileAbandonedGeneration(
+        applicationPool,
+        generationCursor,
+      )
+        .then((next) => {
+          generationCursor = next;
+        })
+        .catch(() => {
+          process.stderr.write("Generation recovery pass failed\n");
+        })
+        .finally(() => {
+          generationSweep = undefined;
+        });
+    }, 60_000);
     let stopping: Promise<void> | undefined;
     const stop = async () => {
       if (!stopping) {
         clearInterval(timer);
+        clearInterval(sweepTimer);
         stopping = (async () => {
           await relayPass;
+          await generationSweep;
           await boss.stop({ graceful: true });
           await Promise.all([
             relayPool.end(),

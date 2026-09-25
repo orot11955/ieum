@@ -19,6 +19,11 @@ import { DocumentService } from "@ieum/backend/documents";
 import { ExternalExcerptService } from "@ieum/backend/documents/external-excerpts";
 import { EvidencePackService } from "@ieum/backend/documents/evidence-packs";
 import { DocumentWorkbenchService } from "@ieum/backend/documents/workbench";
+import { GenerationService } from "@ieum/backend/generation/generation-service";
+import {
+  processGenerationJob,
+  reconcileAbandonedGeneration,
+} from "@ieum/backend/generation/generation-worker";
 import {
   EditorEnvelopeSchema,
   canonicalEditorBlock,
@@ -163,6 +168,13 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         externalExcerpts: new ExternalExcerptService(identity, commands),
         evidencePacks: new EvidencePackService(identity, commands),
         workbench: new DocumentWorkbenchService(identity, commands),
+        generation: new GenerationService(identity, commands, {
+          modelId: "fixture-model",
+          inputPriceMicrousdPerMillion: 1000,
+          outputPriceMicrousdPerMillion: 1000,
+          maxJobCostMicrousd: 1000,
+          timeoutMs: 1000,
+        }),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -1893,6 +1905,531 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         independentOriginFamilies: [`external_excerpt:${excerptId}`],
       },
     });
+    // BE-17: explicit opt-in, bounded worker result, and separate draft apply.
+    const generationDocument = await app.inject({
+      method: "POST",
+      url: documentUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be17-document-01" },
+      payload: { kind: "NOTE", title: "생성 검증" },
+    });
+    expect(generationDocument.statusCode, generationDocument.body).toBe(201);
+    const generationDocumentId = generationDocument.json<{ id: string }>().id;
+    const generationPack = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${generationDocumentId}/evidence-packs`,
+      headers: { ...documentHeaders, "idempotency-key": "be17-pack-01" },
+      payload: {
+        title: "선택한 자료",
+        sources: [{ kind: "external_excerpt", id: excerptId, revision: 1 }],
+      },
+    });
+    expect(generationPack.statusCode, generationPack.body).toBe(201);
+    const generationPackId = generationPack.json<{ id: string }>().id;
+    const generationUrl = `${documentUrl}/${generationDocumentId}/generations`;
+    const generationBody = {
+      packId: generationPackId,
+      packRevision: 1,
+      draftVersion: 1,
+      mode: "outline",
+      sourceIndices: [0],
+      targetBlockIds: [],
+      consent: true,
+      maxInputTokens: 16000,
+      maxOutputTokens: 128,
+      maxCostMicrousd: 1000,
+    };
+    const disabledGeneration = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be17-disabled-01" },
+      payload: generationBody,
+    });
+    expect(disabledGeneration.statusCode).toBe(503);
+    const optIn = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/me/preferences/model",
+      headers: { ...documentHeaders, "idempotency-key": "be17-opt-in-01" },
+      payload: { externalModelEnabled: true, baseVersion: 2 },
+    });
+    expect(optIn.statusCode, optIn.body).toBe(200);
+    const queuedGeneration = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be17-generation-01" },
+      payload: generationBody,
+    });
+    expect(queuedGeneration.statusCode, queuedGeneration.body).toBe(202);
+    const generationRequestId = queuedGeneration.json<{ requestId: string }>()
+      .requestId;
+    const generationRef = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      async (client) => {
+        const result = await client.query<{ id: string }>(
+          "SELECT id FROM business.command_outbox WHERE workspace_id=$1 AND event_type='generation.requested' AND payload_ref->>'requestId'=$2",
+          [operator.workspaceId, generationRequestId],
+        );
+        return {
+          workspaceId: operator.workspaceId,
+          outboxId: result.rows[0]!.id,
+        };
+      },
+    );
+    const fakeProvider = {
+      generate: async (input: { serialized: string; signal: AbortSignal }) => {
+        expect(input.serialized).toContain("외부 견해");
+        expect(input.signal.aborted).toBe(false);
+        return {
+          output: {
+            items: [
+              {
+                kind: "paragraph" as const,
+                targetBlockId: null,
+                text: "검토할 제안",
+                sourceIndices: [0],
+              },
+            ],
+          },
+          inputTokens: 100,
+          outputTokens: 20,
+        };
+      },
+    };
+    const generationPolicy = {
+      modelId: "fixture-model",
+      inputPriceMicrousdPerMillion: 1000,
+      outputPriceMicrousdPerMillion: 1000,
+      maxJobCostMicrousd: 1000,
+      timeoutMs: 1000,
+    };
+    expect(
+      await processGenerationJob(
+        appPool,
+        generationRef,
+        fakeProvider,
+        generationPolicy,
+      ),
+    ).toBe("SUCCEEDED");
+    const generated = await app.inject({
+      method: "GET",
+      url: `${generationUrl}/${generationRequestId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(generated.statusCode, generated.body).toBe(200);
+    expect(generated.json()).toMatchObject({
+      state: "SUCCEEDED",
+      artifact: { proposals: [{ text: "검토할 제안", reviewRequired: true }] },
+    });
+    const foreignGeneration = await app.inject({
+      method: "GET",
+      url: `${generationUrl}/${generationRequestId}`.replace(
+        operator.workspaceId,
+        invitedWorkspaceId,
+      ),
+      headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+    });
+    expect(foreignGeneration.statusCode).toBe(404);
+    const generationProposalId = generated.json<{
+      artifact: { proposals: { id: string }[] };
+    }>().artifact.proposals[0]!.id;
+    const applied = await app.inject({
+      method: "POST",
+      url: `${generationUrl}/${generationRequestId}/apply`,
+      headers: { ...documentHeaders, "idempotency-key": "be17-apply-01" },
+      payload: { baseDraftVersion: 1, proposalIds: [generationProposalId] },
+    });
+    expect(applied.statusCode, applied.body).toBe(200);
+    expect(applied.json()).toMatchObject({
+      draftVersion: 2,
+      appliedProposalIds: [generationProposalId],
+    });
+    const generationAfter = await app.inject({
+      method: "GET",
+      url: `${documentUrl}/${generationDocumentId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(generationAfter.body).toContain("검토할 제안");
+    const duplicateApply = await app.inject({
+      method: "POST",
+      url: `${generationUrl}/${generationRequestId}/apply`,
+      headers: { ...documentHeaders, "idempotency-key": "be17-apply-02" },
+      payload: { baseDraftVersion: 1, proposalIds: [generationProposalId] },
+    });
+    expect(duplicateApply.statusCode).toBe(409);
+    const hallucinated = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be17-generation-02" },
+      payload: { ...generationBody, draftVersion: 2 },
+    });
+    expect(hallucinated.statusCode, hallucinated.body).toBe(202);
+    const badId = hallucinated.json<{ requestId: string }>().requestId;
+    const badRef = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      async (client) => {
+        const result = await client.query<{ id: string }>(
+          "SELECT id FROM business.command_outbox WHERE workspace_id=$1 AND event_type='generation.requested' AND payload_ref->>'requestId'=$2",
+          [operator.workspaceId, badId],
+        );
+        return {
+          workspaceId: operator.workspaceId,
+          outboxId: result.rows[0]!.id,
+        };
+      },
+    );
+    expect(
+      await processGenerationJob(
+        appPool,
+        badRef,
+        {
+          generate: async () => ({
+            output: {
+              items: [
+                {
+                  kind: "paragraph",
+                  targetBlockId: null,
+                  text: "거짓 출처",
+                  sourceIndices: [99],
+                },
+              ],
+            },
+            inputTokens: 100,
+            outputTokens: 20,
+          }),
+        },
+        generationPolicy,
+      ),
+    ).toBe("FAILED");
+    const rejected = await app.inject({
+      method: "GET",
+      url: `${generationUrl}/${badId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(rejected.json()).toMatchObject({
+      state: "FAILED",
+      errorCode: "INVALID_PROVIDER_OUTPUT",
+      artifact: null,
+    });
+    const budgetDenied = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be17-budget-01" },
+      payload: { ...generationBody, draftVersion: 2, maxInputTokens: 256 },
+    });
+    expect(budgetDenied.statusCode).toBe(422);
+    expect(budgetDenied.json()).toMatchObject({
+      code: "GENERATION_BUDGET_EXCEEDED",
+    });
+    const staleQueued = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be17-stale-01" },
+      payload: { ...generationBody, draftVersion: 2 },
+    });
+    expect(staleQueued.statusCode, staleQueued.body).toBe(202);
+    const staleId = staleQueued.json<{ requestId: string }>().requestId;
+    const currentGenerationDocument = generationAfter.json<{
+      content: {
+        schemaVersion: 1;
+        content: { type: "doc"; content: unknown[] };
+      };
+    }>();
+    const changedDraft = await app.inject({
+      method: "PUT",
+      url: `${documentUrl}/${generationDocumentId}/draft`,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be17-draft-change-01",
+      },
+      payload: {
+        baseVersion: 2,
+        saveSequence: 1,
+        ...currentGenerationDocument.content,
+      },
+    });
+    expect(changedDraft.statusCode, changedDraft.body).toBe(200);
+    const staleRef = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      async (client) => {
+        const found = await client.query<{ id: string }>(
+          "SELECT id FROM business.command_outbox WHERE workspace_id=$1 AND event_type='generation.requested' AND payload_ref->>'requestId'=$2",
+          [operator.workspaceId, staleId],
+        );
+        return {
+          workspaceId: operator.workspaceId,
+          outboxId: found.rows[0]!.id,
+        };
+      },
+    );
+    let staleProviderCalls = 0;
+    expect(
+      await processGenerationJob(
+        appPool,
+        staleRef,
+        {
+          generate: async () => {
+            staleProviderCalls++;
+            return { output: { items: [] }, inputTokens: 0, outputTokens: 0 };
+          },
+        },
+        generationPolicy,
+      ),
+    ).toBe("STALE");
+    expect(staleProviderCalls).toBe(0);
+    const canceledQueued = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be17-cancel-request-01",
+      },
+      payload: { ...generationBody, draftVersion: 3 },
+    });
+    expect(canceledQueued.statusCode, canceledQueued.body).toBe(202);
+    const canceledId = canceledQueued.json<{ requestId: string }>().requestId;
+    const canceled = await app.inject({
+      method: "POST",
+      url: `${generationUrl}/${canceledId}/cancel`,
+      headers: { ...documentHeaders, "idempotency-key": "be17-cancel-01" },
+    });
+    expect(canceled.statusCode, canceled.body).toBe(200);
+    expect(canceled.json()).toMatchObject({ state: "CANCELED" });
+    const duringQueued = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be17-during-request-01",
+      },
+      payload: { ...generationBody, draftVersion: 3 },
+    });
+    expect(duringQueued.statusCode, duringQueued.body).toBe(202);
+    const duringId = duringQueued.json<{ requestId: string }>().requestId;
+    const duringRef = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      async (client) => {
+        const found = await client.query<{ id: string }>(
+          "SELECT id FROM business.command_outbox WHERE workspace_id=$1 AND event_type='generation.requested' AND payload_ref->>'requestId'=$2",
+          [operator.workspaceId, duringId],
+        );
+        return {
+          workspaceId: operator.workspaceId,
+          outboxId: found.rows[0]!.id,
+        };
+      },
+    );
+    expect(
+      await processGenerationJob(
+        appPool,
+        duringRef,
+        {
+          generate: async () => {
+            const cancelDuring = await app.inject({
+              method: "POST",
+              url: `${generationUrl}/${duringId}/cancel`,
+              headers: {
+                ...documentHeaders,
+                "idempotency-key": "be17-cancel-during-01",
+              },
+            });
+            expect(cancelDuring.statusCode, cancelDuring.body).toBe(200);
+            return {
+              output: {
+                items: [
+                  {
+                    kind: "paragraph",
+                    targetBlockId: null,
+                    text: "버릴 결과",
+                    sourceIndices: [0],
+                  },
+                ],
+              },
+              inputTokens: 100,
+              outputTokens: 20,
+            };
+          },
+        },
+        generationPolicy,
+      ),
+    ).toBe("CANCELED");
+    const canceledDuring = await app.inject({
+      method: "GET",
+      url: `${generationUrl}/${duringId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(canceledDuring.json()).toMatchObject({
+      state: "CANCELED",
+      artifact: null,
+    });
+    const draftDuringQueued = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be17-draft-during-request-01",
+      },
+      payload: { ...generationBody, draftVersion: 3 },
+    });
+    expect(draftDuringQueued.statusCode, draftDuringQueued.body).toBe(202);
+    const draftDuringId = draftDuringQueued.json<{ requestId: string }>()
+      .requestId;
+    const draftDuringRef = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      async (client) => {
+        const found = await client.query<{ id: string }>(
+          "SELECT id FROM business.command_outbox WHERE workspace_id=$1 AND event_type='generation.requested' AND payload_ref->>'requestId'=$2",
+          [operator.workspaceId, draftDuringId],
+        );
+        return {
+          workspaceId: operator.workspaceId,
+          outboxId: found.rows[0]!.id,
+        };
+      },
+    );
+    expect(
+      await processGenerationJob(
+        appPool,
+        draftDuringRef,
+        {
+          generate: async () => {
+            const saveDuring = await app.inject({
+              method: "PUT",
+              url: `${documentUrl}/${generationDocumentId}/draft`,
+              headers: {
+                ...documentHeaders,
+                "idempotency-key": "be17-draft-during-01",
+              },
+              payload: {
+                baseVersion: 3,
+                saveSequence: 2,
+                ...currentGenerationDocument.content,
+              },
+            });
+            expect(saveDuring.statusCode, saveDuring.body).toBe(200);
+            return {
+              output: {
+                items: [
+                  {
+                    kind: "paragraph",
+                    targetBlockId: null,
+                    text: "오래된 초안 결과",
+                    sourceIndices: [0],
+                  },
+                ],
+              },
+              inputTokens: 100,
+              outputTokens: 20,
+            };
+          },
+        },
+        generationPolicy,
+      ),
+    ).toBe("STALE");
+    const staleDuring = await app.inject({
+      method: "GET",
+      url: `${generationUrl}/${draftDuringId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(staleDuring.json()).toMatchObject({
+      state: "STALE",
+      errorCode: "DRAFT_CHANGED",
+      artifact: null,
+    });
+    const abandonedQueued = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be17-abandoned-01" },
+      payload: { ...generationBody, draftVersion: 4 },
+    });
+    expect(abandonedQueued.statusCode, abandonedQueued.body).toBe(202);
+    const abandonedId = abandonedQueued.json<{ requestId: string }>().requestId;
+    await withWorkspaceTransaction(appPool, operator.workspaceId, (client) =>
+      client.query(
+        "UPDATE business.generation_request SET state='RUNNING',updated_at=now()-interval '6 minutes' WHERE workspace_id=$1 AND id=$2",
+        [operator.workspaceId, abandonedId],
+      ),
+    );
+    await reconcileAbandonedGeneration(appPool);
+    const abandoned = await app.inject({
+      method: "GET",
+      url: `${generationUrl}/${abandonedId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(abandoned.json()).toMatchObject({
+      state: "FAILED",
+      errorCode: "WORKER_INTERRUPTED",
+      artifact: null,
+    });
+    const revokeQueued = await app.inject({
+      method: "POST",
+      url: generationUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be17-revoke-request-01",
+      },
+      payload: { ...generationBody, draftVersion: 4 },
+    });
+    expect(revokeQueued.statusCode, revokeQueued.body).toBe(202);
+    const revokeId = revokeQueued.json<{ requestId: string }>().requestId;
+    const revokeRef = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      async (client) => {
+        const found = await client.query<{ id: string }>(
+          "SELECT id FROM business.command_outbox WHERE workspace_id=$1 AND event_type='generation.requested' AND payload_ref->>'requestId'=$2",
+          [operator.workspaceId, revokeId],
+        );
+        return {
+          workspaceId: operator.workspaceId,
+          outboxId: found.rows[0]!.id,
+        };
+      },
+    );
+    expect(
+      await processGenerationJob(
+        appPool,
+        revokeRef,
+        {
+          generate: async () => {
+            const optOut = await app.inject({
+              method: "PATCH",
+              url: "/api/v1/me/preferences/model",
+              headers: {
+                ...documentHeaders,
+                "idempotency-key": "be17-opt-out-01",
+              },
+              payload: { externalModelEnabled: false, baseVersion: 3 },
+            });
+            expect(optOut.statusCode, optOut.body).toBe(200);
+            return {
+              output: {
+                items: [
+                  {
+                    kind: "paragraph",
+                    targetBlockId: null,
+                    text: "동의 철회 후 결과",
+                    sourceIndices: [0],
+                  },
+                ],
+              },
+              inputTokens: 100,
+              outputTokens: 20,
+            };
+          },
+        },
+        generationPolicy,
+      ),
+    ).toBe("CANCELED");
+    const revoked = await app.inject({
+      method: "GET",
+      url: `${generationUrl}/${revokeId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(revoked.json()).toMatchObject({ state: "CANCELED", artifact: null });
     const excerptRevised = await app.inject({
       method: "PUT",
       url: `${excerptUrl}/${excerptId}`,

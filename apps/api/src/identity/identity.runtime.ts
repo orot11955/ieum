@@ -13,6 +13,7 @@ import type { DocumentService } from "@ieum/backend/documents";
 import type { ExternalExcerptService } from "@ieum/backend/documents/external-excerpts";
 import type { EvidencePackService } from "@ieum/backend/documents/evidence-packs";
 import type { DocumentWorkbenchService } from "@ieum/backend/documents/workbench";
+import type { GenerationService } from "@ieum/backend/generation/generation-service";
 import type { createAccountAdministration } from "../auth/registration.js";
 
 export interface IdentityRuntime {
@@ -30,6 +31,7 @@ export interface IdentityRuntime {
   externalExcerpts: ExternalExcerptService;
   evidencePacks: EvidencePackService;
   workbench: DocumentWorkbenchService;
+  generation: GenerationService;
   authPort: AuthPort;
   sessions: ReturnType<typeof createAccountAdministration>["sessions"];
   origin: string;

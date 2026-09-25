@@ -18,6 +18,7 @@ import {
 } from "../src/platform/database/scope.js";
 import {
   CONTEXT_MEMBERSHIP_QUEUE,
+  GENERATION_QUEUE,
   applyContextInvalidation,
   assertJobRelayDatabaseRole,
   getOutboxJobState,
@@ -76,6 +77,7 @@ describe("BE-06 transactional outbox relay and scoped job", () => {
     });
     await installer.start();
     await installer.createQueue(CONTEXT_MEMBERSHIP_QUEUE);
+    await installer.createQueue(GENERATION_QUEUE);
     await installer.stop();
     await admin.query(queueGrantsSql);
     await admin.query(
@@ -553,5 +555,40 @@ describe("BE-06 transactional outbox relay and scoped job", () => {
     } finally {
       await boss.offWork(CONTEXT_MEMBERSHIP_QUEUE);
     }
+  });
+  it("dispatches model work with no automatic retry after an attempted external call", async () => {
+    const outboxId = await withWorkspaceTransaction(
+      app,
+      workspaceId,
+      async (client) => {
+        const receipt = await client.query<{ command_id: string }>(
+          "SELECT command_id FROM business.command_receipt WHERE workspace_id=$1 AND kind='capture.create' LIMIT 1",
+          [workspaceId],
+        );
+        const inserted = await client.query<{ id: string }>(
+          `INSERT INTO business.command_outbox (workspace_id,command_id,event_type,payload_ref)
+         VALUES($1,$2,'generation.requested',$3::jsonb) RETURNING id`,
+          [
+            workspaceId,
+            receipt.rows[0]!.command_id,
+            JSON.stringify({ requestId: randomUUID() }),
+          ],
+        );
+        return inserted.rows[0]!.id;
+      },
+    );
+    expect(await relayOutboxOnce(relay, boss)).toBe(1);
+    const dispatch = await withWorkspaceTransaction(
+      app,
+      workspaceId,
+      (client) =>
+        client.query<{ job_id: string }>(
+          "SELECT job_id FROM business.command_dispatch WHERE workspace_id=$1 AND outbox_id=$2",
+          [workspaceId, outboxId],
+        ),
+    );
+    expect(
+      await boss.getJobById(GENERATION_QUEUE, dispatch.rows[0]!.job_id),
+    ).toMatchObject({ retryLimit: 0 });
   });
 });
