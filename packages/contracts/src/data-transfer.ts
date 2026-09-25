@@ -132,6 +132,44 @@ export const TransferManifestV6Schema = TransferManifestV5Schema.omit({
     .max(255),
   captureRevisions: z.array(historicalCaptureRevision).max(254),
 });
+const portableUnitRevision = z.strictObject({
+  revision: z.int().positive(),
+  sourceStart: z.int().nonnegative(),
+  sourceEnd: z.int().positive(),
+  contentKind: z.enum(["quote", "paraphrase"]),
+  contentText: z.string().min(1).max(1_000_000),
+  recordedAt: z.iso.datetime({ offset: true }),
+});
+const portableUnit = z.strictObject({
+  id: z.uuid(),
+  originWorkspaceId: z.uuid(),
+  originId: z.uuid(),
+  captureId: z.uuid(),
+  captureRevision: z.int().positive(),
+  originKey: z.string().min(1).max(400),
+  state: z.enum(["ACTIVE", "SUPERSEDED"]),
+  currentRevision: z.int().positive(),
+  createdAt: z.iso.datetime({ offset: true }),
+  supersededAt: z.iso.datetime({ offset: true }).nullable(),
+  revisions: z.array(portableUnitRevision).min(1).max(255),
+});
+export const TransferManifestV7Schema = TransferManifestV6Schema.omit({
+  version: true,
+  captures: true,
+}).extend({
+  version: z.literal(7),
+  captures: z
+    .array(
+      TransferManifestV6Schema.shape.captures.element.extend({
+        originKey: z.string().min(1).max(400),
+        version: z.int().positive(),
+        unitSetVersion: z.int().positive(),
+        state: z.enum(["ACTIVE", "ARCHIVED"]),
+      }),
+    )
+    .max(255),
+  units: z.array(portableUnit).max(16384),
+});
 export const TransferManifestSchema = z.discriminatedUnion("version", [
   TransferManifestV1Schema,
   TransferManifestV2Schema,
@@ -139,12 +177,14 @@ export const TransferManifestSchema = z.discriminatedUnion("version", [
   TransferManifestV4Schema,
   TransferManifestV5Schema,
   TransferManifestV6Schema,
+  TransferManifestV7Schema,
 ]);
 export type TransferManifestV2 = z.infer<typeof TransferManifestV2Schema>;
 export type TransferManifestV3 = z.infer<typeof TransferManifestV3Schema>;
 export type TransferManifestV4 = z.infer<typeof TransferManifestV4Schema>;
 export type TransferManifestV5 = z.infer<typeof TransferManifestV5Schema>;
 export type TransferManifestV6 = z.infer<typeof TransferManifestV6Schema>;
+export type TransferManifestV7 = z.infer<typeof TransferManifestV7Schema>;
 
 export const TransferRunSchema = z.strictObject({
   id: z.uuid(),
@@ -155,6 +195,7 @@ export const TransferRunSchema = z.strictObject({
     "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY",
     "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS",
     "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY",
+    "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
   ]),
   kind: z.enum(["EXPORT", "IMPORT"]),
   state: z.enum(["READY", "STAGED", "APPLIED", "PARTIAL"]),
@@ -165,7 +206,14 @@ export const TransferRunSchema = z.strictObject({
   appliedAt: z.iso.datetime({ offset: true }).nullable(),
 });
 export const TransferPreviewRowSchema = z.strictObject({
-  recordKind: z.enum(["capture", "task", "event", "context", "task_result"]),
+  recordKind: z.enum([
+    "capture",
+    "unit",
+    "task",
+    "event",
+    "context",
+    "task_result",
+  ]),
   sourceId: z.uuid(),
   sourceRevision: z.int().positive(),
   state: z.enum([
@@ -213,7 +261,7 @@ export const dataTransferOpenApiPaths = {
       responses: {
         "201": {
           description:
-            "Capture revision history, Context, Task and Event current-state plus Task transition/result export run; expires in 24 hours",
+            "Capture and Unit revision history, Context, Task and Event current-state plus Task transition/result export run; expires in 24 hours",
         },
         "403": error,
         "503": error,

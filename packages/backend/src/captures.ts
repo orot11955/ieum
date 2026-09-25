@@ -204,7 +204,28 @@ export async function insertCaptureHistoryInTransaction(
     workspaceId: string;
     actorId: string;
     sourceKey: string;
+    originKey?: string;
     revisions: { title: string; rawBody: string; recordedAt: string }[];
+    version?: number;
+    unitSetVersion?: number;
+    state?: "ACTIVE" | "ARCHIVED";
+    units?: {
+      targetId: string;
+      captureRevision: number;
+      originKey: string;
+      state: "ACTIVE" | "SUPERSEDED";
+      currentRevision: number;
+      createdAt: string;
+      supersededAt: string | null;
+      revisions: {
+        revision: number;
+        sourceStart: number;
+        sourceEnd: number;
+        contentKind: "quote" | "paraphrase";
+        contentText: string;
+        recordedAt: string;
+      }[];
+    }[];
   },
 ): Promise<{ id: string }> {
   if (
@@ -226,12 +247,13 @@ export async function insertCaptureHistoryInTransaction(
   if (prior.rowCount) throw new CaptureError("SOURCE_DUPLICATE");
   const id = randomUUID();
   const current = input.revisions.at(-1)!;
-  const originKey = `import:${input.sourceKey}`;
+  const originKey = input.originKey ?? `import:${input.sourceKey}`;
+  if (!validText(originKey, 400)) throw new CommandError("INVALID_COMMAND");
   await client.query(
     `INSERT INTO business.capture
      (id,workspace_id,created_by_id,title,source_kind,source_key,origin_key,
-      version,current_revision,unit_set_version,created_at,updated_at)
-     VALUES($1,$2,$3,$4,'import',$5,$6,$7,$7,$7,$8,$9)`,
+      state,version,current_revision,unit_set_version,created_at,updated_at)
+     VALUES($1,$2,$3,$4,'import',$5,$6,$7,$8,$9,$10,$11,$12)`,
     [
       id,
       input.workspaceId,
@@ -239,7 +261,10 @@ export async function insertCaptureHistoryInTransaction(
       current.title.trim(),
       input.sourceKey,
       originKey,
+      input.state ?? "ACTIVE",
+      input.version ?? input.revisions.length,
       input.revisions.length,
+      input.unitSetVersion ?? input.revisions.length,
       input.revisions[0]!.recordedAt,
       current.recordedAt,
     ],
@@ -259,15 +284,53 @@ export async function insertCaptureHistoryInTransaction(
         revision.recordedAt,
       ],
     );
-    await insertUnit(
-      client,
-      input.workspaceId,
-      id,
-      number,
-      originKey,
-      { start: 0, end: revision.rawBody.length, encoding: "utf16" },
-      revision.rawBody,
+    if (input.units === undefined)
+      await insertUnit(
+        client,
+        input.workspaceId,
+        id,
+        number,
+        originKey,
+        { start: 0, end: revision.rawBody.length, encoding: "utf16" },
+        revision.rawBody,
+      );
+  }
+  for (const unit of input.units ?? []) {
+    await client.query(
+      `INSERT INTO business.thought_unit
+       (id,workspace_id,capture_id,capture_revision,origin_key,state,current_revision,created_at,superseded_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
+        unit.targetId,
+        input.workspaceId,
+        id,
+        unit.captureRevision,
+        unit.originKey,
+        unit.state,
+        unit.currentRevision,
+        unit.createdAt,
+        unit.supersededAt,
+      ],
     );
+    for (const revision of unit.revisions)
+      await client.query(
+        `INSERT INTO business.thought_unit_revision
+         (workspace_id,unit_id,revision,capture_id,capture_revision,
+          source_start,source_end,content_kind,content_text,recorded_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [
+          input.workspaceId,
+          unit.targetId,
+          revision.revision,
+          id,
+          unit.captureRevision,
+          revision.sourceStart,
+          revision.sourceEnd,
+          revision.contentKind,
+          revision.contentText,
+          revision.recordedAt,
+        ],
+      );
   }
   return { id };
 }

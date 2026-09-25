@@ -33,7 +33,7 @@ describe("BE-21 portable capture manifest", () => {
     const bundle = createCaptureBundle(workspaceId, [record]);
     const files = unpackTransferArchive(bundle);
     const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
-    manifest.version = 7;
+    manifest.version = 8;
     expect(() =>
       readCaptureBundle(
         packTransferArchive([
@@ -582,6 +582,93 @@ describe("BE-21 portable capture manifest", () => {
               ([path]) =>
                 path !== "manifest.json" && path !== `captures/${id}/2.md`,
             )
+            .map(([path, bytes]) => ({ path, bytes })),
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
+  });
+
+  it("keeps version 7 Unit identity and rejects a quote outside its source span", () => {
+    const captureId = randomUUID();
+    const unitId = randomUUID();
+    const recordedAt = "2026-09-25T00:00:00.000Z";
+    const bundle = createCaptureHistoryBundle(
+      workspaceId,
+      [
+        {
+          id: captureId,
+          revision: 1,
+          title: "원문",
+          rawBody: "가나",
+          recordedAt,
+          version: 1,
+          unitSetVersion: 2,
+          state: "ACTIVE",
+          originKey: "fixture",
+        },
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          id: unitId,
+          originWorkspaceId: workspaceId,
+          originId: unitId,
+          captureId,
+          captureRevision: 1,
+          originKey: "fixture",
+          state: "ACTIVE",
+          currentRevision: 1,
+          createdAt: recordedAt,
+          supersededAt: null,
+          revisions: [
+            {
+              revision: 1,
+              sourceStart: 0,
+              sourceEnd: 2,
+              contentKind: "quote",
+              contentText: "가나",
+              recordedAt,
+            },
+          ],
+        },
+      ],
+    );
+    const parsed = readCaptureBundle(bundle);
+    expect(parsed.manifest.version).toBe(7);
+    if (parsed.manifest.version !== 7) throw new Error("expected v7");
+    expect(parsed.manifest.units[0]?.id).toBe(unitId);
+    const files = unpackTransferArchive(bundle);
+    const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
+    manifest.units[0].revisions[0].contentText = "나가";
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+          ...[...files]
+            .filter(([path]) => path !== "manifest.json")
+            .map(([path, bytes]) => ({ path, bytes })),
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
+    manifest.units[0].revisions[0].contentKind = "paraphrase";
+    manifest.units[0].revisions[0].contentText = "\ud800";
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+          ...[...files]
+            .filter(([path]) => path !== "manifest.json")
             .map(([path, bytes]) => ({ path, bytes })),
         ]),
       ),

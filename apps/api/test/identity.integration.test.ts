@@ -4010,7 +4010,9 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       .filter((row) => row.recordKind === "task")
       .map((row) => row.state);
     expect(initialTaskStates).toContain("DUPLICATE");
-    expect(initialTaskStates).toContain("MISSING_REFERENCE");
+    expect(initialTaskStates.every((state) => state === "DUPLICATE")).toBe(
+      true,
+    );
     const changedPreview = await app.inject({
       method: "POST",
       url: `${transferBase}/imports/${importId}/apply`,
@@ -4025,14 +4027,12 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       payload: { previewHash: transferPreview.previewHash },
     });
     expect(transferApplied.statusCode, transferApplied.body).toBe(201);
-    expect(transferApplied.json()).toMatchObject({ state: "PARTIAL" });
+    expect(transferApplied.json()).toMatchObject({ state: "APPLIED" });
     const missingTransferReferences = await admin.query(
       "SELECT record_kind,reason_code FROM business.transfer_row WHERE run_id=$1 AND state='FAILED' ORDER BY record_kind",
       [importId],
     );
-    expect(missingTransferReferences.rows).toEqual([
-      { record_kind: "task", reason_code: "MISSING_REFERENCE" },
-    ]);
+    expect(missingTransferReferences.rows).toEqual([]);
     const linkedImportedTasks = await admin.query<{ count: string }>(
       `SELECT count(*)::text AS count FROM business.transfer_row tr
        JOIN business.task t ON t.workspace_id=tr.workspace_id AND t.id=tr.target_id
@@ -4081,7 +4081,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       headers: transferHeaders,
     });
     expect(readCaptureBundle(reexportBytes.rawPayload).manifest.version).toBe(
-      6,
+      7,
     );
     const restaged = await app.inject({
       method: "POST",
@@ -4124,7 +4124,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       },
     });
     expect(transitiveApplied.statusCode, transitiveApplied.body).toBe(201);
-    expect(transitiveApplied.json<{ state: string }>().state).toBe("PARTIAL");
+    expect(transitiveApplied.json<{ state: string }>().state).toBe("APPLIED");
     const repeatedResults = await admin.query<{ count: string }>(
       `SELECT count(*)::text AS count FROM business.transfer_row
        WHERE run_id=$1 AND record_kind='task_result' AND state='SKIPPED'`,
@@ -4344,8 +4344,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const linkedManifest = readCaptureBundle(
       linkedDownload.rawPayload,
     ).manifest;
-    expect(linkedManifest.version).toBe(6);
-    if (linkedManifest.version !== 6) throw new Error("expected v6");
+    expect(linkedManifest.version).toBe(7);
+    if (linkedManifest.version !== 7) throw new Error("expected v7");
     expect(
       linkedManifest.contexts.find(
         (context) => context.id === linkedTargets.rows[0]?.context_id,
@@ -5141,6 +5141,354 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(
       duplicateRows.rows.find((row) => row.state === "FAILED")?.reason_code,
     ).toBe("ORIGIN_DUPLICATE");
+
+    const unitSourceWorkspace = randomUUID();
+    const unitCaptureId = randomUUID();
+    const unitTaskId = randomUUID();
+    const missingUnitTaskId = randomUUID();
+    const originalUnitId = randomUUID();
+    const supersededUnitId = randomUUID();
+    const leftUnitId = randomUUID();
+    const rightUnitId = randomUUID();
+    const paraphraseUnitId = randomUUID();
+    const unitTime = "2026-01-01T00:00:00.000Z";
+    const splitTime = "2026-01-02T00:00:00.000Z";
+    const unitBody = "alpha beta";
+    const portableUnits: NonNullable<
+      Parameters<typeof createCaptureHistoryBundle>[8]
+    > = [
+      {
+        id: originalUnitId,
+        originWorkspaceId: unitSourceWorkspace,
+        originId: originalUnitId,
+        captureId: unitCaptureId,
+        captureRevision: 1,
+        originKey: "fixture:unit-graph",
+        state: "ACTIVE",
+        currentRevision: 1,
+        createdAt: unitTime,
+        supersededAt: null,
+        revisions: [
+          {
+            revision: 1,
+            sourceStart: 0,
+            sourceEnd: 6,
+            contentKind: "quote",
+            contentText: "before",
+            recordedAt: unitTime,
+          },
+        ],
+      },
+      ...[
+        [supersededUnitId, "SUPERSEDED", 0, 10, unitBody, "quote"],
+        [leftUnitId, "ACTIVE", 0, 5, "alpha", "quote"],
+        [rightUnitId, "ACTIVE", 5, 10, " beta", "quote"],
+        [paraphraseUnitId, "ACTIVE", 0, 10, "summary", "paraphrase"],
+      ].map(
+        ([id, state, sourceStart, sourceEnd, contentText, contentKind]) => ({
+          id: id as string,
+          originWorkspaceId: unitSourceWorkspace,
+          originId: id as string,
+          captureId: unitCaptureId,
+          captureRevision: 2,
+          originKey: "fixture:unit-graph",
+          state: state as "ACTIVE" | "SUPERSEDED",
+          currentRevision: 1,
+          createdAt: splitTime,
+          supersededAt: state === "SUPERSEDED" ? splitTime : null,
+          revisions: [
+            {
+              revision: 1,
+              sourceStart: sourceStart as number,
+              sourceEnd: sourceEnd as number,
+              contentKind: contentKind as "quote" | "paraphrase",
+              contentText: contentText as string,
+              recordedAt: splitTime,
+            },
+          ],
+        }),
+      ),
+    ];
+    const unitTasks = [unitTaskId, missingUnitTaskId].map((taskId, index) => ({
+      id: taskId,
+      originWorkspaceId: unitSourceWorkspace,
+      originId: taskId,
+      title: index === 0 ? "Unit 출처 작업" : "없는 Unit 출처",
+      description: "",
+      state: "TODO" as const,
+      version: 1,
+      dueKind: "NONE" as const,
+      dueDate: null,
+      dueAt: null,
+      dueTimeZone: null,
+      contextId: null,
+      originUnitId: index === 0 ? paraphraseUnitId : randomUUID(),
+      originUnitRevision: 1,
+      completedAt: null,
+      completionVersion: null,
+    }));
+    const unitBundle = createCaptureHistoryBundle(
+      unitSourceWorkspace,
+      [
+        {
+          id: unitCaptureId,
+          revision: 2,
+          title: "Unit 이식",
+          rawBody: unitBody,
+          recordedAt: splitTime,
+          version: 3,
+          unitSetVersion: 3,
+          state: "ACTIVE",
+          originKey: "fixture:unit-graph",
+        },
+      ],
+      unitTasks,
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          captureId: unitCaptureId,
+          revision: 1,
+          title: "Unit 이식",
+          rawBody: "before",
+          recordedAt: unitTime,
+        },
+      ],
+      portableUnits,
+    );
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '3 days',
+           expires_at=now()-interval '2 days'
+       WHERE workspace_id=$1 AND actor_id=$2`,
+      [operator.workspaceId, operator.userId],
+    );
+    const unitStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: unitBundle,
+    });
+    expect(unitStage.statusCode, unitStage.body).toBe(201);
+    const unitRunId = unitStage.json<{ id: string }>().id;
+    const unitPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${unitRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(unitPreview.statusCode, unitPreview.body).toBe(200);
+    const unitRows = unitPreview.json<{
+      previewHash: string;
+      rows: { recordKind: string; sourceId: string; state: string }[];
+    }>();
+    expect(
+      unitRows.rows.filter((row) => row.recordKind === "unit"),
+    ).toHaveLength(5);
+    expect(
+      unitRows.rows.find((row) => row.sourceId === unitTaskId)?.state,
+    ).toBe("NEW");
+    expect(
+      unitRows.rows.find((row) => row.sourceId === missingUnitTaskId)?.state,
+    ).toBe("MISSING_REFERENCE");
+    const unitApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${unitRunId}/apply`,
+      headers: transferHeaders,
+      payload: { previewHash: unitRows.previewHash },
+    });
+    expect(unitApplied.statusCode, unitApplied.body).toBe(201);
+    expect(unitApplied.json<{ state: string }>().state).toBe("PARTIAL");
+    const importedUnit = await admin.query<{
+      unit_id: string;
+      origin_unit_id: string;
+      content_kind: string;
+      content_text: string;
+    }>(
+      `SELECT u.id AS unit_id,t.origin_unit_id,
+              r.content_kind,r.content_text
+       FROM business.transfer_origin o
+       JOIN business.thought_unit u ON u.workspace_id=o.workspace_id AND u.id=o.target_id
+       JOIN business.thought_unit_revision r
+         ON r.workspace_id=u.workspace_id AND r.unit_id=u.id AND r.revision=1
+       JOIN business.task t ON t.workspace_id=u.workspace_id AND t.origin_unit_id=u.id
+       WHERE o.workspace_id=$1 AND o.record_kind='unit'
+         AND o.source_workspace_id=$2 AND o.source_id=$3`,
+      [operator.workspaceId, unitSourceWorkspace, paraphraseUnitId],
+    );
+    expect(importedUnit.rows).toEqual([
+      {
+        unit_id: importedUnit.rows[0]?.unit_id,
+        origin_unit_id: importedUnit.rows[0]?.unit_id,
+        content_kind: "paraphrase",
+        content_text: "summary",
+      },
+    ]);
+    const unitStates = await admin.query<{ state: string; count: string }>(
+      `SELECT u.state,count(*)::text AS count
+       FROM business.thought_unit u
+       JOIN business.transfer_origin o ON o.workspace_id=u.workspace_id
+         AND o.record_kind='unit' AND o.target_id=u.id
+       WHERE o.workspace_id=$1 AND o.source_workspace_id=$2
+       GROUP BY u.state ORDER BY u.state`,
+      [operator.workspaceId, unitSourceWorkspace],
+    );
+    expect(unitStates.rows).toEqual([
+      { state: "ACTIVE", count: "4" },
+      { state: "SUPERSEDED", count: "1" },
+    ]);
+    const historicalBodies = [
+      ["첫 본문", "2026-09-23T00:00:00.000Z"],
+      ["둘째 본문", "2026-09-24T00:00:00.000Z"],
+      ["셋째 본문", "2026-09-25T00:00:00.000Z"],
+    ] as const;
+    const upgradedHistorical = createCaptureHistoryBundle(
+      historicalSource,
+      [
+        {
+          id: historicalCaptureId,
+          revision: 3,
+          title: "현재 원문",
+          rawBody: "셋째 본문",
+          recordedAt: historicalBodies[2][1],
+          version: 3,
+          unitSetVersion: 3,
+          state: "ACTIVE",
+          originKey: "fixture:history-upgrade",
+        },
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          captureId: historicalCaptureId,
+          revision: 1,
+          title: "첫 원문",
+          rawBody: "첫 본문",
+          recordedAt: historicalBodies[0][1],
+        },
+        {
+          captureId: historicalCaptureId,
+          revision: 2,
+          title: "둘째 원문",
+          rawBody: "둘째 본문",
+          recordedAt: historicalBodies[1][1],
+        },
+      ],
+      historicalBodies.map(([body, recordedAt], index) => {
+        const id = randomUUID();
+        return {
+          id,
+          originWorkspaceId: historicalSource,
+          originId: id,
+          captureId: historicalCaptureId,
+          captureRevision: index + 1,
+          originKey: "fixture:history-upgrade",
+          state: "ACTIVE" as const,
+          currentRevision: 1,
+          createdAt: recordedAt,
+          supersededAt: null,
+          revisions: [
+            {
+              revision: 1,
+              sourceStart: 0,
+              sourceEnd: body.length,
+              contentKind: "quote" as const,
+              contentText: body,
+              recordedAt,
+            },
+          ],
+        };
+      }),
+    );
+    const upgradedStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: upgradedHistorical,
+    });
+    expect(upgradedStage.statusCode, upgradedStage.body).toBe(201);
+    const upgradedRunId = upgradedStage.json<{ id: string }>().id;
+    const upgradedPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${upgradedRunId}/preview`,
+      headers: transferHeaders,
+    });
+    const upgradedRows = upgradedPreview.json<{
+      previewHash: string;
+      rows: { recordKind: string; state: string }[];
+    }>();
+    expect(upgradedRows.rows.map((row) => row.state)).toEqual([
+      "CONFLICT",
+      "CONFLICT",
+      "CONFLICT",
+      "CONFLICT",
+    ]);
+    const upgradedApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${upgradedRunId}/apply`,
+      headers: transferHeaders,
+      payload: { previewHash: upgradedRows.previewHash },
+    });
+    expect(upgradedApplied.statusCode, upgradedApplied.body).toBe(201);
+    expect(upgradedApplied.json<{ state: string }>().state).toBe("PARTIAL");
+    const unitReexport = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(unitReexport.statusCode, unitReexport.body).toBe(201);
+    expect(unitReexport.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
+    );
+    const unitReexportBytes = await app.inject({
+      method: "GET",
+      url: `${transferBase}/exports/${unitReexport.json<{ id: string }>().id}/download`,
+      headers: transferHeaders,
+    });
+    expect(unitReexportBytes.statusCode).toBe(200);
+    const unitReexportManifest = readCaptureBundle(
+      unitReexportBytes.rawPayload,
+    ).manifest;
+    expect(unitReexportManifest.version).toBe(7);
+    if (unitReexportManifest.version !== 7) throw new Error("expected v7");
+    const reexportedParaphrase = unitReexportManifest.units.find(
+      (unit) =>
+        unit.originWorkspaceId === unitSourceWorkspace &&
+        unit.originId === paraphraseUnitId,
+    );
+    expect(reexportedParaphrase?.id).toBe(importedUnit.rows[0]?.unit_id);
+    const unitRestage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: unitReexportBytes.rawPayload,
+    });
+    expect(unitRestage.statusCode, unitRestage.body).toBe(201);
+    const unitRestagePreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${unitRestage.json<{ id: string }>().id}/preview`,
+      headers: transferHeaders,
+    });
+    expect(unitRestagePreview.statusCode, unitRestagePreview.body).toBe(200);
+    expect(
+      unitRestagePreview
+        .json<{ rows: { sourceId: string; state: string }[] }>()
+        .rows.find((row) => row.sourceId === reexportedParaphrase?.id)?.state,
+    ).toBe("DUPLICATE");
 
     let resetToken: string | null = null;
     const recovery = createAuth({

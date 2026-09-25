@@ -5,6 +5,7 @@ import type {
   TransferManifestV4,
   TransferManifestV5,
   TransferManifestV6,
+  TransferManifestV7,
 } from "@ieum/contracts/data-transfer";
 import type { PoolClient } from "pg";
 import { CommandCoordinator } from "../command-coordinator.js";
@@ -51,7 +52,7 @@ interface Run {
 }
 
 export interface TransferPreviewRow {
-  recordKind: "capture" | "task" | "event" | "context" | "task_result";
+  recordKind: "capture" | "unit" | "task" | "event" | "context" | "task_result";
   sourceId: string;
   sourceRevision: number;
   state:
@@ -88,7 +89,8 @@ type TransferScope =
   | "CAPTURES_TASKS_EVENTS_CONTEXTS"
   | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY"
   | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS"
-  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY";
+  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY"
+  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY";
 function publicRun(run: Run, scope: TransferScope) {
   return {
     id: run.id,
@@ -127,17 +129,19 @@ function previewHash(rows: TransferPreviewRow[]): string {
 }
 
 function bundleScope(version: number): TransferScope {
-  return version === 6
-    ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY"
-    : version === 5
-      ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS"
-      : version === 4
-        ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY"
-        : version === 3
-          ? "CAPTURES_TASKS_EVENTS_CONTEXTS"
-          : version === 2
-            ? "CAPTURES_TASKS_EVENTS"
-            : "CAPTURES_ONLY";
+  return version === 7
+    ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY"
+    : version === 6
+      ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY"
+      : version === 5
+        ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS"
+        : version === 4
+          ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY"
+          : version === 3
+            ? "CAPTURES_TASKS_EVENTS_CONTEXTS"
+            : version === 2
+              ? "CAPTURES_TASKS_EVENTS"
+              : "CAPTURES_ONLY";
 }
 
 type CaptureHistoryRecord = TransferManifestV6["captures"][number] & {
@@ -192,19 +196,39 @@ async function sameCaptureHistory(
   );
 }
 
-type ExistingCapture = { id: string; title: string; raw_body: string };
+type ExistingCapture = {
+  id: string;
+  title: string;
+  raw_body: string;
+  version: number;
+  unit_set_version: number;
+  state: "ACTIVE" | "ARCHIVED";
+  origin_key: string;
+};
 
 async function findCaptureOrigin(
   client: PoolClient,
   workspaceId: string,
   originWorkspaceId: string,
   originCaptureId: string,
+  bundleCaptureId: string,
   lock: boolean,
 ): Promise<{ previous: ExistingCapture | null; staleTargetId: string | null }> {
-  const current = `SELECT c.id,c.title,r.raw_body FROM business.capture c
+  const current = `SELECT c.id,c.title,c.version,c.unit_set_version,c.state,c.origin_key,r.raw_body FROM business.capture c
     JOIN business.capture_revision r
-      ON r.workspace_id=c.workspace_id AND r.capture_id=c.id
+     ON r.workspace_id=c.workspace_id AND r.capture_id=c.id
      AND r.revision=c.current_revision`;
+  if (
+    originWorkspaceId.toLowerCase() === workspaceId.toLowerCase() &&
+    bundleCaptureId.toLowerCase() === originCaptureId.toLowerCase()
+  ) {
+    const native = await client.query<ExistingCapture>(
+      `${current} WHERE c.workspace_id=$1 AND c.id=$2${lock ? " FOR UPDATE OF c" : ""}`,
+      [workspaceId, originCaptureId],
+    );
+    if (native.rows[0])
+      return { previous: native.rows[0], staleTargetId: null };
+  }
   const imported = await client.query<ExistingCapture>(
     `${current} WHERE c.workspace_id=$1 AND c.source_kind='import' AND c.source_key=$2${lock ? " FOR UPDATE OF c" : ""}`,
     [workspaceId, sourceKey(originWorkspaceId, originCaptureId)],
@@ -236,6 +260,149 @@ async function findCaptureOrigin(
       return { previous: native.rows[0], staleTargetId: null };
   }
   return { previous: null, staleTargetId: null };
+}
+
+type PortableUnit = TransferManifestV7["units"][number];
+function unitOriginKey(unit: PortableUnit): string {
+  return `${unit.originWorkspaceId.toLowerCase()}:${unit.originId.toLowerCase()}`;
+}
+function resolvedUnitTarget(
+  unit: PortableUnit,
+  workspaceId: string,
+  mapped: Map<string, string>,
+): string | null {
+  const native =
+    unit.originWorkspaceId.toLowerCase() === workspaceId.toLowerCase();
+  if (native && unit.id.toLowerCase() === unit.originId.toLowerCase())
+    return unit.originId.toLowerCase();
+  return (
+    mapped.get(unitOriginKey(unit)) ??
+    (native ? unit.originId.toLowerCase() : null)
+  );
+}
+
+async function unitOriginTargets(
+  client: PoolClient,
+  workspaceId: string,
+  units: PortableUnit[],
+): Promise<Map<string, string>> {
+  if (!units.length) return new Map();
+  const rows = await client.query<{
+    source_workspace_id: string;
+    source_id: string;
+    target_id: string;
+  }>(
+    `SELECT o.source_workspace_id,o.source_id,o.target_id
+     FROM business.transfer_origin o
+     JOIN unnest($2::uuid[],$3::uuid[]) AS source(workspace_id,id)
+       ON o.source_workspace_id=source.workspace_id AND o.source_id=source.id
+     WHERE o.workspace_id=$1 AND o.record_kind='unit'`,
+    [
+      workspaceId,
+      units.map((unit) => unit.originWorkspaceId),
+      units.map((unit) => unit.originId),
+    ],
+  );
+  return new Map(
+    rows.rows.map((row) => [
+      `${row.source_workspace_id.toLowerCase()}:${row.source_id.toLowerCase()}`,
+      row.target_id,
+    ]),
+  );
+}
+
+async function unitsAvailableForNewCapture(
+  client: PoolClient,
+  workspaceId: string,
+  units: PortableUnit[],
+): Promise<boolean> {
+  const keys = units.map(unitOriginKey);
+  if (new Set(keys).size !== keys.length) return false;
+  if ((await unitOriginTargets(client, workspaceId, units)).size) return false;
+  const nativeIds = units
+    .filter(
+      (unit) =>
+        unit.originWorkspaceId.toLowerCase() === workspaceId.toLowerCase(),
+    )
+    .map((unit) => unit.originId);
+  if (!nativeIds.length) return true;
+  const native = await client.query(
+    `SELECT 1 FROM business.thought_unit
+     WHERE workspace_id=$1 AND id=ANY($2::uuid[]) LIMIT 1`,
+    [workspaceId, nativeIds],
+  );
+  return native.rowCount === 0;
+}
+
+async function sameUnitGraph(
+  client: PoolClient,
+  workspaceId: string,
+  targetCaptureId: string,
+  units: PortableUnit[],
+): Promise<boolean> {
+  const rows = await client.query<{
+    id: string;
+    capture_revision: number;
+    origin_key: string;
+    state: string;
+    current_revision: number;
+    created_at: Date;
+    superseded_at: Date | null;
+    revision: number;
+    source_start: number;
+    source_end: number;
+    content_kind: string;
+    content_text: string;
+    recorded_at: Date;
+  }>(
+    `SELECT u.id,u.capture_revision,u.origin_key,u.state,u.current_revision,
+            u.created_at,u.superseded_at,r.revision,r.source_start,r.source_end,
+            r.content_kind,r.content_text,r.recorded_at
+     FROM business.thought_unit u JOIN business.thought_unit_revision r
+       ON r.workspace_id=u.workspace_id AND r.unit_id=u.id
+     WHERE u.workspace_id=$1 AND u.capture_id=$2 ORDER BY u.id,r.revision`,
+    [workspaceId, targetCaptureId],
+  );
+  const byId = new Map<string, typeof rows.rows>();
+  for (const row of rows.rows) {
+    const current = byId.get(row.id) ?? [];
+    current.push(row);
+    byId.set(row.id, current);
+  }
+  if (byId.size !== units.length) return false;
+  const originTargets = await unitOriginTargets(client, workspaceId, units);
+  const used = new Set<string>();
+  for (const unit of units) {
+    const mapped = resolvedUnitTarget(unit, workspaceId, originTargets);
+    if (!mapped || used.has(mapped)) return false;
+    used.add(mapped);
+    const actual = byId.get(mapped);
+    if (!actual || actual.length !== unit.revisions.length) return false;
+    const first = actual[0]!;
+    if (
+      first.capture_revision !== unit.captureRevision ||
+      first.origin_key !== unit.originKey ||
+      first.state !== unit.state ||
+      first.current_revision !== unit.currentRevision ||
+      first.created_at.getTime() !== Date.parse(unit.createdAt) ||
+      (first.superseded_at?.getTime() ?? null) !==
+        (unit.supersededAt === null ? null : Date.parse(unit.supersededAt))
+    )
+      return false;
+    for (const [index, revision] of unit.revisions.entries()) {
+      const row = actual[index]!;
+      if (
+        row.revision !== revision.revision ||
+        row.source_start !== revision.sourceStart ||
+        row.source_end !== revision.sourceEnd ||
+        row.content_kind !== revision.contentKind ||
+        row.content_text !== revision.contentText ||
+        row.recorded_at.getTime() !== Date.parse(revision.recordedAt)
+      )
+        return false;
+    }
+  }
+  return true;
 }
 
 function dateOnly(value: string | Date | null): string | null {
@@ -305,13 +472,18 @@ export class DataTransferService {
         const result = await client.query<{
           id: string;
           revision: number;
+          version: number;
+          unit_set_version: number;
+          state: "ACTIVE" | "ARCHIVED";
+          origin_key: string;
           title: string;
           raw_body: string;
           source_kind: string;
           source_key: string | null;
           recorded_at: Date;
         }>(
-          `SELECT c.id,c.current_revision AS revision,r.title,r.raw_body,r.recorded_at,c.source_kind,c.source_key
+          `SELECT c.id,c.current_revision AS revision,c.version,c.unit_set_version,c.state,c.origin_key,
+                  r.title,r.raw_body,r.recorded_at,c.source_kind,c.source_key
            FROM business.capture c
            JOIN business.capture_revision r
              ON r.workspace_id=c.workspace_id AND r.capture_id=c.id
@@ -332,6 +504,10 @@ export class DataTransferService {
             title: row.title,
             rawBody: row.raw_body,
             recordedAt: row.recorded_at.toISOString(),
+            version: row.version,
+            unitSetVersion: row.unit_set_version,
+            state: row.state,
+            originKey: row.origin_key,
             originWorkspaceId: origin?.[1] ?? workspaceId,
             originCaptureId: origin?.[2] ?? row.id,
           };
@@ -470,14 +646,69 @@ export class DataTransferService {
            WHERE tr.workspace_id=$1 ORDER BY tr.id LIMIT 4097`,
           [workspaceId],
         );
+        const units = await client.query<{
+          id: string;
+          capture_id: string;
+          capture_revision: number;
+          origin_key: string;
+          state: "ACTIVE" | "SUPERSEDED";
+          current_revision: number;
+          created_at: Date;
+          superseded_at: Date | null;
+          origin_workspace_id: string | null;
+          origin_id: string | null;
+        }>(
+          `SELECT u.id,u.capture_id,u.capture_revision,u.origin_key,u.state,
+                  u.current_revision,u.created_at,u.superseded_at,
+                  o.source_workspace_id AS origin_workspace_id,o.source_id AS origin_id
+           FROM business.thought_unit u LEFT JOIN LATERAL (
+             SELECT source_workspace_id,source_id FROM business.transfer_origin
+             WHERE workspace_id=u.workspace_id AND record_kind='unit' AND target_id=u.id
+             ORDER BY source_workspace_id,source_id LIMIT 1
+           ) o ON true
+           WHERE u.workspace_id=$1 ORDER BY u.id LIMIT 16385`,
+          [workspaceId],
+        );
+        const unitRevisions = await client.query<{
+          unit_id: string;
+          revision: number;
+          source_start: number;
+          source_end: number;
+          content_kind: "quote" | "paraphrase";
+          content_text: string;
+          recorded_at: Date;
+        }>(
+          `SELECT unit_id,revision,source_start,source_end,content_kind,content_text,recorded_at
+           FROM business.thought_unit_revision WHERE workspace_id=$1
+           ORDER BY unit_id,revision LIMIT 65537`,
+          [workspaceId],
+        );
         if (
           tasks.rows.length > 4096 ||
           events.rows.length > 4096 ||
           contexts.rows.length > 4096 ||
           transitions.rows.length > 16384 ||
-          taskResults.rows.length > 4096
+          taskResults.rows.length > 4096 ||
+          units.rows.length > 16384 ||
+          unitRevisions.rows.length > 65536
         )
           throw new DataTransferError("TRANSFER_UNAVAILABLE");
+        const revisionsByUnit = new Map<
+          string,
+          TransferManifestV7["units"][number]["revisions"]
+        >();
+        for (const revision of unitRevisions.rows) {
+          const revisions = revisionsByUnit.get(revision.unit_id) ?? [];
+          revisions.push({
+            revision: revision.revision,
+            sourceStart: revision.source_start,
+            sourceEnd: revision.source_end,
+            contentKind: revision.content_kind,
+            contentText: revision.content_text,
+            recordedAt: revision.recorded_at.toISOString(),
+          });
+          revisionsByUnit.set(revision.unit_id, revisions);
+        }
         return {
           captures,
           captureRevisions: captureRevisions.rows.map((row) => ({
@@ -553,6 +784,19 @@ export class DataTransferService {
             completionVersion: row.completion_version,
             recordedAt: row.recorded_at.toISOString(),
           })),
+          units: units.rows.map((row) => ({
+            id: row.id,
+            originWorkspaceId: row.origin_workspace_id ?? workspaceId,
+            originId: row.origin_id ?? row.id,
+            captureId: row.capture_id,
+            captureRevision: row.capture_revision,
+            originKey: row.origin_key,
+            state: row.state,
+            currentRevision: row.current_revision,
+            createdAt: row.created_at.toISOString(),
+            supersededAt: row.superseded_at?.toISOString() ?? null,
+            revisions: revisionsByUnit.get(row.id) ?? [],
+          })),
         };
       },
       "REPEATABLE READ",
@@ -568,6 +812,7 @@ export class DataTransferService {
         snapshot.taskTransitions,
         snapshot.taskResults,
         snapshot.captureRevisions,
+        snapshot.units,
       );
       readCaptureBundle(bytes);
     } catch {
@@ -601,7 +846,7 @@ export class DataTransferService {
           );
           return publicRun(
             result.rows[0]!,
-            "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY",
+            "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
           );
         },
       );
@@ -696,6 +941,14 @@ export class DataTransferService {
                VALUES($1,$2,'capture',$3,$4)`,
               [workspaceId, id, record.id, record.revision],
             );
+          if (manifest.version === 7)
+            for (const unit of manifest.units)
+              await client.query(
+                `INSERT INTO business.transfer_row
+                 (workspace_id,run_id,record_kind,source_id,source_revision)
+                 VALUES($1,$2,'unit',$3,$4)`,
+                [workspaceId, id, unit.id, unit.currentRevision],
+              );
           if (manifest.version !== 1) {
             for (const [kind, records] of [
               ["task", manifest.tasks],
@@ -714,7 +967,8 @@ export class DataTransferService {
             manifest.version === 3 ||
             manifest.version === 4 ||
             manifest.version === 5 ||
-            manifest.version === 6
+            manifest.version === 6 ||
+            manifest.version === 7
           ) {
             for (const context of manifest.contexts)
               await client.query(
@@ -724,7 +978,11 @@ export class DataTransferService {
                 [workspaceId, id, context.id, context.identityRevision],
               );
           }
-          if (manifest.version === 5 || manifest.version === 6) {
+          if (
+            manifest.version === 5 ||
+            manifest.version === 6 ||
+            manifest.version === 7
+          ) {
             for (const result of manifest.taskResults)
               await client.query(
                 `INSERT INTO business.transfer_row
@@ -779,6 +1037,7 @@ export class DataTransferService {
           throw new DataTransferError("TRANSFER_NOT_FOUND");
         await loadRun(client, workspaceId, actorId, id, "IMPORT");
         const rows: TransferPreviewRow[] = [];
+        const reservedUnitOrigins = new Set<string>();
         for (const record of bundle.captures) {
           const status = await client.query<{
             state: "PENDING" | "IMPORTED" | "SKIPPED" | "FAILED";
@@ -804,39 +1063,127 @@ export class DataTransferService {
             workspaceId,
             record.originWorkspaceId,
             record.originCaptureId,
+            record.id,
             false,
           );
+          const captureUnits =
+            bundle.manifest.version === 7
+              ? bundle.manifest.units.filter(
+                  (unit) =>
+                    unit.captureId.toLowerCase() === record.id.toLowerCase(),
+                )
+              : [];
+          const v7Capture =
+            bundle.manifest.version === 7
+              ? bundle.manifest.captures.find(
+                  (capture) =>
+                    capture.id.toLowerCase() === record.id.toLowerCase(),
+                )!
+              : null;
           const same =
             previous &&
             previous.title === record.title &&
             previous.raw_body === record.rawBody &&
-            (bundle.manifest.version !== 6 ||
+            ((bundle.manifest.version !== 6 && bundle.manifest.version !== 7) ||
               (await sameCaptureHistory(
                 client,
                 workspaceId,
                 previous.id,
                 record as CaptureHistoryRecord,
                 bundle.captureRevisions,
+              ))) &&
+            (!v7Capture ||
+              (previous.version === v7Capture.version &&
+                previous.unit_set_version === v7Capture.unitSetVersion &&
+                previous.state === v7Capture.state &&
+                previous.origin_key === v7Capture.originKey &&
+                (await sameUnitGraph(
+                  client,
+                  workspaceId,
+                  previous.id,
+                  captureUnits,
+                ))));
+          const unitsAvailable =
+            bundle.manifest.version !== 7 ||
+            previous !== null ||
+            staleTargetId !== null ||
+            (captureUnits.every(
+              (unit) => !reservedUnitOrigins.has(unitOriginKey(unit)),
+            ) &&
+              (await unitsAvailableForNewCapture(
+                client,
+                workspaceId,
+                captureUnits,
               )));
+          const captureState = !previous
+            ? staleTargetId || !unitsAvailable
+              ? "CONFLICT"
+              : "NEW"
+            : same
+              ? "DUPLICATE"
+              : "CONFLICT";
+          if (captureState === "NEW")
+            for (const unit of captureUnits)
+              reservedUnitOrigins.add(unitOriginKey(unit));
           rows.push({
             recordKind: "capture",
             sourceId: record.id,
             sourceRevision: record.revision,
-            state: !previous
-              ? staleTargetId
-                ? "CONFLICT"
-                : "NEW"
-              : same
-                ? "DUPLICATE"
-                : "CONFLICT",
+            state: captureState,
             targetId: previous?.id ?? staleTargetId,
           });
+        }
+        if (bundle.manifest.version === 7) {
+          const mapped = await unitOriginTargets(
+            client,
+            workspaceId,
+            bundle.manifest.units,
+          );
+          for (const unit of bundle.manifest.units) {
+            const stored = await client.query<{
+              state: "PENDING" | "IMPORTED" | "SKIPPED" | "FAILED";
+              target_id: string | null;
+            }>(
+              `SELECT state,target_id FROM business.transfer_row
+               WHERE workspace_id=$1 AND run_id=$2 AND record_kind='unit' AND source_id=$3`,
+              [workspaceId, id, unit.id],
+            );
+            const terminal = stored.rows[0];
+            const capture = rows.find(
+              (row) =>
+                row.recordKind === "capture" &&
+                row.sourceId.toLowerCase() === unit.captureId.toLowerCase(),
+            )!;
+            const targetId = resolvedUnitTarget(unit, workspaceId, mapped);
+            rows.push({
+              recordKind: "unit",
+              sourceId: unit.id,
+              sourceRevision: unit.currentRevision,
+              state:
+                terminal && terminal.state !== "PENDING"
+                  ? terminal.state
+                  : capture.state === "NEW"
+                    ? "NEW"
+                    : ["DUPLICATE", "SKIPPED", "IMPORTED"].includes(
+                          capture.state,
+                        )
+                      ? "DUPLICATE"
+                      : "CONFLICT",
+              targetId:
+                terminal && terminal.state !== "PENDING"
+                  ? terminal.target_id
+                  : capture.state === "NEW"
+                    ? null
+                    : targetId,
+            });
+          }
         }
         if (
           bundle.manifest.version === 3 ||
           bundle.manifest.version === 4 ||
           bundle.manifest.version === 5 ||
-          bundle.manifest.version === 6
+          bundle.manifest.version === 6 ||
+          bundle.manifest.version === 7
         ) {
           for (const record of bundle.manifest.contexts)
             rows.push(
@@ -854,24 +1201,32 @@ export class DataTransferService {
                 bundle.manifest.version === 3 ||
                   bundle.manifest.version === 4 ||
                   bundle.manifest.version === 5 ||
-                  bundle.manifest.version === 6
+                  bundle.manifest.version === 6 ||
+                  bundle.manifest.version === 7
                   ? bundle.manifest.contexts
                   : [],
                 bundle.manifest.version === 4 ||
                   bundle.manifest.version === 5 ||
-                  bundle.manifest.version === 6
+                  bundle.manifest.version === 6 ||
+                  bundle.manifest.version === 7
                   ? bundle.manifest.taskTransitions.filter(
                       (transition) =>
                         transition.taskId.toLowerCase() ===
                         record.id.toLowerCase(),
                     )
                   : undefined,
+                bundle.manifest.version === 7 ? bundle.manifest.units : [],
+                rows,
               ),
             );
           for (const record of bundle.manifest.events)
             rows.push(await this.previewEvent(client, workspaceId, id, record));
         }
-        if (bundle.manifest.version === 5 || bundle.manifest.version === 6) {
+        if (
+          bundle.manifest.version === 5 ||
+          bundle.manifest.version === 6 ||
+          bundle.manifest.version === 7
+        ) {
           const seenOrigins = new Set<string>();
           for (const record of bundle.manifest.taskResults) {
             const origin = `${record.originWorkspaceId.toLowerCase()}:${record.originId.toLowerCase()}`;
@@ -978,6 +1333,8 @@ export class DataTransferService {
     record: TransferManifestV2["tasks"][number],
     contexts: TransferManifestV3["contexts"] = [],
     transitions?: TransferManifestV4["taskTransitions"],
+    units: PortableUnit[] = [],
+    references?: TransferPreviewRow[],
   ): Promise<TransferPreviewRow> {
     const base = {
       recordKind: "task" as const,
@@ -1005,7 +1362,16 @@ export class DataTransferService {
       record.contextId,
       contexts,
     );
-    if (!context.valid || record.originUnitId)
+    const unit = await this.taskUnitMapping(
+      client,
+      workspaceId,
+      runId,
+      record.originUnitId,
+      record.originUnitRevision,
+      units,
+      references,
+    );
+    if (!context.valid || !unit.valid)
       return { ...base, state: "MISSING_REFERENCE", targetId: null };
     const existing = await client.query<{ target_id: string; same: boolean }>(
       `WITH candidate AS (
@@ -1022,7 +1388,9 @@ export class DataTransferService {
          AND t.due_date IS NOT DISTINCT FROM $9::date
          AND t.due_at IS NOT DISTINCT FROM $10::timestamptz
          AND t.due_time_zone IS NOT DISTINCT FROM $11::text
-         AND t.context_id IS NOT DISTINCT FROM $14::uuid AND t.origin_unit_id IS NULL
+         AND t.context_id IS NOT DISTINCT FROM $14::uuid
+         AND t.origin_unit_id IS NOT DISTINCT FROM $15::uuid
+         AND t.origin_unit_revision IS NOT DISTINCT FROM $16::integer
          AND date_trunc('milliseconds',t.completed_at) IS NOT DISTINCT FROM $12::timestamptz
          AND t.completion_version IS NOT DISTINCT FROM $13::integer AS same
        FROM candidate o LEFT JOIN business.task t
@@ -1043,6 +1411,8 @@ export class DataTransferService {
         record.completedAt,
         record.completionVersion,
         context.targetId,
+        unit.targetId,
+        record.originUnitRevision,
       ],
     );
     const prior = existing.rows[0];
@@ -1079,6 +1449,53 @@ export class DataTransferService {
           : "CONFLICT",
       targetId: prior?.target_id ?? null,
     };
+  }
+
+  private async taskUnitMapping(
+    client: PoolClient,
+    workspaceId: string,
+    runId: string,
+    sourceId: string | null,
+    revision: number | null,
+    units: PortableUnit[],
+    references?: TransferPreviewRow[],
+  ): Promise<{ valid: boolean; targetId: string | null }> {
+    if (!sourceId) return { valid: true, targetId: null };
+    const source = units.find(
+      (unit) => unit.id.toLowerCase() === sourceId.toLowerCase(),
+    );
+    if (!source || !source.revisions.some((row) => row.revision === revision))
+      return { valid: false, targetId: null };
+    const preview = references?.find(
+      (row) =>
+        row.recordKind === "unit" &&
+        row.sourceId.toLowerCase() === sourceId.toLowerCase(),
+    );
+    let state = preview?.state;
+    let targetId = preview?.targetId ?? null;
+    if (!state) {
+      const stored = await client.query<{
+        state: string;
+        target_id: string | null;
+      }>(
+        `SELECT state,target_id FROM business.transfer_row
+         WHERE workspace_id=$1 AND run_id=$2 AND record_kind='unit' AND source_id=$3`,
+        [workspaceId, runId, sourceId],
+      );
+      state = stored.rows[0]?.state as TransferPreviewRow["state"] | undefined;
+      targetId = stored.rows[0]?.target_id ?? null;
+    }
+    if (!state || !["NEW", "DUPLICATE", "IMPORTED", "SKIPPED"].includes(state))
+      return { valid: false, targetId: null };
+    if (targetId) {
+      const present = await client.query(
+        `SELECT 1 FROM business.thought_unit_revision
+         WHERE workspace_id=$1 AND unit_id=$2 AND revision=$3`,
+        [workspaceId, targetId, revision],
+      );
+      if (!present.rowCount) return { valid: false, targetId: null };
+    }
+    return { valid: true, targetId };
   }
 
   private async taskContextMapping(
@@ -1364,66 +1781,138 @@ export class DataTransferService {
             workspaceId,
             record.originWorkspaceId,
             record.originCaptureId,
+            record.id,
             true,
           );
+          const v7Capture =
+            bundle.manifest.version === 7
+              ? bundle.manifest.captures.find(
+                  (capture) =>
+                    capture.id.toLowerCase() === record.id.toLowerCase(),
+                )!
+              : null;
+          const captureUnits =
+            bundle.manifest.version === 7
+              ? bundle.manifest.units.filter(
+                  (unit) =>
+                    unit.captureId.toLowerCase() === record.id.toLowerCase(),
+                )
+              : [];
+          for (const unit of [...captureUnits].sort((a, b) =>
+            unitOriginKey(a).localeCompare(unitOriginKey(b)),
+          ))
+            await client.query(
+              "SELECT pg_advisory_xact_lock(hashtextextended($1, 2122))",
+              [
+                sourceLock(
+                  workspaceId,
+                  unit.originWorkspaceId,
+                  unit.originId,
+                  "unit",
+                ),
+              ],
+            );
           const same =
             previous &&
             previous.title === record.title &&
             previous.raw_body === record.rawBody &&
-            (bundle.manifest.version !== 6 ||
+            ((bundle.manifest.version !== 6 && bundle.manifest.version !== 7) ||
               (await sameCaptureHistory(
                 client,
                 workspaceId,
                 previous.id,
                 record as CaptureHistoryRecord,
                 bundle.captureRevisions,
-              )));
+              ))) &&
+            (!v7Capture ||
+              (previous.version === v7Capture.version &&
+                previous.unit_set_version === v7Capture.unitSetVersion &&
+                previous.state === v7Capture.state &&
+                previous.origin_key === v7Capture.originKey &&
+                (await sameUnitGraph(
+                  client,
+                  workspaceId,
+                  previous.id,
+                  captureUnits,
+                ))));
+          const unitsAvailable =
+            !v7Capture ||
+            previous !== null ||
+            staleTargetId !== null ||
+            (await unitsAvailableForNewCapture(
+              client,
+              workspaceId,
+              captureUnits,
+            ));
           const state = previous
             ? same
               ? "SKIPPED"
               : "FAILED"
-            : staleTargetId
+            : staleTargetId || !unitsAvailable
               ? "FAILED"
               : "IMPORTED";
+          const newUnits =
+            state === "IMPORTED" && v7Capture
+              ? captureUnits.map((unit) => ({
+                  ...unit,
+                  targetId: randomUUID(),
+                }))
+              : [];
           const targetId = previous
             ? previous.id
             : staleTargetId
               ? staleTargetId
-              : bundle.manifest.version === 6
-                ? (
-                    await insertCaptureHistoryInTransaction(client, {
-                      workspaceId,
-                      actorId,
-                      sourceKey: sourceKey(
-                        record.originWorkspaceId,
-                        record.originCaptureId,
-                      ),
-                      revisions: [
-                        ...bundle.captureRevisions
-                          .filter(
-                            (revision) =>
-                              revision.captureId.toLowerCase() ===
-                              record.id.toLowerCase(),
-                          )
-                          .sort((a, b) => a.revision - b.revision),
-                        record as CaptureHistoryRecord,
-                      ],
-                    })
-                  ).id
-                : (
-                    await insertCaptureInTransaction(client, {
-                      workspaceId,
-                      actorId,
-                      title: record.title,
-                      rawBody: record.rawBody,
-                      sourceKind: "import",
-                      sourceKey: sourceKey(
-                        record.originWorkspaceId,
-                        record.originCaptureId,
-                      ),
-                    })
-                  ).id;
-          if (state !== "FAILED") {
+              : state === "FAILED"
+                ? null
+                : bundle.manifest.version === 6 || bundle.manifest.version === 7
+                  ? (
+                      await insertCaptureHistoryInTransaction(client, {
+                        workspaceId,
+                        actorId,
+                        sourceKey: sourceKey(
+                          record.originWorkspaceId,
+                          record.originCaptureId,
+                        ),
+                        revisions: [
+                          ...bundle.captureRevisions
+                            .filter(
+                              (revision) =>
+                                revision.captureId.toLowerCase() ===
+                                record.id.toLowerCase(),
+                            )
+                            .sort((a, b) => a.revision - b.revision),
+                          record as CaptureHistoryRecord,
+                        ],
+                        ...(v7Capture
+                          ? {
+                              version: v7Capture.version,
+                              unitSetVersion: v7Capture.unitSetVersion,
+                              state: v7Capture.state,
+                              originKey: v7Capture.originKey,
+                              units: newUnits,
+                            }
+                          : {}),
+                      })
+                    ).id
+                  : (
+                      await insertCaptureInTransaction(client, {
+                        workspaceId,
+                        actorId,
+                        title: record.title,
+                        rawBody: record.rawBody,
+                        sourceKind: "import",
+                        sourceKey: sourceKey(
+                          record.originWorkspaceId,
+                          record.originCaptureId,
+                        ),
+                      })
+                    ).id;
+          const nativeCapture =
+            record.originWorkspaceId.toLowerCase() ===
+              workspaceId.toLowerCase() &&
+            record.id.toLowerCase() === record.originCaptureId.toLowerCase() &&
+            targetId?.toLowerCase() === record.id.toLowerCase();
+          if (state !== "FAILED" && !nativeCapture) {
             const origin = await client.query(
               `INSERT INTO business.transfer_origin
                (workspace_id,record_kind,source_workspace_id,source_id,source_revision,target_id)
@@ -1450,6 +1939,63 @@ export class DataTransferService {
                 throw new DataTransferError("TRANSFER_UNAVAILABLE");
             }
           }
+          if (v7Capture) {
+            const existingTargets = await unitOriginTargets(
+              client,
+              workspaceId,
+              captureUnits,
+            );
+            const createdTargets = new Map(
+              newUnits.map((unit) => [unitOriginKey(unit), unit.targetId]),
+            );
+            for (const unit of captureUnits) {
+              const unitTarget =
+                state === "IMPORTED"
+                  ? createdTargets.get(unitOriginKey(unit))!
+                  : state === "SKIPPED"
+                    ? resolvedUnitTarget(unit, workspaceId, existingTargets)
+                    : null;
+              const nativeUnit =
+                unit.originWorkspaceId.toLowerCase() ===
+                  workspaceId.toLowerCase() &&
+                unit.id.toLowerCase() === unit.originId.toLowerCase() &&
+                unitTarget?.toLowerCase() === unit.id.toLowerCase();
+              if (unitTarget && !nativeUnit) {
+                const inserted = await client.query(
+                  `INSERT INTO business.transfer_origin
+                   (workspace_id,record_kind,source_workspace_id,source_id,source_revision,target_id)
+                   VALUES($1,'unit',$2,$3,$4,$5)
+                   ON CONFLICT (workspace_id,record_kind,source_workspace_id,source_id)
+                   DO NOTHING RETURNING target_id`,
+                  [
+                    workspaceId,
+                    unit.originWorkspaceId,
+                    unit.originId,
+                    unit.currentRevision,
+                    unitTarget,
+                  ],
+                );
+                if (
+                  !inserted.rowCount &&
+                  existingTargets.get(unitOriginKey(unit)) !== unitTarget
+                )
+                  throw new DataTransferError("TRANSFER_UNAVAILABLE");
+              }
+              await client.query(
+                `UPDATE business.transfer_row
+                 SET state=$4,target_id=$5,reason_code=$6
+                 WHERE workspace_id=$1 AND run_id=$2 AND record_kind='unit' AND source_id=$3`,
+                [
+                  workspaceId,
+                  id,
+                  unit.id,
+                  state,
+                  unitTarget,
+                  state === "FAILED" ? "CAPTURE_CONFLICT" : null,
+                ],
+              );
+            }
+          }
           await client.query(
             `UPDATE business.transfer_row SET state=$4,target_id=$5,reason_code=$6
              WHERE workspace_id=$1 AND run_id=$2 AND record_kind='capture' AND source_id=$3`,
@@ -1467,11 +2013,12 @@ export class DataTransferService {
             audit: {
               action: "transfer.capture.apply",
               targetType: state === "IMPORTED" ? "capture" : "transfer_row",
-              targetId: state === "IMPORTED" ? targetId : record.id,
+              targetId: state === "IMPORTED" ? targetId! : record.id,
               beforeVersion: null,
               afterVersion:
                 state === "IMPORTED"
-                  ? bundle.manifest.version === 6
+                  ? bundle.manifest.version === 6 ||
+                    bundle.manifest.version === 7
                     ? record.revision
                     : 1
                   : null,
@@ -1488,7 +2035,8 @@ export class DataTransferService {
       bundle.manifest.version === 3 ||
       bundle.manifest.version === 4 ||
       bundle.manifest.version === 5 ||
-      bundle.manifest.version === 6
+      bundle.manifest.version === 6 ||
+      bundle.manifest.version === 7
     ) {
       for (const record of bundle.manifest.contexts)
         await this.applyContext(actorId, workspaceId, id, record);
@@ -1503,22 +2051,29 @@ export class DataTransferService {
           bundle.manifest.version === 3 ||
             bundle.manifest.version === 4 ||
             bundle.manifest.version === 5 ||
-            bundle.manifest.version === 6
+            bundle.manifest.version === 6 ||
+            bundle.manifest.version === 7
             ? bundle.manifest.contexts
             : [],
           bundle.manifest.version === 4 ||
             bundle.manifest.version === 5 ||
-            bundle.manifest.version === 6
+            bundle.manifest.version === 6 ||
+            bundle.manifest.version === 7
             ? bundle.manifest.taskTransitions.filter(
                 (transition) =>
                   transition.taskId.toLowerCase() === record.id.toLowerCase(),
               )
             : undefined,
+          bundle.manifest.version === 7 ? bundle.manifest.units : [],
         );
       for (const record of bundle.manifest.events)
         await this.applyEvent(actorId, workspaceId, id, record);
     }
-    if (bundle.manifest.version === 5 || bundle.manifest.version === 6) {
+    if (
+      bundle.manifest.version === 5 ||
+      bundle.manifest.version === 6 ||
+      bundle.manifest.version === 7
+    ) {
       const seenOrigins = new Set<string>();
       for (const record of bundle.manifest.taskResults) {
         const origin = `${record.originWorkspaceId.toLowerCase()}:${record.originId.toLowerCase()}`;
@@ -1710,6 +2265,7 @@ export class DataTransferService {
     record: TransferManifestV2["tasks"][number],
     contexts: TransferManifestV3["contexts"] = [],
     transitions?: TransferManifestV4["taskTransitions"],
+    units: PortableUnit[] = [],
   ): Promise<void> {
     await this.commands.execute({
       actorId,
@@ -1769,6 +2325,7 @@ export class DataTransferService {
           record,
           contexts,
           transitions,
+          units,
         );
         const context = await this.taskContextMapping(
           client,
@@ -1776,6 +2333,14 @@ export class DataTransferService {
           runId,
           record.contextId,
           contexts,
+        );
+        const unit = await this.taskUnitMapping(
+          client,
+          workspaceId,
+          runId,
+          record.originUnitId,
+          record.originUnitRevision,
+          units,
         );
         const state =
           preview.state === "NEW"
@@ -1790,7 +2355,7 @@ export class DataTransferService {
              (id,workspace_id,created_by_id,title,description,state,version,due_kind,due_date,
               due_at,due_time_zone,context_id,origin_kind,origin_unit_id,origin_unit_revision,
               completed_at,completion_version)
-             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'EXPLICIT',NULL,NULL,$13,$14)`,
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'EXPLICIT',$13,$14,$15,$16)`,
             [
               targetId,
               workspaceId,
@@ -1804,6 +2369,8 @@ export class DataTransferService {
               record.dueAt,
               record.dueTimeZone,
               context.targetId,
+              unit.targetId,
+              record.originUnitRevision,
               record.completedAt,
               record.completionVersion,
             ],
