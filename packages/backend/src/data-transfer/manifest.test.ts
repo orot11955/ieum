@@ -497,5 +497,32 @@ describe("BE-21 portable capture manifest", () => {
         ]),
       ),
     ).toThrow("INVALID_BUNDLE");
+    const otherCaptureId = randomUUID();
+    const otherCapturePath = `captures/${otherCaptureId}.md`;
+    duplicate.captures.push({
+      ...duplicate.captures[0],
+      id: otherCaptureId,
+      originCaptureId: otherCaptureId,
+      path: otherCapturePath,
+    });
+    duplicate.taskResults[1].captureId = otherCaptureId;
+    duplicate.taskResults[1].originId = resultId.toUpperCase();
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(duplicate)),
+          },
+          ...[...files]
+            .filter(([path]) => path !== "manifest.json")
+            .map(([path, bytes]) => ({ path, bytes })),
+          {
+            path: otherCapturePath,
+            bytes: files.get(`captures/${captureId}.md`)!,
+          },
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
   });
 });

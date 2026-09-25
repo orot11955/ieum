@@ -401,14 +401,17 @@ export function readCaptureBundle(packed: Buffer): {
       manifest.captures.map((capture) => capture.id.toLowerCase()),
     );
     const ids = new Set<string>();
+    const origins = new Set<string>();
     const completions = new Set<string>();
     const usedCaptures = new Set<string>();
     for (const result of manifest.taskResults) {
       const task = tasks.get(result.taskId.toLowerCase());
       const completion = `${result.taskId.toLowerCase()}:${result.completionVersion}`;
       const captureId = result.captureId.toLowerCase();
+      const origin = `${result.originWorkspaceId.toLowerCase()}:${result.originId.toLowerCase()}`;
       if (
         ids.has(result.id.toLowerCase()) ||
+        origins.has(origin) ||
         completions.has(completion) ||
         usedCaptures.has(captureId) ||
         !task ||
@@ -423,6 +426,7 @@ export function readCaptureBundle(packed: Buffer): {
       )
         throw new TransferManifestError("INVALID_BUNDLE");
       ids.add(result.id.toLowerCase());
+      origins.add(origin);
       completions.add(completion);
       usedCaptures.add(captureId);
     }
