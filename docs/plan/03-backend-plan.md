@@ -183,7 +183,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-11 · 위키·문서 공통 draft/revision 엔진
 
-**구간:** P3 · **상태:** IMPLEMENTED · **선행:** BE-05, FE-02
+**구간:** P3 · **상태:** VERIFIED · **선행:** BE-05, FE-02
 
 **구현 범위:** Wiki/Article/Note의 공통 document identity와 mutable draft, immutable revision을 구현한다. autosave는 baseVersion을 검사하고 seal/restore는 새 revision으로 처리한다. 위키 내부 링크와 역링크를 관리한다.
 
