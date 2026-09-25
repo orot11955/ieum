@@ -1,6 +1,6 @@
 # PostgreSQL migration과 role 경계
 
-현재 DB 파일은 인증 vendor의 `auth` schema와 `business`의 workspace/member, BE-04 계정·초대·설정, BE-05 명령 receipt·감사·outbox, BE-06 dispatch·Context profile 무효화, BE-07 원문·unit revision, BE-08 Context, BE-09 Task, BE-10 Calendar, BE-11 문서 identity·draft·불변 revision·위키 링크, BE-12 판단 요청·불변 run, BE-13 제안·노출·피드백, BE-14 추출 후보, BE-15 구조 제안·변경·후속 Context 이력을 만든다. 운영 DB에는 아직 적용하지 않았다.
+현재 DB 파일은 인증 vendor의 `auth` schema와 `business`의 workspace/member, BE-04 계정·초대·설정, BE-05 명령 receipt·감사·outbox, BE-06 dispatch·Context profile 무효화, BE-07 원문·unit revision, BE-08 Context, BE-09 Task, BE-10 Calendar, BE-11 문서 identity·draft·불변 revision·위키 링크, BE-12 판단 요청·불변 run, BE-13 제안·노출·피드백, BE-14 추출 후보, BE-15 구조 제안·변경·후속 Context 이력, BE-16 외부 발췌·자료 묶음·문서 작업실 revision을 만든다. 운영 DB에는 아직 적용하지 않았다.
 
 ## 적용 순서
 
@@ -29,3 +29,5 @@ auth-only DB에서 auth 사용자 row를 남긴 채 업무 migration을 적용�
 BE-15의 `0011` migration은 `0010` 뒤, BE-15 API 배포 전에 적용한다. 기존 Context의 SUPERSEDED 상태·후속 참조 충돌을 먼저 조사하고, 새 구조 제안·변경·다중 후속 이력 테이블의 application grant와 FORCE RLS를 확인한다. `structure.applied`·`structure.undone` outbox는 현재 relay/worker의 dispatch 대상이 아닌 영속 기록이다. 이전 API로 되돌릴 때 새 이력 테이블을 삭제하지 않으며, DB schema 복구는 inventory·backup·별도 허가를 거쳐 진행한다.
 
 BE-11의 `0012` migration은 `0011` 뒤, 문서 API 코드 배포 전에 적용한다. 기존 row를 변환하거나 삭제하지 않는 추가형이다. 새 테이블 네 개의 owner가 `ieum_migrator`이고 모두 FORCE RLS이며, application role에는 revision UPDATE/DELETE 권한이 없는지 검증한다. 문서 sourceReference의 `unit`은 정확한 workspace·unit revision/originKey와 UTF-8 SHA-256(`content_text`)·UTF-16 span을, `document_revision`은 정확한 workspace·revision 및 정규화한 editor JSON의 SHA-256과 [편집 계약](../docs/plan/editor-schema.md)의 파생 평문 UTF-16 span을 검사한다. 외부 발췌 참조는 BE-16의 영속 검증 경계 전까지 저장을 거부한다. 앱 코드만 이전 버전으로 돌릴 때 문서 테이블을 삭제하지 않는다. 이미 기록된 문서가 있다면 `0012`를 내리는 작업은 데이터 손실이므로 사전 inventory·backup·별도 허가가 필요하다. 운영 DB 적용·복원은 이 문서만으로 승인되지 않는다.
+
+BE-16의 `0013` migration은 `0012` 뒤, BE-16 API 코드 배포 전에 적용한다. 기존 row 변환 없이 외부 발췌 identity/revision, 문서별 evidence pack identity/revision, 문서 작업실 pointer/revision 여섯 테이블을 추가한다. 자료 묶음과 작업실의 과거 revision은 application role에 SELECT/INSERT만 주고 UPDATE/DELETE는 금지한다. 모든 신규 테이블은 `ieum_migrator` 소유·FORCE RLS·workspace 정책을 사용한다. 외부 발췌의 `DELETED`는 출처를 unresolved로 표시하는 논리 상태이며 이미 작성된 private pack snapshot의 텍스트를 삭제하지 않는다. 사용자 데이터의 실제 삭제·복구 정책은 BE-22에서 별도로 다룬다. 배포 전 격리 환경에서 각 테이블의 owner/grant/RLS와 revision 불변을 확인하고, 되돌릴 때 새 테이블을 보존한다. 운영 DB 적용·복원은 inventory·backup·별도 허가가 필요하다.

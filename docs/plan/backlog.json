@@ -547,7 +547,7 @@
         "BE-08",
         "CORE-14"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "기록/위키/결과/외부 자료를 선택해 evidence pack을 저장하고 문서와 연결한다. 목적·독자·관점·outline·source claim mapping과 source stale/unresolved 알림을 구현한다.",
       "contract": "모듈: documents/workbench. source pack revision 및 문서별 immutable reference manifest. 외부 자료는 URL·저자·발행일·사용자 제공 발췌로 시작; 임의 URL 자동 fetch는 기본 off.",
       "tests": "출처 수정/삭제, 다른 workspace source, 같은 원문 재인용, 문서 draft 수정 후 mapping 재검토, 과거 pack 불변.",

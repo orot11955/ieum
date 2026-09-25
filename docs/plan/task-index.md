@@ -38,7 +38,7 @@
 | BE-13 | P4 | VERIFIED | 제안·노출·피드백·승인 적용 | BE-12, BE-05, CORE-05 |
 | BE-14 | P4 | VERIFIED | 추출 후보 승인→업무 항목 생성 | BE-13, BE-09, BE-10, CORE-11 |
 | BE-15 | P5 | VERIFIED | 구조 변경의 원자적 적용과 역변경 | BE-13, BE-08, CORE-13 |
-| BE-16 | P6 | PLANNED | 자료 묶음·출처 고정·문서 작업실 | BE-11, BE-07, BE-08, CORE-14 |
+| BE-16 | P6 | IMPLEMENTED | 자료 묶음·출처 고정·문서 작업실 | BE-11, BE-07, BE-08, CORE-14 |
 | BE-17 | P6 | PLANNED | 선택적 모델 정제 adapter·비용·실패 격리 | BE-16, BE-06, CORE-15 |
 | BE-18 | P6 | PLANNED | 비공개 첨부·안전 검증·공개 파생물 | BE-05, BE-11, BE-06 |
 | BE-19 | P7 | PLANNED | 봉인·검토·발행·개정·철회 | BE-16, BE-18, BE-05 |
