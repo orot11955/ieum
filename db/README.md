@@ -1,6 +1,6 @@
 # PostgreSQL migration과 role 경계
 
-현재 DB 파일은 인증 vendor의 `auth` schema와 `business`의 workspace/member, BE-04 계정·초대·설정, BE-05 명령 receipt·감사·outbox, BE-06 dispatch·Context profile 무효화, BE-07 원문·unit revision, BE-08 Context, BE-09 Task, BE-10 Calendar, BE-12 판단 요청·불변 run, BE-13 제안·노출·피드백, BE-14 추출 후보, BE-15 구조 제안·변경·후속 Context 이력을 만든다. 운영 DB에는 아직 적용하지 않았다.
+현재 DB 파일은 인증 vendor의 `auth` schema와 `business`의 workspace/member, BE-04 계정·초대·설정, BE-05 명령 receipt·감사·outbox, BE-06 dispatch·Context profile 무효화, BE-07 원문·unit revision, BE-08 Context, BE-09 Task, BE-10 Calendar, BE-11 문서 identity·draft·불변 revision·위키 링크, BE-12 판단 요청·불변 run, BE-13 제안·노출·피드백, BE-14 추출 후보, BE-15 구조 제안·변경·후속 Context 이력을 만든다. 운영 DB에는 아직 적용하지 않았다.
 
 ## 적용 순서
 
@@ -27,3 +27,5 @@ auth-only DB에서 auth 사용자 row를 남긴 채 업무 migration을 적용�
 업무 migration은 기존 auth row를 변환/삭제하지 않는 추가형이다. BE-05 명령은 권한 확인과 설정 version 잠금 뒤 변경·receipt·audit·outbox를 한 transaction에 저장한다. BE-07은 원문 개정 시 새 revision과 기본 unit을 추가하고, 분할 시 기존 unit을 supersede하되 원문과 옛 unit revision은 보존한다. BE-06 relay는 지원하는 outbox event만 한 transaction에서 pg-boss job과 dispatch receipt로 함께 기록하며, 재시작 후 미전달 event를 다시 찾는다. worker는 `JOB_RELAY_DATABASE_URL`과 `APPLICATION_DATABASE_URL`을 각각 요구한다. BE-12는 관리자 credential로 0008 migration을 적용하고 `judgement-run` queue를 생성한 뒤 API·worker를 함께 배포해야 한다. BE-13의 0009 migration은 새 제안·노출·피드백 테이블만 추가하며 0008 이후 API 배포 전에 적용한다. BE-14의 0010 migration은 추출 후보와 승인 대상 참조를 추가하므로 BE-14 API 배포 전에 적용한다. `extraction.accepted` outbox는 현재 relay/worker의 처리 대상이 아니며 기록으로만 보존한다. worker가 먼저 새 event를 처리하기 전에 두 runtime이 새 schema와 계약을 사용해야 한다. queue schema/role grant를 먼저 준비하고 worker를 띄워야 한다. 앱 코드만 되돌릴 때는 새 테이블을 사용하지 않아도 되지만, 이전 API는 설정 version을 증가시키지 않으므로 BE-05 클라이언트와 함께 운영하지 않는다. 운영에서 schema를 되돌리거나 DB를 복원하려면 사전 inventory·backup·허가를 확인한 뒤 별도 절차를 만든다. 여기에는 파괴적 down migration을 제공하지 않는다.
 
 BE-15의 `0011` migration은 `0010` 뒤, BE-15 API 배포 전에 적용한다. 기존 Context의 SUPERSEDED 상태·후속 참조 충돌을 먼저 조사하고, 새 구조 제안·변경·다중 후속 이력 테이블의 application grant와 FORCE RLS를 확인한다. `structure.applied`·`structure.undone` outbox는 현재 relay/worker의 dispatch 대상이 아닌 영속 기록이다. 이전 API로 되돌릴 때 새 이력 테이블을 삭제하지 않으며, DB schema 복구는 inventory·backup·별도 허가를 거쳐 진행한다.
+
+BE-11의 `0012` migration은 `0011` 뒤, 문서 API 코드 배포 전에 적용한다. 기존 row를 변환하거나 삭제하지 않는 추가형이다. 새 테이블 네 개의 owner가 `ieum_migrator`이고 모두 FORCE RLS이며, application role에는 revision UPDATE/DELETE 권한이 없는지 검증한다. 문서 sourceReference의 `unit`은 정확한 workspace·unit revision/originKey와 UTF-8 SHA-256(`content_text`)·UTF-16 span을, `document_revision`은 정확한 workspace·revision 및 정규화한 editor JSON의 SHA-256과 [편집 계약](../docs/plan/editor-schema.md)의 파생 평문 UTF-16 span을 검사한다. 외부 발췌 참조는 BE-16의 영속 검증 경계 전까지 저장을 거부한다. 앱 코드만 이전 버전으로 돌릴 때 문서 테이블을 삭제하지 않는다. 이미 기록된 문서가 있다면 `0012`를 내리는 작업은 데이터 손실이므로 사전 inventory·backup·별도 허가가 필요하다. 운영 DB 적용·복원은 이 문서만으로 승인되지 않는다.

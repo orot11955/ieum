@@ -188,6 +188,9 @@ importers:
 
   packages/backend:
     dependencies:
+      '@ieum/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@ieum/core':
         specifier: workspace:*
         version: link:../core

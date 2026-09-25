@@ -970,6 +970,155 @@ export const thoughtRelation = business.table(
   ],
 );
 
+export const document = business.table(
+  "document",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    createdById: text("created_by_id").notNull(),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    state: text("state").notNull().default("ACTIVE"),
+    latestRevision: integer("latest_revision").notNull().default(0),
+    linkVersion: integer("link_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("document_workspace_id_unique").on(table.workspaceId, table.id),
+    index("document_workspace_kind_updated_idx").on(
+      table.workspaceId,
+      table.kind,
+      table.updatedAt,
+    ),
+    check(
+      "document_kind_check",
+      sql`${table.kind} IN ('WIKI','ARTICLE','NOTE')`,
+    ),
+    check(
+      "document_title_check",
+      sql`length(trim(${table.title})) BETWEEN 1 AND 300`,
+    ),
+    check("document_state_check", sql`${table.state} IN ('ACTIVE','ARCHIVED')`),
+    check(
+      "document_revisions_check",
+      sql`${table.latestRevision} >= 0 AND ${table.linkVersion} > 0`,
+    ),
+  ],
+);
+
+export const documentDraft = business.table(
+  "document_draft",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    version: integer("version").notNull().default(1),
+    content: jsonb("content").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "document_draft_pk",
+      columns: [table.workspaceId, table.documentId],
+    }),
+    foreignKey({
+      name: "document_draft_document_fk",
+      columns: [table.workspaceId, table.documentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    check("document_draft_version_positive", sql`${table.version} > 0`),
+  ],
+);
+
+export const documentRevision = business.table(
+  "document_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    revision: integer("revision").notNull(),
+    title: text("title").notNull(),
+    content: jsonb("content").notNull(),
+    contentHash: text("content_hash").notNull(),
+    draftVersion: integer("draft_version"),
+    restoredFromRevision: integer("restored_from_revision"),
+    createdById: text("created_by_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "document_revision_pk",
+      columns: [table.workspaceId, table.documentId, table.revision],
+    }),
+    foreignKey({
+      name: "document_revision_document_fk",
+      columns: [table.workspaceId, table.documentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    foreignKey({
+      name: "document_revision_restore_fk",
+      columns: [
+        table.workspaceId,
+        table.documentId,
+        table.restoredFromRevision,
+      ],
+      foreignColumns: [table.workspaceId, table.documentId, table.revision],
+    }),
+    check("document_revision_positive", sql`${table.revision} > 0`),
+    check(
+      "document_revision_hash_length",
+      sql`length(${table.contentHash}) = 64`,
+    ),
+    check(
+      "document_revision_draft_positive",
+      sql`${table.draftVersion} IS NULL OR ${table.draftVersion} > 0`,
+    ),
+    check(
+      "document_revision_origin_check",
+      sql`(${table.draftVersion} IS NULL) <> (${table.restoredFromRevision} IS NULL)`,
+    ),
+  ],
+);
+
+export const documentLink = business.table(
+  "document_link",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    fromDocumentId: uuid("from_document_id").notNull(),
+    toDocumentId: uuid("to_document_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "document_link_pk",
+      columns: [table.workspaceId, table.fromDocumentId, table.toDocumentId],
+    }),
+    foreignKey({
+      name: "document_link_from_fk",
+      columns: [table.workspaceId, table.fromDocumentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    foreignKey({
+      name: "document_link_to_fk",
+      columns: [table.workspaceId, table.toDocumentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    check(
+      "document_link_not_self",
+      sql`${table.fromDocumentId} <> ${table.toDocumentId}`,
+    ),
+  ],
+);
+
 export const task = business.table(
   "task",
   {

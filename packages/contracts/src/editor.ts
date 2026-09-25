@@ -1,6 +1,14 @@
 import * as z from "zod";
 
 // FE-02's deliberately small persisted subset. Capture raw text is a separate contract.
+function validStoredText(value: string): boolean {
+  if (value.includes("\u0000")) return false;
+  for (const character of value) {
+    const point = character.codePointAt(0)!;
+    if (point >= 0xd800 && point <= 0xdfff) return false;
+  }
+  return true;
+}
 const SourceSpanSchema = z
   .strictObject({
     start: z.int().nonnegative(),
@@ -11,16 +19,16 @@ const SourceSpanSchema = z
 
 export const EditorSourceRefSchema = z.strictObject({
   sourceKind: z.enum(["unit", "document_revision", "external_excerpt"]),
-  sourceId: z.string().min(1),
+  sourceId: z.string().min(1).refine(validStoredText),
   sourceRevision: z.int().positive(),
-  originKey: z.string().min(1),
-  sourceHash: z.string().min(1),
+  originKey: z.string().min(1).refine(validStoredText),
+  sourceHash: z.string().min(1).refine(validStoredText),
   span: SourceSpanSchema.optional(),
 });
 
 const TextNodeSchema = z.strictObject({
   type: z.literal("text"),
-  text: z.string().min(1),
+  text: z.string().min(1).refine(validStoredText),
   marks: z
     .array(z.strictObject({ type: z.enum(["bold", "italic"]) }))
     .optional(),
@@ -28,7 +36,7 @@ const TextNodeSchema = z.strictObject({
 const SourceReferenceNodeSchema = z.strictObject({
   type: z.literal("sourceReference"),
   attrs: z.strictObject({
-    label: z.string().min(1).max(160),
+    label: z.string().min(1).max(160).refine(validStoredText),
     ref: EditorSourceRefSchema,
   }),
 });

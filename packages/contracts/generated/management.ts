@@ -687,6 +687,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listDocuments"];
+        put?: never;
+        post: operations["createDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["saveDocumentDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sealDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/revisions/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDocumentRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["restoreDocumentRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["replaceWikiLinks"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -3118,6 +3230,592 @@ export interface operations {
                         /** Format: uuid */
                         commandId: string;
                         replayed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    listDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped documents */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        documents: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workspaceId: string;
+                            /** @enum {string} */
+                            kind: "WIKI" | "ARTICLE" | "NOTE";
+                            title: string;
+                            /** @enum {string} */
+                            state: "ACTIVE" | "ARCHIVED";
+                            draftVersion: number;
+                            latestRevision: number;
+                            linkVersion: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    createDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "WIKI" | "ARTICLE" | "NOTE";
+                    title: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Document created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        kind: "WIKI" | "ARTICLE" | "NOTE";
+                        draftVersion: number;
+                        latestRevision: number;
+                    };
+                };
+            };
+        };
+    };
+    getDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Document draft and links */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        workspaceId: string;
+                        /** @enum {string} */
+                        kind: "WIKI" | "ARTICLE" | "NOTE";
+                        title: string;
+                        /** @enum {string} */
+                        state: "ACTIVE" | "ARCHIVED";
+                        draftVersion: number;
+                        latestRevision: number;
+                        linkVersion: number;
+                        content: {
+                            /** @enum {number} */
+                            schemaVersion: 1;
+                            content: {
+                                /** @enum {string} */
+                                type: "doc";
+                                content?: ({
+                                    /** @enum {string} */
+                                    type: "paragraph";
+                                    attrs: {
+                                        /** Format: uuid */
+                                        blockId: string;
+                                    };
+                                    content?: ({
+                                        /** @enum {string} */
+                                        type: "text";
+                                        text: string;
+                                        marks?: {
+                                            /** @enum {string} */
+                                            type: "bold" | "italic";
+                                        }[];
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "sourceReference";
+                                        attrs: {
+                                            label: string;
+                                            ref: {
+                                                /** @enum {string} */
+                                                sourceKind: "unit" | "document_revision" | "external_excerpt";
+                                                sourceId: string;
+                                                sourceRevision: number;
+                                                originKey: string;
+                                                sourceHash: string;
+                                                span?: {
+                                                    start: number;
+                                                    end: number;
+                                                    /** @enum {string} */
+                                                    encoding: "utf16";
+                                                };
+                                            };
+                                        };
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "hardBreak";
+                                    })[];
+                                } | {
+                                    /** @enum {string} */
+                                    type: "heading";
+                                    attrs: {
+                                        /** Format: uuid */
+                                        blockId: string;
+                                        level: number;
+                                    };
+                                    content?: ({
+                                        /** @enum {string} */
+                                        type: "text";
+                                        text: string;
+                                        marks?: {
+                                            /** @enum {string} */
+                                            type: "bold" | "italic";
+                                        }[];
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "sourceReference";
+                                        attrs: {
+                                            label: string;
+                                            ref: {
+                                                /** @enum {string} */
+                                                sourceKind: "unit" | "document_revision" | "external_excerpt";
+                                                sourceId: string;
+                                                sourceRevision: number;
+                                                originKey: string;
+                                                sourceHash: string;
+                                                span?: {
+                                                    start: number;
+                                                    end: number;
+                                                    /** @enum {string} */
+                                                    encoding: "utf16";
+                                                };
+                                            };
+                                        };
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "hardBreak";
+                                    })[];
+                                })[];
+                            };
+                        };
+                        links: string[];
+                        backlinks: string[];
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+        };
+    };
+    saveDocumentDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseVersion: number;
+                    saveSequence: number;
+                    /** @enum {number} */
+                    schemaVersion: 1;
+                    content: {
+                        /** @enum {string} */
+                        type: "doc";
+                        content?: ({
+                            /** @enum {string} */
+                            type: "paragraph";
+                            attrs: {
+                                /** Format: uuid */
+                                blockId: string;
+                            };
+                            content?: ({
+                                /** @enum {string} */
+                                type: "text";
+                                text: string;
+                                marks?: {
+                                    /** @enum {string} */
+                                    type: "bold" | "italic";
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                type: "sourceReference";
+                                attrs: {
+                                    label: string;
+                                    ref: {
+                                        /** @enum {string} */
+                                        sourceKind: "unit" | "document_revision" | "external_excerpt";
+                                        sourceId: string;
+                                        sourceRevision: number;
+                                        originKey: string;
+                                        sourceHash: string;
+                                        span?: {
+                                            start: number;
+                                            end: number;
+                                            /** @enum {string} */
+                                            encoding: "utf16";
+                                        };
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "hardBreak";
+                            })[];
+                        } | {
+                            /** @enum {string} */
+                            type: "heading";
+                            attrs: {
+                                /** Format: uuid */
+                                blockId: string;
+                                level: number;
+                            };
+                            content?: ({
+                                /** @enum {string} */
+                                type: "text";
+                                text: string;
+                                marks?: {
+                                    /** @enum {string} */
+                                    type: "bold" | "italic";
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                type: "sourceReference";
+                                attrs: {
+                                    label: string;
+                                    ref: {
+                                        /** @enum {string} */
+                                        sourceKind: "unit" | "document_revision" | "external_excerpt";
+                                        sourceId: string;
+                                        sourceRevision: number;
+                                        originKey: string;
+                                        sourceHash: string;
+                                        span?: {
+                                            start: number;
+                                            end: number;
+                                            /** @enum {string} */
+                                            encoding: "utf16";
+                                        };
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "hardBreak";
+                            })[];
+                        })[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Draft saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        draftVersion: number;
+                        saveSequence: number;
+                        recheckBlockIds: string[];
+                        removedBlockIds: string[];
+                    };
+                };
+            };
+        };
+    };
+    sealDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    draftVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Immutable revision created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        draftVersion: number;
+                        contentHash: string;
+                        restoredFromRevision: number | null;
+                    };
+                };
+            };
+        };
+    };
+    getDocumentRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        title: string;
+                        content: {
+                            /** @enum {number} */
+                            schemaVersion: 1;
+                            content: {
+                                /** @enum {string} */
+                                type: "doc";
+                                content?: ({
+                                    /** @enum {string} */
+                                    type: "paragraph";
+                                    attrs: {
+                                        /** Format: uuid */
+                                        blockId: string;
+                                    };
+                                    content?: ({
+                                        /** @enum {string} */
+                                        type: "text";
+                                        text: string;
+                                        marks?: {
+                                            /** @enum {string} */
+                                            type: "bold" | "italic";
+                                        }[];
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "sourceReference";
+                                        attrs: {
+                                            label: string;
+                                            ref: {
+                                                /** @enum {string} */
+                                                sourceKind: "unit" | "document_revision" | "external_excerpt";
+                                                sourceId: string;
+                                                sourceRevision: number;
+                                                originKey: string;
+                                                sourceHash: string;
+                                                span?: {
+                                                    start: number;
+                                                    end: number;
+                                                    /** @enum {string} */
+                                                    encoding: "utf16";
+                                                };
+                                            };
+                                        };
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "hardBreak";
+                                    })[];
+                                } | {
+                                    /** @enum {string} */
+                                    type: "heading";
+                                    attrs: {
+                                        /** Format: uuid */
+                                        blockId: string;
+                                        level: number;
+                                    };
+                                    content?: ({
+                                        /** @enum {string} */
+                                        type: "text";
+                                        text: string;
+                                        marks?: {
+                                            /** @enum {string} */
+                                            type: "bold" | "italic";
+                                        }[];
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "sourceReference";
+                                        attrs: {
+                                            label: string;
+                                            ref: {
+                                                /** @enum {string} */
+                                                sourceKind: "unit" | "document_revision" | "external_excerpt";
+                                                sourceId: string;
+                                                sourceRevision: number;
+                                                originKey: string;
+                                                sourceHash: string;
+                                                span?: {
+                                                    start: number;
+                                                    end: number;
+                                                    /** @enum {string} */
+                                                    encoding: "utf16";
+                                                };
+                                            };
+                                        };
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "hardBreak";
+                                    })[];
+                                })[];
+                            };
+                        };
+                        contentHash: string;
+                        draftVersion: number | null;
+                        restoredFromRevision: number | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+        };
+    };
+    restoreDocumentRevision: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseRevision: number;
+                    sourceRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Restored as a new revision */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        revision: number;
+                        draftVersion: number;
+                        contentHash: string;
+                        restoredFromRevision: number | null;
+                    };
+                };
+            };
+        };
+    };
+    replaceWikiLinks: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseLinkVersion: number;
+                    targetIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Wiki links replaced */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        id: string;
+                        linkVersion: number;
+                        targetIds: string[];
                     };
                 };
             };

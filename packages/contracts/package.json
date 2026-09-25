@@ -42,6 +42,10 @@
     "./editor": {
       "types": "./dist/editor.d.ts",
       "default": "./dist/editor.js"
+    },
+    "./documents": {
+      "types": "./dist/documents.d.ts",
+      "default": "./dist/documents.js"
     }
   },
   "scripts": {

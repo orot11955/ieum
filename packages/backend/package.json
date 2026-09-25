@@ -32,6 +32,10 @@
       "types": "./dist/tasks.d.ts",
       "default": "./dist/tasks.js"
     },
+    "./documents": {
+      "types": "./dist/documents.d.ts",
+      "default": "./dist/documents.js"
+    },
     "./calendar": {
       "types": "./dist/calendar.d.ts",
       "default": "./dist/calendar.js"
@@ -89,6 +93,7 @@
   },
   "dependencies": {
     "@ieum/core": "workspace:*",
+    "@ieum/contracts": "workspace:*",
     "drizzle-orm": "0.45.3",
     "pg": "8.23.0",
     "pg-boss": "12.32.0"
