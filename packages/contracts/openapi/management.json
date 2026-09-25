@@ -14261,7 +14261,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Capture, Task and Event export run; expires in 24 hours"
+            "description": "Capture, Context, Task and Event current-state export run; expires in 24 hours"
           },
           "403": {
             "description": "Problem response"

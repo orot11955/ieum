@@ -1,8 +1,10 @@
 import {
   TransferManifestSchema,
   TransferManifestV2Schema,
+  TransferManifestV3Schema,
   type TransferManifest,
   type TransferManifestV2,
+  type TransferManifestV3,
 } from "@ieum/contracts/data-transfer";
 import {
   packTransferArchive,
@@ -91,8 +93,43 @@ export function createPersonalBundle(
   ]);
 }
 
+export function createContextBundle(
+  sourceWorkspaceId: string,
+  records: Parameters<typeof createCaptureBundle>[1],
+  tasks: TransferManifestV3["tasks"],
+  events: TransferManifestV3["events"],
+  contexts: TransferManifestV3["contexts"],
+): Buffer {
+  const files = records.map((record) => ({
+    path: `captures/${record.id}.md`,
+    bytes: Buffer.from(record.rawBody, "utf8"),
+  }));
+  const manifest = TransferManifestV3Schema.parse({
+    format: "ieum-personal",
+    version: 3,
+    exportedAt: new Date().toISOString(),
+    sourceWorkspaceId,
+    captures: records.map((record, index) => ({
+      id: record.id,
+      revision: record.revision,
+      title: record.title,
+      originWorkspaceId: record.originWorkspaceId ?? sourceWorkspaceId,
+      originCaptureId: record.originCaptureId ?? record.id,
+      path: files[index]!.path,
+      sha256: transferHash(files[index]!.bytes),
+    })),
+    tasks,
+    events,
+    contexts,
+  });
+  return packTransferArchive([
+    { path: "manifest.json", bytes: Buffer.from(JSON.stringify(manifest)) },
+    ...files,
+  ]);
+}
+
 export function readCaptureBundle(packed: Buffer): {
-  manifest: TransferManifest | TransferManifestV2;
+  manifest: TransferManifest | TransferManifestV2 | TransferManifestV3;
   captures: (TransferManifest["captures"][number] & { rawBody: string })[];
 } {
   const files = unpackTransferArchive(packed);
@@ -113,13 +150,14 @@ export function readCaptureBundle(packed: Buffer): {
     input !== null &&
     "version" in input &&
     input.version !== 1 &&
-    input.version !== 2
+    input.version !== 2 &&
+    input.version !== 3
   )
     throw new TransferManifestError("UNSUPPORTED_SCHEMA");
   const parsed = TransferManifestSchema.safeParse(input);
   if (!parsed.success) throw new TransferManifestError("INVALID_BUNDLE");
   const manifest = parsed.data;
-  if (manifest.version === 2) {
+  if (manifest.version !== 1) {
     for (const task of manifest.tasks) {
       if (
         !validText(task.title, 300) ||
@@ -207,6 +245,24 @@ export function readCaptureBundle(packed: Buffer): {
         manifest.events.length
     )
       throw new TransferManifestError("INVALID_BUNDLE");
+  }
+  if (manifest.version === 3) {
+    if (
+      new Set(manifest.contexts.map((context) => context.id)).size !==
+      manifest.contexts.length
+    )
+      throw new TransferManifestError("INVALID_BUNDLE");
+    for (const context of manifest.contexts) {
+      if (
+        !validText(context.name, 200) ||
+        !validText(context.purpose, 2000) ||
+        !validText(context.scope, 2000) ||
+        (context.state === "SUPERSEDED") !==
+          (context.supersededById !== null) ||
+        context.supersededById === context.id
+      )
+        throw new TransferManifestError("INVALID_BUNDLE");
+    }
   }
   const expectedPaths = new Set(["manifest.json"]);
   const ids = new Set<string>();

@@ -32,7 +32,9 @@ import { DataTransferService } from "@ieum/backend/data-transfer/service";
 import { LocalTransferStorage } from "@ieum/backend/data-transfer/storage";
 import {
   createCaptureBundle,
+  createContextBundle,
   createPersonalBundle,
+  readCaptureBundle,
 } from "@ieum/backend/data-transfer/manifest";
 import {
   assertDeliveryDatabaseRole,
@@ -3998,9 +4000,14 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     ).toBe(true);
     expect(
       transferPreview.rows
-        .filter((row) => row.recordKind === "task")
-        .every((row) => row.state === "MISSING_REFERENCE"),
+        .filter((row) => row.recordKind === "context")
+        .every((row) => row.state === "NEW"),
     ).toBe(true);
+    const initialTaskStates = transferPreview.rows
+      .filter((row) => row.recordKind === "task")
+      .map((row) => row.state);
+    expect(initialTaskStates).toContain("NEW");
+    expect(initialTaskStates).toContain("MISSING_REFERENCE");
     const changedPreview = await app.inject({
       method: "POST",
       url: `${transferBase}/imports/${importId}/apply`,
@@ -4022,8 +4029,16 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     );
     expect(missingTransferReferences.rows).toEqual([
       { record_kind: "task", reason_code: "MISSING_REFERENCE" },
-      { record_kind: "task", reason_code: "MISSING_REFERENCE" },
     ]);
+    const linkedImportedTasks = await admin.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM business.transfer_row tr
+       JOIN business.task t ON t.workspace_id=tr.workspace_id AND t.id=tr.target_id
+       JOIN business.transfer_row cr ON cr.workspace_id=tr.workspace_id AND cr.run_id=tr.run_id
+         AND cr.record_kind='context' AND cr.target_id=t.context_id AND cr.state='IMPORTED'
+       WHERE tr.workspace_id=$1 AND tr.run_id=$2 AND tr.record_kind='task' AND tr.state='IMPORTED'`,
+      [operator.workspaceId, importId],
+    );
+    expect(Number(linkedImportedTasks.rows[0]?.count)).toBeGreaterThan(0);
     const repeated = await app.inject({
       method: "POST",
       url: `${transferBase}/imports`,
@@ -4045,8 +4060,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       repeatedPreview
         .json<{ rows: { recordKind: string; state: string }[] }>()
         .rows.every(
-          (row) =>
-            row.state === (row.recordKind === "task" ? "FAILED" : "IMPORTED"),
+          (row) => row.state === "FAILED" || row.state === "IMPORTED",
         ),
     ).toBe(true);
     const reexport = await app.inject({
@@ -4080,8 +4094,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         .json<{ rows: { recordKind: string; state: string }[] }>()
         .rows.every(
           (row) =>
-            row.state ===
-            (row.recordKind === "task" ? "MISSING_REFERENCE" : "DUPLICATE"),
+            row.state === "MISSING_REFERENCE" || row.state === "DUPLICATE",
         ),
     ).toBe(true);
     const portableSource = randomUUID();
@@ -4195,6 +4208,115 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       payload: portable,
     });
     expect(portableRestaged.json<{ id: string }>().id).toBe(portableRunId);
+    const linkedSource = randomUUID();
+    const linkedContextId = randomUUID();
+    const linkedTaskId = randomUUID();
+    const linkedArchive = createContextBundle(
+      linkedSource,
+      [],
+      [
+        {
+          id: linkedTaskId,
+          originWorkspaceId: linkedSource,
+          originId: linkedTaskId,
+          title: "연결 이식 할일",
+          description: "",
+          state: "TODO",
+          version: 1,
+          dueKind: "NONE",
+          dueDate: null,
+          dueAt: null,
+          dueTimeZone: null,
+          contextId: linkedContextId,
+          originUnitId: null,
+          originUnitRevision: null,
+          completedAt: null,
+          completionVersion: null,
+        },
+      ],
+      [],
+      [
+        {
+          id: linkedContextId,
+          originWorkspaceId: linkedSource,
+          originId: linkedContextId,
+          name: "연결 이식 맥락",
+          purpose: "검증",
+          scope: "개인",
+          kind: "PROJECT",
+          state: "ACTIVE",
+          supersededById: null,
+          identityRevision: 3,
+          membershipRevision: 1,
+        },
+      ],
+    );
+    const linkedStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: linkedArchive,
+    });
+    expect(linkedStage.statusCode, linkedStage.body).toBe(201);
+    const linkedRunId = linkedStage.json<{ id: string }>().id;
+    const linkedPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${linkedRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(
+      linkedPreview
+        .json<{ rows: { state: string }[] }>()
+        .rows.map((row) => row.state),
+    ).toEqual(["NEW", "NEW"]);
+    const linkedApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${linkedRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: linkedPreview.json<{ previewHash: string }>().previewHash,
+      },
+    });
+    expect(linkedApplied.statusCode, linkedApplied.body).toBe(201);
+    expect(linkedApplied.json()).toMatchObject({
+      state: "APPLIED",
+      counts: { IMPORTED: 2 },
+    });
+    const linkedTargets = await admin.query(
+      `SELECT c.id AS context_id,t.context_id AS task_context_id,o.source_revision
+       FROM business.transfer_origin o JOIN business.context c ON c.id=o.target_id
+       JOIN business.task t ON t.workspace_id=c.workspace_id AND t.context_id=c.id
+       WHERE o.workspace_id=$1 AND o.record_kind='context' AND o.source_id=$2`,
+      [operator.workspaceId, linkedContextId],
+    );
+    expect(linkedTargets.rows[0]?.task_context_id).toBe(
+      linkedTargets.rows[0]?.context_id,
+    );
+    expect(linkedTargets.rows[0]?.source_revision).toBe(3);
+    const linkedReexport = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(linkedReexport.statusCode, linkedReexport.body).toBe(201);
+    const linkedDownload = await app.inject({
+      method: "GET",
+      url: `${transferBase}/exports/${linkedReexport.json<{ id: string }>().id}/download`,
+      headers: transferHeaders,
+    });
+    const linkedManifest = readCaptureBundle(
+      linkedDownload.rawPayload,
+    ).manifest;
+    expect(linkedManifest.version).toBe(3);
+    if (linkedManifest.version !== 3) throw new Error("expected v3");
+    expect(
+      linkedManifest.contexts.find(
+        (context) => context.id === linkedTargets.rows[0]?.context_id,
+      )?.identityRevision,
+    ).toBe(3);
     await admin.query("DELETE FROM business.task WHERE id=$1", [
       transferredTask.rows[0]?.target_id,
     ]);

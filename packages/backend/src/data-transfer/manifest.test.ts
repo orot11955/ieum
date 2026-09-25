@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { packTransferArchive, unpackTransferArchive } from "./archive.js";
 import {
   createCaptureBundle,
+  createContextBundle,
   createPersonalBundle,
   readCaptureBundle,
 } from "./manifest.js";
@@ -29,7 +30,7 @@ describe("BE-21 portable capture manifest", () => {
     const bundle = createCaptureBundle(workspaceId, [record]);
     const files = unpackTransferArchive(bundle);
     const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
-    manifest.version = 3;
+    manifest.version = 4;
     expect(() =>
       readCaptureBundle(
         packTransferArchive([
@@ -226,5 +227,41 @@ describe("BE-21 portable capture manifest", () => {
       [],
     );
     expect(readCaptureBundle(bundle).manifest.version).toBe(2);
+  });
+
+  it("round trips version 3 Context identity and rejects invalid supersession", () => {
+    const contextId = randomUUID();
+    const context = {
+      id: contextId,
+      originWorkspaceId: workspaceId,
+      originId: contextId,
+      name: "주제",
+      purpose: "목적",
+      scope: "범위",
+      kind: "TOPIC" as const,
+      state: "ACTIVE" as const,
+      supersededById: null,
+      identityRevision: 2,
+      membershipRevision: 3,
+    };
+    const bundle = createContextBundle(workspaceId, [], [], [], [context]);
+    const parsed = readCaptureBundle(bundle);
+    expect(parsed.manifest.version).toBe(3);
+    if (parsed.manifest.version !== 3) throw new Error("expected v3");
+    expect(parsed.manifest.contexts).toEqual([context]);
+    const manifest = JSON.parse(
+      unpackTransferArchive(bundle).get("manifest.json")!.toString("utf8"),
+    );
+    manifest.contexts[0].state = "SUPERSEDED";
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
   });
 });

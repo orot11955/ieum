@@ -63,15 +63,40 @@ export const TransferManifestV2Schema = TransferManifestV1Schema.omit({
   tasks: z.array(portableTask).max(4096),
   events: z.array(portableEvent).max(4096),
 });
+const portableContext = z.strictObject({
+  id: z.uuid(),
+  originWorkspaceId: z.uuid(),
+  originId: z.uuid(),
+  name: z.string().trim().min(1).max(200),
+  purpose: z.string().trim().min(1).max(2000),
+  scope: z.string().trim().min(1).max(2000),
+  kind: z.enum(["TOPIC", "FLOW", "PROJECT", "COLLECTION"]),
+  state: z.enum(["ACTIVE", "ARCHIVED", "SUPERSEDED"]),
+  supersededById: z.uuid().nullable(),
+  identityRevision: z.int().positive(),
+  membershipRevision: z.int().positive(),
+});
+export const TransferManifestV3Schema = TransferManifestV2Schema.omit({
+  version: true,
+}).extend({
+  version: z.literal(3),
+  contexts: z.array(portableContext).max(4096),
+});
 export const TransferManifestSchema = z.discriminatedUnion("version", [
   TransferManifestV1Schema,
   TransferManifestV2Schema,
+  TransferManifestV3Schema,
 ]);
 export type TransferManifestV2 = z.infer<typeof TransferManifestV2Schema>;
+export type TransferManifestV3 = z.infer<typeof TransferManifestV3Schema>;
 
 export const TransferRunSchema = z.strictObject({
   id: z.uuid(),
-  scope: z.enum(["CAPTURES_ONLY", "CAPTURES_TASKS_EVENTS"]),
+  scope: z.enum([
+    "CAPTURES_ONLY",
+    "CAPTURES_TASKS_EVENTS",
+    "CAPTURES_TASKS_EVENTS_CONTEXTS",
+  ]),
   kind: z.enum(["EXPORT", "IMPORT"]),
   state: z.enum(["READY", "STAGED", "APPLIED", "PARTIAL"]),
   bundleHash: sha256,
@@ -81,7 +106,7 @@ export const TransferRunSchema = z.strictObject({
   appliedAt: z.iso.datetime({ offset: true }).nullable(),
 });
 export const TransferPreviewRowSchema = z.strictObject({
-  recordKind: z.enum(["capture", "task", "event"]),
+  recordKind: z.enum(["capture", "task", "event", "context"]),
   sourceId: z.uuid(),
   sourceRevision: z.int().positive(),
   state: z.enum([
@@ -129,7 +154,7 @@ export const dataTransferOpenApiPaths = {
       responses: {
         "201": {
           description:
-            "Capture, Task and Event export run; expires in 24 hours",
+            "Capture, Context, Task and Event current-state export run; expires in 24 hours",
         },
         "403": error,
         "503": error,
