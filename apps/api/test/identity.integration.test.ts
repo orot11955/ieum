@@ -26,6 +26,7 @@ import { GenerationService } from "@ieum/backend/generation/generation-service";
 import { AssetService } from "@ieum/backend/assets/asset-service";
 import { DocumentAssetService } from "@ieum/backend/assets/document-usage";
 import { LocalAssetStorage } from "@ieum/backend/assets/storage";
+import { PublicationService } from "@ieum/backend/publishing/publication-service";
 import {
   processGenerationJob,
   reconcileAbandonedGeneration,
@@ -134,7 +135,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const base = container.getConnectionUri();
     appPool = new Pool({
       connectionString: roleUrl(base, "ieum_be04_app"),
-      max: 1,
+      max: 4,
       connectionTimeoutMillis: 2_000,
     });
     authLockPool = new Pool({
@@ -189,6 +190,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         }),
         assets: new AssetService(identity, commands, assetStorage),
         documentAssets: new DocumentAssetService(identity, commands),
+        publications: new PublicationService(identity, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -1296,6 +1298,459 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(sealedAssetRevision.statusCode).toBe(200);
     expect(sealedAssetRevision.json()).toMatchObject({ assetIds: [assetId] });
+    const publicPreviewUrl = `${documentUrl}/${assetDocumentId}/revisions/1/public-preview`;
+    const publicPreview = await app.inject({
+      method: "GET",
+      url: publicPreviewUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(publicPreview.statusCode, publicPreview.body).toBe(200);
+    const firstManifestHash = publicPreview.json<{ manifestHash: string }>()
+      .manifestHash;
+    expect(publicPreview.json()).toMatchObject({
+      publicAssetIds: [
+        uploaded.json<{ publicAssetId: string }>().publicAssetId,
+      ],
+    });
+    const oversizedRevision = await app.inject({
+      method: "GET",
+      url: `${documentUrl}/${assetDocumentId}/revisions/2147483648/public-preview`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(oversizedRevision.statusCode).toBe(422);
+    const reviewUrl = `${documentUrl}/${assetDocumentId}/revisions/1/reviews`;
+    const readyReview = await app.inject({
+      method: "POST",
+      url: reviewUrl,
+      headers: { ...assetHeaders, "idempotency-key": "be19-review-ready-01" },
+      payload: { manifestHash: firstManifestHash, decision: "READY" },
+    });
+    expect(readyReview.statusCode, readyReview.body).toBe(201);
+    const reviewId = readyReview.json<{ reviewId: string }>().reviewId;
+    const publicationUrl = `/api/v1/workspaces/${operator.workspaceId}/publications`;
+    const publishPayload = {
+      documentId: assetDocumentId,
+      documentRevision: 1,
+      reviewId,
+      manifestHash: firstManifestHash,
+      slug: "asset-note",
+    };
+    await withWorkspaceTransaction(appPool, operator.workspaceId, (client) =>
+      client.query(
+        "UPDATE business.public_asset SET state='DISABLED' WHERE workspace_id=$1 AND source_asset_id=$2",
+        [operator.workspaceId, assetId],
+      ),
+    );
+    const stalePublish = await app.inject({
+      method: "POST",
+      url: publicationUrl,
+      headers: { ...assetHeaders, "idempotency-key": "be19-publish-stale-01" },
+      payload: publishPayload,
+    });
+    expect(stalePublish.statusCode).toBe(409);
+    expect(stalePublish.json()).toMatchObject({ code: "ASSET_STALE" });
+    await withWorkspaceTransaction(appPool, operator.workspaceId, (client) =>
+      client.query(
+        "UPDATE business.public_asset SET state='VERIFIED' WHERE workspace_id=$1 AND source_asset_id=$2",
+        [operator.workspaceId, assetId],
+      ),
+    );
+    const published = await app.inject({
+      method: "POST",
+      url: publicationUrl,
+      headers: { ...assetHeaders, "idempotency-key": "be19-publish-01" },
+      payload: publishPayload,
+    });
+    expect(published.statusCode, published.body).toBe(201);
+    expect(published.json()).toMatchObject({
+      state: "PUBLISHED",
+      publicRevision: 1,
+      slug: "asset-note",
+    });
+    const publicationId = published.json<{ publicationId: string }>()
+      .publicationId;
+    const duplicatePublish = await app.inject({
+      method: "POST",
+      url: publicationUrl,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-publish-duplicate-01",
+      },
+      payload: publishPayload,
+    });
+    expect(duplicatePublish.statusCode).toBe(409);
+    expect(duplicatePublish.json()).toMatchObject({
+      code: "ALREADY_PUBLISHED",
+    });
+    const publicRow = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      (client) =>
+        client.query(
+          "SELECT title,body,manifest_hash FROM delivery.publication_revision WHERE workspace_id=$1 AND publication_id=$2 AND revision=1",
+          [operator.workspaceId, publicationId],
+        ),
+    );
+    expect(publicRow.rows[0]).toMatchObject({
+      title: "첨부 manifest 검증",
+      body: "",
+      manifest_hash: firstManifestHash,
+    });
+    expect(JSON.stringify(publicRow.rows[0])).not.toContain(assetId);
+    const crossPublication = await app.inject({
+      method: "GET",
+      url: `${publicationUrl}/${publicationId}`,
+      headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+    });
+    expect(crossPublication.statusCode).toBe(404);
+    const detach = await app.inject({
+      method: "PUT",
+      url: `${documentUrl}/${assetDocumentId}/assets`,
+      headers: { ...assetHeaders, "idempotency-key": "be19-detach-draft-01" },
+      payload: { baseDraftVersion: 2, assetIds: [] },
+    });
+    expect(detach.statusCode).toBe(200);
+    const afterDraft = await app.inject({
+      method: "GET",
+      url: `${publicationUrl}/${publicationId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(afterDraft.json()).toMatchObject({
+      publicRevision: 1,
+      publicAssetIds: [
+        uploaded.json<{ publicAssetId: string }>().publicAssetId,
+      ],
+    });
+    const secondSeal = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${assetDocumentId}/revisions`,
+      headers: { ...assetHeaders, "idempotency-key": "be19-document-seal-02" },
+      payload: { draftVersion: 3 },
+    });
+    expect(secondSeal.statusCode).toBe(201);
+    const nextPreview = await app.inject({
+      method: "GET",
+      url: `${documentUrl}/${assetDocumentId}/revisions/2/public-preview`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(nextPreview.statusCode).toBe(200);
+    expect(nextPreview.json()).toMatchObject({ publicAssetIds: [] });
+    const nextHash = nextPreview.json<{ manifestHash: string }>().manifestHash;
+    const nextReview = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${assetDocumentId}/revisions/2/reviews`,
+      headers: { ...assetHeaders, "idempotency-key": "be19-review-ready-02" },
+      payload: { manifestHash: nextHash, decision: "READY" },
+    });
+    expect(nextReview.statusCode).toBe(201);
+    const revised = await app.inject({
+      method: "POST",
+      url: `${publicationUrl}/${publicationId}/revisions`,
+      headers: { ...assetHeaders, "idempotency-key": "be19-revise-01" },
+      payload: {
+        basePublicRevision: 1,
+        baseAccessEpoch: 2,
+        documentRevision: 2,
+        reviewId: nextReview.json<{ reviewId: string }>().reviewId,
+        manifestHash: nextHash,
+        slug: "asset-note-updated",
+      },
+    });
+    expect(revised.statusCode, revised.body).toBe(201);
+    expect(revised.json()).toMatchObject({
+      publicRevision: 2,
+      slug: "asset-note-updated",
+      state: "PUBLISHED",
+    });
+    const oldAlias = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      (client) =>
+        client.query(
+          "SELECT is_current FROM delivery.publication_slug WHERE workspace_id=$1 AND channel_id=(SELECT channel_id FROM delivery.publication WHERE id=$2) AND slug='asset-note'",
+          [operator.workspaceId, publicationId],
+        ),
+    );
+    expect(oldAlias.rows[0]).toMatchObject({ is_current: false });
+    const withdrawn = await app.inject({
+      method: "POST",
+      url: `${publicationUrl}/${publicationId}/withdraw`,
+      headers: { ...assetHeaders, "idempotency-key": "be19-withdraw-01" },
+      payload: { basePublicRevision: 2 },
+    });
+    expect(withdrawn.statusCode).toBe(201);
+    expect(withdrawn.json()).toMatchObject({
+      state: "WITHDRAWN",
+      publicRevision: 2,
+    });
+    const withdrawnRow = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      (client) =>
+        client.query(
+          "SELECT state FROM delivery.publication WHERE workspace_id=$1 AND id=$2",
+          [operator.workspaceId, publicationId],
+        ),
+    );
+    expect(withdrawnRow.rows[0]).toMatchObject({ state: "WITHDRAWN" });
+    const aliasDocument = await app.inject({
+      method: "POST",
+      url: documentUrl,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-alias-document-create-01",
+      },
+      payload: { kind: "ARTICLE", title: "충돌 대상" },
+    });
+    expect(aliasDocument.statusCode).toBe(201);
+    const aliasDocumentId = aliasDocument.json<{ id: string }>().id;
+    const aliasSeal = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${aliasDocumentId}/revisions`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-alias-document-seal-01",
+      },
+      payload: { draftVersion: 1 },
+    });
+    expect(aliasSeal.statusCode).toBe(201);
+    const aliasPreview = await app.inject({
+      method: "GET",
+      url: `${documentUrl}/${aliasDocumentId}/revisions/1/public-preview`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(aliasPreview.statusCode).toBe(200);
+    const aliasHash = aliasPreview.json<{ manifestHash: string }>()
+      .manifestHash;
+    const aliasReview = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${aliasDocumentId}/revisions/1/reviews`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-alias-document-review-01",
+      },
+      payload: { manifestHash: aliasHash, decision: "READY" },
+    });
+    expect(aliasReview.statusCode).toBe(201);
+    const aliasCollision = await app.inject({
+      method: "POST",
+      url: publicationUrl,
+      headers: { ...assetHeaders, "idempotency-key": "be19-alias-publish-01" },
+      payload: {
+        documentId: aliasDocumentId,
+        documentRevision: 1,
+        reviewId: aliasReview.json<{ reviewId: string }>().reviewId,
+        manifestHash: aliasHash,
+        slug: "asset-note",
+      },
+    });
+    expect(aliasCollision.statusCode).toBe(409);
+    expect(aliasCollision.json()).toMatchObject({ code: "SLUG_CONFLICT" });
+    const racingDocument = await app.inject({
+      method: "POST",
+      url: documentUrl,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-race-document-create-01",
+      },
+      payload: { kind: "ARTICLE", title: "동시 발행 대상" },
+    });
+    expect(racingDocument.statusCode).toBe(201);
+    const racingDocumentId = racingDocument.json<{ id: string }>().id;
+    const racingSeal = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${racingDocumentId}/revisions`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-race-document-seal-01",
+      },
+      payload: { draftVersion: 1 },
+    });
+    expect(racingSeal.statusCode).toBe(201);
+    const racingPreview = await app.inject({
+      method: "GET",
+      url: `${documentUrl}/${racingDocumentId}/revisions/1/public-preview`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(racingPreview.statusCode).toBe(200);
+    const racingHash = racingPreview.json<{ manifestHash: string }>()
+      .manifestHash;
+    const racingReview = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${racingDocumentId}/revisions/1/reviews`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-race-document-review-01",
+      },
+      payload: { manifestHash: racingHash, decision: "READY" },
+    });
+    expect(racingReview.statusCode).toBe(201);
+    const racingPublishRequests = [
+      {
+        documentId: aliasDocumentId,
+        reviewId: aliasReview.json<{ reviewId: string }>().reviewId,
+        manifestHash: aliasHash,
+      },
+      {
+        documentId: racingDocumentId,
+        reviewId: racingReview.json<{ reviewId: string }>().reviewId,
+        manifestHash: racingHash,
+      },
+    ];
+    const racingPublished = await Promise.all(
+      racingPublishRequests.map((candidate, index) =>
+        app.inject({
+          method: "POST",
+          url: publicationUrl,
+          headers: {
+            ...assetHeaders,
+            "idempotency-key": `be19-race-publish-${index + 1}`,
+          },
+          payload: {
+            ...candidate,
+            documentRevision: 1,
+            slug: "racing-slug",
+          },
+        }),
+      ),
+    );
+    expect(racingPublished.map((result) => result.statusCode).sort()).toEqual([
+      201, 409,
+    ]);
+    expect(
+      racingPublished.find((result) => result.statusCode === 409)?.json(),
+    ).toMatchObject({ code: "SLUG_CONFLICT" });
+    const racingWinnerIndex = racingPublished.findIndex(
+      (result) => result.statusCode === 201,
+    );
+    const racingWinner = racingPublished[racingWinnerIndex]!.json<{
+      publicationId: string;
+      accessEpoch: number;
+    }>();
+    const winnerDocumentId =
+      racingPublishRequests[racingWinnerIndex]!.documentId;
+    const racingSave = await app.inject({
+      method: "PUT",
+      url: `${documentUrl}/${winnerDocumentId}/draft`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-race-draft-save-01",
+      },
+      payload: {
+        baseVersion: 1,
+        saveSequence: 2,
+        schemaVersion: 1,
+        content: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              attrs: { blockId: randomUUID() },
+              content: [{ type: "text", text: "개정 경쟁" }],
+            },
+          ],
+        },
+      },
+    });
+    expect(racingSave.statusCode, racingSave.body).toBe(200);
+    const racingSecondSeal = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${winnerDocumentId}/revisions`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-race-document-seal-02",
+      },
+      payload: { draftVersion: 2 },
+    });
+    expect(racingSecondSeal.statusCode).toBe(201);
+    const racingSecondPreview = await app.inject({
+      method: "GET",
+      url: `${documentUrl}/${winnerDocumentId}/revisions/2/public-preview`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(racingSecondPreview.statusCode).toBe(200);
+    const racingSecondHash = racingSecondPreview.json<{
+      manifestHash: string;
+    }>().manifestHash;
+    const racingSecondReview = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${winnerDocumentId}/revisions/2/reviews`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-race-document-review-02",
+      },
+      payload: { manifestHash: racingSecondHash, decision: "READY" },
+    });
+    expect(racingSecondReview.statusCode).toBe(201);
+    const racingTransitions = await Promise.all([
+      app.inject({
+        method: "POST",
+        url: `${publicationUrl}/${racingWinner.publicationId}/revisions`,
+        headers: { ...assetHeaders, "idempotency-key": "be19-race-revise-01" },
+        payload: {
+          basePublicRevision: 1,
+          baseAccessEpoch: racingWinner.accessEpoch,
+          documentRevision: 2,
+          reviewId: racingSecondReview.json<{ reviewId: string }>().reviewId,
+          manifestHash: racingSecondHash,
+          slug: "racing-slug-updated",
+        },
+      }),
+      app.inject({
+        method: "POST",
+        url: `${publicationUrl}/${racingWinner.publicationId}/withdraw`,
+        headers: {
+          ...assetHeaders,
+          "idempotency-key": "be19-race-withdraw-01",
+        },
+        payload: { basePublicRevision: 1 },
+      }),
+    ]);
+    expect(racingTransitions.map((result) => result.statusCode).sort()).toEqual(
+      [201, 409],
+    );
+    expect(
+      racingTransitions.find((result) => result.statusCode === 409)?.json(),
+    ).toMatchObject({ code: "VERSION_CONFLICT" });
+    const racingCurrent = await app.inject({
+      method: "GET",
+      url: `${publicationUrl}/${racingWinner.publicationId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(racingCurrent.statusCode).toBe(200);
+    const winningTransition = racingTransitions
+      .find((result) => result.statusCode === 201)!
+      .json<{
+        state: string;
+        publicRevision: number;
+        slug: string;
+        accessEpoch: number;
+      }>();
+    expect(racingCurrent.json()).toMatchObject({
+      state: winningTransition.state,
+      publicRevision: winningTransition.publicRevision,
+      slug: winningTransition.slug,
+      accessEpoch: winningTransition.accessEpoch,
+    });
+    await admin.query(
+      "UPDATE auth.session SET created_at=now()-interval '6 minutes' WHERE user_id=$1",
+      [operator.userId],
+    );
+    const reauthRequired = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${aliasDocumentId}/revisions/1/reviews`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be19-reauth-required-01",
+      },
+      payload: { manifestHash: aliasHash, decision: "READY" },
+    });
+    expect(reauthRequired.statusCode).toBe(403);
+    expect(reauthRequired.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
+    await admin.query(
+      "UPDATE auth.session SET created_at=now() WHERE user_id=$1",
+      [operator.userId],
+    );
     const usedDelete = await app.inject({
       method: "DELETE",
       url: `${assetBase}/${assetId}`,
@@ -1667,6 +2122,162 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       },
     });
     expect(sourcedSave.statusCode).toBe(200);
+    const sourcePublicationDocument = await app.inject({
+      method: "POST",
+      url: documentUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be19-source-document-create-01",
+      },
+      payload: { kind: "ARTICLE", title: "출처 공개 경계" },
+    });
+    expect(sourcePublicationDocument.statusCode).toBe(201);
+    const sourcePublicationDocumentId = sourcePublicationDocument.json<{
+      id: string;
+    }>().id;
+    const sourceDraft = await app.inject({
+      method: "PUT",
+      url: `${documentUrl}/${sourcePublicationDocumentId}/draft`,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be19-source-document-save-01",
+      },
+      payload: {
+        baseVersion: 1,
+        saveSequence: 1,
+        schemaVersion: 1,
+        content: sourcedContent,
+      },
+    });
+    expect(sourceDraft.statusCode).toBe(200);
+    const sourceSeal = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${sourcePublicationDocumentId}/revisions`,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be19-source-document-seal-01",
+      },
+      payload: { draftVersion: 2 },
+    });
+    expect(sourceSeal.statusCode).toBe(201);
+    const sourcePreview = await app.inject({
+      method: "GET",
+      url: `${documentUrl}/${sourcePublicationDocumentId}/revisions/1/public-preview`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(sourcePreview.statusCode, sourcePreview.body).toBe(200);
+    expect(sourcePreview.json()).toMatchObject({
+      sourceCount: 1,
+      body: "원문",
+    });
+    expect(sourcePreview.body).not.toContain(unitId);
+    expect(sourcePreview.body).not.toContain(unitSource.content_text);
+    const sourceManifestHash = sourcePreview.json<{ manifestHash: string }>()
+      .manifestHash;
+    const sourceReady = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${sourcePublicationDocumentId}/revisions/1/reviews`,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be19-source-review-ready-01",
+      },
+      payload: { manifestHash: sourceManifestHash, decision: "READY" },
+    });
+    expect(sourceReady.statusCode).toBe(201);
+    const sourcePublishBody = {
+      documentId: sourcePublicationDocumentId,
+      documentRevision: 1,
+      reviewId: sourceReady.json<{ reviewId: string }>().reviewId,
+      manifestHash: sourceManifestHash,
+      slug: "source-note",
+    };
+    await withWorkspaceTransaction(appPool, operator.workspaceId, (client) =>
+      client.query(
+        "UPDATE business.thought_unit SET state='SUPERSEDED' WHERE workspace_id=$1 AND id=$2",
+        [operator.workspaceId, unitId],
+      ),
+    );
+    const sourceStale = await app.inject({
+      method: "POST",
+      url: publicationUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be19-source-stale-01",
+      },
+      payload: sourcePublishBody,
+    });
+    expect(sourceStale.statusCode).toBe(409);
+    expect(sourceStale.json()).toMatchObject({ code: "SOURCE_STALE" });
+    await withWorkspaceTransaction(appPool, operator.workspaceId, (client) =>
+      client.query(
+        "UPDATE business.thought_unit SET state='ACTIVE' WHERE workspace_id=$1 AND id=$2",
+        [operator.workspaceId, unitId],
+      ),
+    );
+    const sourcePublished = await app.inject({
+      method: "POST",
+      url: publicationUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be19-source-publish-01",
+      },
+      payload: sourcePublishBody,
+    });
+    expect(sourcePublished.statusCode, sourcePublished.body).toBe(201);
+    const sourcePublicRow = await withWorkspaceTransaction(
+      appPool,
+      operator.workspaceId,
+      (client) =>
+        client.query(
+          "SELECT body FROM delivery.publication_revision WHERE workspace_id=$1 AND publication_id=$2 AND revision=1",
+          [
+            operator.workspaceId,
+            sourcePublished.json<{ publicationId: string }>().publicationId,
+          ],
+        ),
+    );
+    expect(sourcePublicRow.rows[0]).toMatchObject({ body: "원문" });
+    const sourcePublicationId = sourcePublished.json<{
+      publicationId: string;
+    }>().publicationId;
+    const laterRejection = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${sourcePublicationDocumentId}/revisions/1/reviews`,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be19-source-review-reject-01",
+      },
+      payload: {
+        manifestHash: sourceManifestHash,
+        decision: "CHANGES_REQUIRED",
+      },
+    });
+    expect(laterRejection.statusCode).toBe(201);
+    const automaticallyWithdrawn = await app.inject({
+      method: "GET",
+      url: `${publicationUrl}/${sourcePublicationId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(automaticallyWithdrawn.json()).toMatchObject({ state: "WITHDRAWN" });
+    const oldReadyRevise = await app.inject({
+      method: "POST",
+      url: `${publicationUrl}/${sourcePublicationId}/revisions`,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be19-source-old-ready-01",
+      },
+      payload: {
+        basePublicRevision: 1,
+        baseAccessEpoch: automaticallyWithdrawn.json<{ accessEpoch: number }>()
+          .accessEpoch,
+        documentRevision: 1,
+        reviewId: sourceReady.json<{ reviewId: string }>().reviewId,
+        manifestHash: sourceManifestHash,
+        slug: "source-note-new",
+      },
+    });
+    expect(oldReadyRevise.statusCode).toBe(409);
+    expect(oldReadyRevise.json()).toMatchObject({ code: "REVIEW_NOT_READY" });
     expect(
       (
         await app.inject({

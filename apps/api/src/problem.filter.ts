@@ -21,6 +21,8 @@ import { GenerationError } from "@ieum/backend/generation/generation-service";
 import { AssetError } from "@ieum/backend/assets/asset-service";
 import { AssetValidationError } from "@ieum/backend/assets/validation";
 import { DocumentAssetError } from "@ieum/backend/assets/document-usage";
+import { PublicationError } from "@ieum/backend/publishing/publication-service";
+import { PublicationManifestError } from "@ieum/backend/publishing/manifest";
 
 type FieldErrors = Record<string, string[]>;
 
@@ -172,6 +174,20 @@ export class ProblemFilter implements ExceptionFilter {
           : exception.code === "ASSET_NOT_FOUND"
             ? 404
             : 409;
+    if (exception instanceof PublicationError)
+      status =
+        exception.code === "PUBLICATION_NOT_FOUND"
+          ? 404
+          : exception.code === "REAUTH_REQUIRED"
+            ? 403
+            : 409;
+    if (exception instanceof PublicationManifestError)
+      status =
+        exception.code === "DOCUMENT_NOT_FOUND"
+          ? 404
+          : exception.code === "DOCUMENT_INVALID"
+            ? 422
+            : 409;
     const title =
       status === 422
         ? "Unprocessable Content"
@@ -224,6 +240,11 @@ export class ProblemFilter implements ExceptionFilter {
       exception instanceof AssetValidationError ||
       exception instanceof AssetError ||
       exception instanceof DocumentAssetError
+    )
+      code = exception.code;
+    if (
+      exception instanceof PublicationError ||
+      exception instanceof PublicationManifestError
     )
       code = exception.code;
     const fieldErrors =

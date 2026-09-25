@@ -58,6 +58,10 @@
     "./assets": {
       "types": "./dist/assets.d.ts",
       "default": "./dist/assets.js"
+    },
+    "./publishing": {
+      "types": "./dist/publishing.d.ts",
+      "default": "./dist/publishing.js"
     }
   },
   "scripts": {

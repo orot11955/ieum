@@ -16,6 +16,7 @@ import type { DocumentWorkbenchService } from "@ieum/backend/documents/workbench
 import type { GenerationService } from "@ieum/backend/generation/generation-service";
 import type { AssetService } from "@ieum/backend/assets/asset-service";
 import type { DocumentAssetService } from "@ieum/backend/assets/document-usage";
+import type { PublicationService } from "@ieum/backend/publishing/publication-service";
 import type { createAccountAdministration } from "../auth/registration.js";
 
 export interface IdentityRuntime {
@@ -36,6 +37,7 @@ export interface IdentityRuntime {
   generation: GenerationService;
   assets: AssetService;
   documentAssets: DocumentAssetService;
+  publications: PublicationService;
   authPort: AuthPort;
   sessions: ReturnType<typeof createAccountAdministration>["sessions"];
   origin: string;

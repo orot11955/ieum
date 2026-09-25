@@ -3,6 +3,7 @@ export interface AuthenticatedIdentity {
   userId: string;
   sessionId: string;
   email: string;
+  authenticatedAt: Date;
 }
 
 export interface AuthPort {

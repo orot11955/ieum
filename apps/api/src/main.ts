@@ -20,6 +20,7 @@ import { generationPolicyFromEnv } from "@ieum/backend/generation/input";
 import { AssetService } from "@ieum/backend/assets/asset-service";
 import { DocumentAssetService } from "@ieum/backend/assets/document-usage";
 import { LocalAssetStorage } from "@ieum/backend/assets/storage";
+import { PublicationService } from "@ieum/backend/publishing/publication-service";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { createApiApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
@@ -100,6 +101,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
         generation: new GenerationService(service, commands, generationPolicy),
         assets: new AssetService(service, commands, assetStorage),
         documentAssets: new DocumentAssetService(service, commands),
+        publications: new PublicationService(service, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin: new URL(baseUrl).origin,

@@ -17,6 +17,7 @@ export function createAuthPort(auth: IeumAuth): AuthPort {
         userId: session.user.id,
         sessionId: session.session.id,
         email: session.user.email,
+        authenticatedAt: session.session.createdAt,
       };
     },
   };

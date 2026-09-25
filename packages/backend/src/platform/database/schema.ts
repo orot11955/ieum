@@ -1669,6 +1669,421 @@ export const documentAssetRevision = business.table(
   ],
 );
 
+export const publicationChannel = business.table(
+  "publication_channel",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    name: text("name").notNull(),
+    state: text("state").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("publication_channel_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    unique("publication_channel_workspace_name_unique").on(
+      table.workspaceId,
+      table.name,
+    ),
+    foreignKey({
+      name: "publication_channel_workspace_fk",
+      columns: [table.workspaceId],
+      foreignColumns: [workspace.id],
+    }),
+    check(
+      "publication_channel_state_check",
+      sql`${table.state} IN ('ACTIVE','DISABLED')`,
+    ),
+  ],
+);
+
+export const documentReview = business.table(
+  "document_review",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    revision: integer("revision").notNull(),
+    sequence: integer("sequence").notNull(),
+    manifestHash: text("manifest_hash").notNull(),
+    manifest: jsonb("manifest").notNull(),
+    decision: text("decision").notNull(),
+    reviewerId: text("reviewer_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("document_review_revision_id_unique").on(
+      table.workspaceId,
+      table.documentId,
+      table.revision,
+      table.id,
+    ),
+    unique("document_review_sequence_unique").on(
+      table.workspaceId,
+      table.documentId,
+      table.revision,
+      table.sequence,
+    ),
+    foreignKey({
+      name: "document_review_revision_fk",
+      columns: [table.workspaceId, table.documentId, table.revision],
+      foreignColumns: [
+        documentRevision.workspaceId,
+        documentRevision.documentId,
+        documentRevision.revision,
+      ],
+    }),
+    check(
+      "document_review_decision_check",
+      sql`${table.decision} IN ('READY','CHANGES_REQUIRED')`,
+    ),
+    check("document_review_hash_check", sql`length(${table.manifestHash})=64`),
+    check("document_review_sequence_positive", sql`${table.sequence}>0`),
+  ],
+);
+
+export const publication = business.table(
+  "publication",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    channelId: uuid("channel_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    currentRevision: integer("current_revision"),
+    state: text("state").notNull().default("WITHDRAWN"),
+    accessEpoch: integer("access_epoch").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("publication_workspace_id_unique").on(table.workspaceId, table.id),
+    unique("publication_workspace_document_id_unique").on(
+      table.workspaceId,
+      table.id,
+      table.documentId,
+    ),
+    unique("publication_workspace_channel_id_unique").on(
+      table.workspaceId,
+      table.id,
+      table.channelId,
+    ),
+    unique("publication_document_channel_unique").on(
+      table.workspaceId,
+      table.channelId,
+      table.documentId,
+    ),
+    foreignKey({
+      name: "publication_channel_fk",
+      columns: [table.workspaceId, table.channelId],
+      foreignColumns: [publicationChannel.workspaceId, publicationChannel.id],
+    }),
+    foreignKey({
+      name: "publication_document_fk",
+      columns: [table.workspaceId, table.documentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    check(
+      "publication_state_check",
+      sql`${table.state} IN ('PUBLISHED','WITHDRAWN')`,
+    ),
+    check(
+      "publication_published_pointer_check",
+      sql`${table.state}<>'PUBLISHED' OR ${table.currentRevision} IS NOT NULL`,
+    ),
+    check("publication_epoch_positive", sql`${table.accessEpoch}>0`),
+  ],
+);
+
+export const publicationRevision = business.table(
+  "publication_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    publicationId: uuid("publication_id").notNull(),
+    revision: integer("revision").notNull(),
+    documentId: uuid("document_id").notNull(),
+    documentRevision: integer("document_revision").notNull(),
+    reviewId: uuid("review_id").notNull(),
+    manifestHash: text("manifest_hash").notNull(),
+    createdById: text("created_by_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "publication_revision_pk",
+      columns: [table.workspaceId, table.publicationId, table.revision],
+    }),
+    foreignKey({
+      name: "publication_revision_publication_fk",
+      columns: [table.workspaceId, table.publicationId, table.documentId],
+      foreignColumns: [
+        publication.workspaceId,
+        publication.id,
+        publication.documentId,
+      ],
+    }),
+    foreignKey({
+      name: "publication_revision_document_fk",
+      columns: [table.workspaceId, table.documentId, table.documentRevision],
+      foreignColumns: [
+        documentRevision.workspaceId,
+        documentRevision.documentId,
+        documentRevision.revision,
+      ],
+    }),
+    foreignKey({
+      name: "publication_revision_review_fk",
+      columns: [
+        table.workspaceId,
+        table.documentId,
+        table.documentRevision,
+        table.reviewId,
+      ],
+      foreignColumns: [
+        documentReview.workspaceId,
+        documentReview.documentId,
+        documentReview.revision,
+        documentReview.id,
+      ],
+    }),
+    check("publication_revision_positive", sql`${table.revision}>0`),
+    check(
+      "publication_revision_hash_check",
+      sql`length(${table.manifestHash})=64`,
+    ),
+  ],
+);
+
+export const publicationSlug = business.table(
+  "publication_slug",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    channelId: uuid("channel_id").notNull(),
+    slug: text("slug").notNull(),
+    publicationId: uuid("publication_id").notNull(),
+    isCurrent: boolean("is_current").notNull().default(true),
+  },
+  (table) => [
+    primaryKey({
+      name: "publication_slug_pk",
+      columns: [table.workspaceId, table.channelId, table.slug],
+    }),
+    uniqueIndex("publication_slug_one_current_idx")
+      .on(table.workspaceId, table.publicationId)
+      .where(sql`${table.isCurrent}`),
+    foreignKey({
+      name: "publication_slug_publication_fk",
+      columns: [table.workspaceId, table.publicationId, table.channelId],
+      foreignColumns: [
+        publication.workspaceId,
+        publication.id,
+        publication.channelId,
+      ],
+    }),
+  ],
+);
+
+export const publicationAsset = business.table(
+  "publication_asset",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    publicationId: uuid("publication_id").notNull(),
+    revision: integer("revision").notNull(),
+    publicAssetId: uuid("public_asset_id").notNull(),
+    position: integer("position").notNull(),
+    contentHash: text("content_hash").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "publication_asset_pk",
+      columns: [
+        table.workspaceId,
+        table.publicationId,
+        table.revision,
+        table.publicAssetId,
+      ],
+    }),
+    unique("publication_asset_position_unique").on(
+      table.workspaceId,
+      table.publicationId,
+      table.revision,
+      table.position,
+    ),
+    foreignKey({
+      name: "publication_asset_revision_fk",
+      columns: [table.workspaceId, table.publicationId, table.revision],
+      foreignColumns: [
+        publicationRevision.workspaceId,
+        publicationRevision.publicationId,
+        publicationRevision.revision,
+      ],
+    }),
+    foreignKey({
+      name: "publication_asset_public_fk",
+      columns: [table.workspaceId, table.publicAssetId],
+      foreignColumns: [publicAsset.workspaceId, publicAsset.id],
+    }),
+    check("publication_asset_hash_check", sql`length(${table.contentHash})=64`),
+  ],
+);
+
+export const delivery = pgSchema("delivery");
+export const deliveryPublication = delivery.table(
+  "publication",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    channelId: uuid("channel_id").notNull(),
+    currentRevision: integer("current_revision"),
+    state: text("state").notNull(),
+    accessEpoch: integer("access_epoch").notNull(),
+    currentSlug: text("current_slug").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("delivery_publication_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    unique("delivery_publication_workspace_channel_id_unique").on(
+      table.workspaceId,
+      table.id,
+      table.channelId,
+    ),
+    check(
+      "delivery_publication_state_check",
+      sql`${table.state} IN ('PUBLISHED','WITHDRAWN')`,
+    ),
+    check(
+      "delivery_publication_published_pointer_check",
+      sql`${table.state}<>'PUBLISHED' OR ${table.currentRevision} IS NOT NULL`,
+    ),
+    check("delivery_publication_epoch_positive", sql`${table.accessEpoch}>0`),
+  ],
+);
+export const deliveryPublicationRevision = delivery.table(
+  "publication_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    publicationId: uuid("publication_id").notNull(),
+    revision: integer("revision").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    bodyFormat: text("body_format").notNull().default("markdown"),
+    manifestHash: text("manifest_hash").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "delivery_publication_revision_pk",
+      columns: [table.workspaceId, table.publicationId, table.revision],
+    }),
+    foreignKey({
+      name: "delivery_publication_revision_publication_fk",
+      columns: [table.workspaceId, table.publicationId],
+      foreignColumns: [deliveryPublication.workspaceId, deliveryPublication.id],
+    }),
+    check(
+      "delivery_publication_revision_format_check",
+      sql`${table.bodyFormat}='markdown'`,
+    ),
+    check(
+      "delivery_publication_revision_hash_check",
+      sql`length(${table.manifestHash})=64`,
+    ),
+  ],
+);
+export const deliveryPublicationSlug = delivery.table(
+  "publication_slug",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    channelId: uuid("channel_id").notNull(),
+    slug: text("slug").notNull(),
+    publicationId: uuid("publication_id").notNull(),
+    isCurrent: boolean("is_current").notNull().default(true),
+  },
+  (table) => [
+    primaryKey({
+      name: "delivery_publication_slug_pk",
+      columns: [table.workspaceId, table.channelId, table.slug],
+    }),
+    uniqueIndex("delivery_publication_slug_one_current_idx")
+      .on(table.workspaceId, table.publicationId)
+      .where(sql`${table.isCurrent}`),
+    foreignKey({
+      name: "delivery_publication_slug_publication_fk",
+      columns: [table.workspaceId, table.publicationId, table.channelId],
+      foreignColumns: [
+        deliveryPublication.workspaceId,
+        deliveryPublication.id,
+        deliveryPublication.channelId,
+      ],
+    }),
+  ],
+);
+export const deliveryPublicationAsset = delivery.table(
+  "publication_asset",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    publicationId: uuid("publication_id").notNull(),
+    revision: integer("revision").notNull(),
+    publicAssetId: uuid("public_asset_id").notNull(),
+    position: integer("position").notNull(),
+    storageKey: text("storage_key").notNull(),
+    mime: text("mime").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    contentHash: text("content_hash").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "delivery_publication_asset_pk",
+      columns: [
+        table.workspaceId,
+        table.publicationId,
+        table.revision,
+        table.publicAssetId,
+      ],
+    }),
+    unique("delivery_publication_asset_position_unique").on(
+      table.workspaceId,
+      table.publicationId,
+      table.revision,
+      table.position,
+    ),
+    foreignKey({
+      name: "delivery_publication_asset_revision_fk",
+      columns: [table.workspaceId, table.publicationId, table.revision],
+      foreignColumns: [
+        deliveryPublicationRevision.workspaceId,
+        deliveryPublicationRevision.publicationId,
+        deliveryPublicationRevision.revision,
+      ],
+    }),
+    check(
+      "delivery_publication_asset_hash_check",
+      sql`length(${table.contentHash})=64`,
+    ),
+  ],
+);
+
 export const task = business.table(
   "task",
   {

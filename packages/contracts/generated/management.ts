@@ -1055,6 +1055,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/documents/{id}/revisions/{revision}/public-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["previewDocumentPublication"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/revisions/{revision}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reviewDocumentPublication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/publications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPublications"];
+        put?: never;
+        post: operations["publishDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/publications/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPublication"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/publications/{id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revisePublication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/publications/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["withdrawPublication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -5236,6 +5332,313 @@ export interface operations {
                         documentId: string;
                         draftVersion: number;
                         assetIds: string[];
+                    };
+                };
+            };
+        };
+    };
+    previewDocumentPublication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+                revision: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public projection preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        documentId: string;
+                        documentRevision: number;
+                        title: string;
+                        /** @enum {string} */
+                        bodyFormat: "markdown";
+                        body: string;
+                        publicAssetIds: string[];
+                        sourceCount: number;
+                        manifestHash: string;
+                        bodyHash: string;
+                        sourceHash: string;
+                        assetHash: string;
+                        policyHash: string;
+                        /** @enum {string} */
+                        policyVersion: "be19-public-v1";
+                    };
+                };
+            };
+        };
+    };
+    reviewDocumentPublication: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+                revision: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    manifestHash: string;
+                    /** @enum {string} */
+                    decision: "READY" | "CHANGES_REQUIRED";
+                };
+            };
+        };
+        responses: {
+            /** @description Manifest-bound review */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        reviewId: string;
+                        /** Format: uuid */
+                        documentId: string;
+                        documentRevision: number;
+                        /** @enum {string} */
+                        decision: "READY" | "CHANGES_REQUIRED";
+                        manifestHash: string;
+                    };
+                };
+            };
+        };
+    };
+    listPublications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private publication management list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        publications: {
+                            /** Format: uuid */
+                            publicationId: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            /** Format: uuid */
+                            channelId: string;
+                            publicRevision: number;
+                            /** @enum {string} */
+                            state: "PUBLISHED" | "WITHDRAWN";
+                            slug: string;
+                            accessEpoch: number;
+                            title: string;
+                            body: string;
+                            manifestHash: string;
+                            publicAssetIds: string[];
+                            /** Format: date-time */
+                            publishedAt: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    publishDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    documentId: string;
+                    documentRevision: number;
+                    /** Format: uuid */
+                    reviewId: string;
+                    manifestHash: string;
+                    slug: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Published snapshot */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        publicationId: string;
+                        publicRevision: number;
+                        /** @enum {string} */
+                        state: "PUBLISHED" | "WITHDRAWN";
+                        slug: string;
+                        accessEpoch: number;
+                    };
+                };
+            };
+        };
+    };
+    getPublication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private publication management detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        publicationId: string;
+                        /** Format: uuid */
+                        documentId: string;
+                        /** Format: uuid */
+                        channelId: string;
+                        publicRevision: number;
+                        /** @enum {string} */
+                        state: "PUBLISHED" | "WITHDRAWN";
+                        slug: string;
+                        accessEpoch: number;
+                        title: string;
+                        body: string;
+                        manifestHash: string;
+                        publicAssetIds: string[];
+                        /** Format: date-time */
+                        publishedAt: string;
+                    };
+                };
+            };
+        };
+    };
+    revisePublication: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    basePublicRevision: number;
+                    baseAccessEpoch: number;
+                    documentRevision: number;
+                    /** Format: uuid */
+                    reviewId: string;
+                    manifestHash: string;
+                    slug: string;
+                };
+            };
+        };
+        responses: {
+            /** @description New public revision */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        publicationId: string;
+                        publicRevision: number;
+                        /** @enum {string} */
+                        state: "PUBLISHED" | "WITHDRAWN";
+                        slug: string;
+                        accessEpoch: number;
+                    };
+                };
+            };
+        };
+    };
+    withdrawPublication: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    basePublicRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Withdrawn public projection */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        publicationId: string;
+                        publicRevision: number;
+                        /** @enum {string} */
+                        state: "PUBLISHED" | "WITHDRAWN";
+                        slug: string;
+                        accessEpoch: number;
                     };
                 };
             };

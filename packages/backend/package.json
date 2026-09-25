@@ -84,6 +84,14 @@
       "types": "./dist/assets/validation.d.ts",
       "default": "./dist/assets/validation.js"
     },
+    "./publishing/manifest": {
+      "types": "./dist/publishing/manifest.d.ts",
+      "default": "./dist/publishing/manifest.js"
+    },
+    "./publishing/publication-service": {
+      "types": "./dist/publishing/publication-service.d.ts",
+      "default": "./dist/publishing/publication-service.js"
+    },
     "./platform/jobs/generation": {
       "types": "./dist/platform/jobs/generation.d.ts",
       "default": "./dist/platform/jobs/generation.js"
