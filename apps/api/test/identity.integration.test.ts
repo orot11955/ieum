@@ -5341,6 +5341,99 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       { state: "ACTIVE", count: "4" },
       { state: "SUPERSEDED", count: "1" },
     ]);
+    const conflictingCaptureId = randomUUID();
+    const conflictingSourceWorkspace = randomUUID();
+    const conflictingUnitBundle = createCaptureHistoryBundle(
+      conflictingSourceWorkspace,
+      [
+        {
+          id: conflictingCaptureId,
+          revision: 1,
+          title: "출처 충돌",
+          rawBody: "다른 본문",
+          recordedAt: unitTime,
+          version: 1,
+          unitSetVersion: 1,
+          state: "ACTIVE",
+          originKey: "fixture:unit-origin-conflict",
+        },
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        {
+          id: randomUUID(),
+          originWorkspaceId: unitSourceWorkspace,
+          originId: paraphraseUnitId,
+          captureId: conflictingCaptureId,
+          captureRevision: 1,
+          originKey: "fixture:unit-origin-conflict",
+          state: "ACTIVE",
+          currentRevision: 1,
+          createdAt: unitTime,
+          supersededAt: null,
+          revisions: [
+            {
+              revision: 1,
+              sourceStart: 0,
+              sourceEnd: 3,
+              contentKind: "quote",
+              contentText: "다른 ",
+              recordedAt: unitTime,
+            },
+          ],
+        },
+      ],
+    );
+    const conflictingUnitStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: conflictingUnitBundle,
+    });
+    expect(conflictingUnitStage.statusCode, conflictingUnitStage.body).toBe(
+      201,
+    );
+    const conflictingUnitRunId = conflictingUnitStage.json<{ id: string }>().id;
+    const conflictingUnitPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${conflictingUnitRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(conflictingUnitPreview.statusCode).toBe(200);
+    expect(
+      conflictingUnitPreview
+        .json<{ rows: { state: string }[] }>()
+        .rows.map((row) => row.state),
+    ).toEqual(["CONFLICT", "CONFLICT"]);
+    const conflictingUnitApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${conflictingUnitRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: conflictingUnitPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(conflictingUnitApplied.statusCode).toBe(201);
+    expect(conflictingUnitApplied.json<{ state: string }>().state).toBe(
+      "PARTIAL",
+    );
+    const conflictingCapture = await admin.query(
+      "SELECT 1 FROM business.capture WHERE workspace_id=$1 AND source_key=$2",
+      [
+        operator.workspaceId,
+        `ieum:${conflictingSourceWorkspace}:${conflictingCaptureId}`,
+      ],
+    );
+    expect(conflictingCapture.rowCount).toBe(0);
     const historicalBodies = [
       ["첫 본문", "2026-09-23T00:00:00.000Z"],
       ["둘째 본문", "2026-09-24T00:00:00.000Z"],
