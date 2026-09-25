@@ -20,7 +20,7 @@
     "contracts:check": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && node scripts/contracts/generate.mjs --check && node scripts/contracts/check-boundaries.mjs && node --test scripts/contracts/check-boundaries.test.mjs",
     "typecheck": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build && pnpm --filter @ieum/contracts typecheck && pnpm --filter @ieum/lab-cli typecheck && pnpm --filter @ieum/core typecheck && pnpm --filter @ieum/backend typecheck && pnpm --filter @ieum/api typecheck && pnpm --filter @ieum/worker typecheck && pnpm --filter @ieum/ui typecheck && pnpm --filter @ieum/web typecheck",
     "test:unit": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build && pnpm --filter @ieum/lab-cli build && pnpm --filter @ieum/core test && pnpm --filter @ieum/contracts test && pnpm --filter @ieum/lab-cli test && pnpm --filter @ieum/backend test && pnpm --filter @ieum/api test && pnpm --filter @ieum/worker test",
-    "build": "pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build && pnpm --filter @ieum/lab-cli build && pnpm --filter @ieum/api build && pnpm --filter @ieum/worker build && pnpm --filter @ieum/web build",
+    "build": "pnpm design:build && pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build && pnpm --filter @ieum/lab-cli build && pnpm --filter @ieum/api build && pnpm --filter @ieum/worker build && pnpm --filter @ieum/web build",
     "test:web": "pnpm --filter @ieum/web test:e2e",
     "lab:smoke": "node apps/lab-cli/dist/main.js --smoke",
     "api:smoke": "node scripts/api/smoke.mjs"
