@@ -46,6 +46,8 @@
 
 CORE-01–15, BE-01–10·12–15, FE-01–02가 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-11이다.
 
+BE-11 공통 문서 draft/revision 엔진은 로컬 PostgreSQL 검증을 마쳤고 [구현 증거](docs/evidence/be-11.md)의 Linux CI 확인 후 VERIFIED로 올린다.
+
 ## 현재 실행 가능한 검사
 
 Node 24.18.0을 사용한다. 계획·디자인 준비 검사는 외부 패키지 설치가 필요 없다.

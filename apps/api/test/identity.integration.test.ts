@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
@@ -15,6 +15,7 @@ import { CalendarService } from "@ieum/backend/calendar";
 import { JudgementService } from "@ieum/backend/judgement/judgement-service";
 import { ProposalService } from "@ieum/backend/judgement/proposals";
 import { ExtractionService } from "@ieum/backend/extraction/extraction-service";
+import { DocumentService } from "@ieum/backend/documents";
 import { processJudgementJob } from "@ieum/backend/judgement/judgement-worker";
 import { withWorkspaceTransaction } from "@ieum/backend/platform/database/scope";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
@@ -151,6 +152,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         judgement: new JudgementService(appPool, commands),
         proposals: new ProposalService(appPool, commands),
         extraction: new ExtractionService(identity, commands),
+        documents: new DocumentService(identity, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -1124,6 +1126,520 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       payload: { email: "third@example.test" },
     });
     expect(denied.statusCode).toBe(403);
+
+    const documentUrl = `/api/v1/workspaces/${operator.workspaceId}/documents`;
+    const documentHeaders = {
+      host: "127.0.0.1:3000",
+      origin,
+      cookie: operatorCookie,
+      "idempotency-key": "be11-document-create-01",
+    };
+    const createdWiki = await app.inject({
+      method: "POST",
+      url: documentUrl,
+      headers: documentHeaders,
+      payload: { kind: "WIKI", title: "연결할 위키" },
+    });
+    expect(createdWiki.statusCode).toBe(201);
+    const wikiId = createdWiki.json<{ id: string }>().id;
+    expect(createdWiki.json()).toMatchObject({
+      draftVersion: 1,
+      latestRevision: 0,
+    });
+    const wikiBase = `${documentUrl}/${wikiId}`;
+    const emptyWiki = await app.inject({
+      method: "GET",
+      url: wikiBase,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(emptyWiki.statusCode).toBe(200);
+    expect(emptyWiki.json()).toMatchObject({
+      content: { schemaVersion: 1, content: { type: "doc", content: [] } },
+    });
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: wikiBase.replace(operator.workspaceId, invitedWorkspaceId),
+          headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: documentUrl,
+          headers: {
+            ...documentHeaders,
+            "idempotency-key": "be11-bad-origin",
+            origin: "https://other.example",
+          },
+          payload: { kind: "WIKI", title: "거부" },
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    const blockId = randomUUID();
+    const documentContent = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { blockId },
+          content: [{ type: "text", text: "첫 문장" }],
+        },
+      ],
+    };
+    const saveUrl = `${wikiBase}/draft`;
+    const savePayload = {
+      baseVersion: 1,
+      saveSequence: 2,
+      schemaVersion: 1,
+      content: documentContent,
+    };
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: saveUrl,
+          headers: {
+            ...documentHeaders,
+            "idempotency-key": "be11-bad-schema-01",
+          },
+          payload: { ...savePayload, schemaVersion: 2 },
+        })
+      ).statusCode,
+    ).toBe(422);
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: saveUrl,
+          headers: {
+            ...documentHeaders,
+            "idempotency-key": "be11-bad-node-01",
+          },
+          payload: {
+            ...savePayload,
+            content: {
+              type: "doc",
+              content: [{ type: "image", attrs: { blockId } }],
+            },
+          },
+        })
+      ).statusCode,
+    ).toBe(422);
+    for (const [key, invalidText] of [
+      ["be11-nul-text-01", "bad\u0000text"],
+      ["be11-surrogate-01", "bad\ud800text"],
+    ] as const) {
+      const invalidSave = await app.inject({
+        method: "PUT",
+        url: saveUrl,
+        headers: { ...documentHeaders, "idempotency-key": key },
+        payload: {
+          ...savePayload,
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                attrs: { blockId },
+                content: [{ type: "text", text: invalidText }],
+              },
+            ],
+          },
+        },
+      });
+      expect(invalidSave.statusCode, `${key}: ${invalidSave.body}`).toBe(422);
+    }
+    const saved = await app.inject({
+      method: "PUT",
+      url: saveUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be11-save-02" },
+      payload: savePayload,
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({
+      draftVersion: 2,
+      saveSequence: 2,
+      recheckBlockIds: [blockId],
+    });
+    const replayedSave = await app.inject({
+      method: "PUT",
+      url: saveUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be11-save-02" },
+      payload: savePayload,
+    });
+    expect(replayedSave.json()).toMatchObject({
+      replayed: true,
+      draftVersion: 2,
+    });
+    const reversedOlderSave = await app.inject({
+      method: "PUT",
+      url: saveUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be11-save-01" },
+      payload: { ...savePayload, saveSequence: 1 },
+    });
+    expect(reversedOlderSave.statusCode).toBe(409);
+    expect(reversedOlderSave.json()).toMatchObject({
+      code: "VERSION_CONFLICT",
+      currentVersion: 2,
+    });
+    const sealed = await app.inject({
+      method: "POST",
+      url: `${wikiBase}/revisions`,
+      headers: { ...documentHeaders, "idempotency-key": "be11-seal-01" },
+      payload: { draftVersion: 2 },
+    });
+    expect(sealed.statusCode).toBe(201);
+    expect(sealed.json()).toMatchObject({
+      revision: 1,
+      draftVersion: 2,
+      restoredFromRevision: null,
+    });
+    const oldRevision = await app.inject({
+      method: "GET",
+      url: `${wikiBase}/revisions/1`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(oldRevision.statusCode).toBe(200);
+    expect(oldRevision.json()).toMatchObject({
+      content: { content: documentContent },
+    });
+    await expect(
+      identity.withPersonalWorkspace(operator.userId, async (client) =>
+        client.query(
+          `UPDATE business.document_revision SET title='tamper' WHERE workspace_id=$1 AND document_id=$2`,
+          [operator.workspaceId, wikiId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    const secondContent = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { blockId },
+          content: [{ type: "text", text: "현재 편집 중" }],
+        },
+      ],
+    };
+    const secondSave = await app.inject({
+      method: "PUT",
+      url: saveUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be11-save-03" },
+      payload: {
+        baseVersion: 2,
+        saveSequence: 3,
+        schemaVersion: 1,
+        content: secondContent,
+      },
+    });
+    expect(secondSave.statusCode).toBe(200);
+    expect(secondSave.json()).toMatchObject({
+      draftVersion: 3,
+      recheckBlockIds: [blockId],
+    });
+    const restored = await app.inject({
+      method: "POST",
+      url: `${wikiBase}/restore`,
+      headers: { ...documentHeaders, "idempotency-key": "be11-restore-01" },
+      payload: { baseRevision: 1, sourceRevision: 1 },
+    });
+    expect(restored.statusCode).toBe(201);
+    expect(restored.json()).toMatchObject({
+      revision: 2,
+      draftVersion: 3,
+      restoredFromRevision: 1,
+    });
+    const currentWiki = await app.inject({
+      method: "GET",
+      url: wikiBase,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(currentWiki.json()).toMatchObject({
+      draftVersion: 3,
+      latestRevision: 2,
+      content: { content: secondContent },
+    });
+    const restoredRevision = await app.inject({
+      method: "GET",
+      url: `${wikiBase}/revisions/2`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(restoredRevision.json()).toMatchObject({
+      content: { content: documentContent },
+    });
+
+    const anotherWiki = await app.inject({
+      method: "POST",
+      url: documentUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be11-document-create-02",
+      },
+      payload: { kind: "WIKI", title: "대상 위키" },
+    });
+    expect(anotherWiki.statusCode).toBe(201);
+    const targetId = anotherWiki.json<{ id: string }>().id;
+    const linked = await app.inject({
+      method: "PUT",
+      url: `${wikiBase}/links`,
+      headers: { ...documentHeaders, "idempotency-key": "be11-links-01" },
+      payload: { baseLinkVersion: 1, targetIds: [targetId] },
+    });
+    expect(linked.statusCode).toBe(200);
+    expect(linked.json()).toMatchObject({
+      linkVersion: 2,
+      targetIds: [targetId],
+    });
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: `${documentUrl}/${targetId}`,
+          headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+        })
+      ).json(),
+    ).toMatchObject({ backlinks: [wikiId] });
+    const unlinked = await app.inject({
+      method: "PUT",
+      url: `${wikiBase}/links`,
+      headers: { ...documentHeaders, "idempotency-key": "be11-links-02" },
+      payload: { baseLinkVersion: 2, targetIds: [] },
+    });
+    expect(unlinked.statusCode).toBe(200);
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: `${documentUrl}/${targetId}`,
+          headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+        })
+      ).json(),
+    ).toMatchObject({ backlinks: [] });
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: `${wikiBase}/links`,
+          headers: {
+            ...documentHeaders,
+            "idempotency-key": "be11-links-cross-01",
+          },
+          payload: { baseLinkVersion: 3, targetIds: [randomUUID()] },
+        })
+      ).statusCode,
+    ).toBe(422);
+
+    const unitSource = await identity.withPersonalWorkspace(
+      operator.userId,
+      async (client) => {
+        const row = await client.query<{
+          origin_key: string;
+          content_text: string;
+        }>(
+          `SELECT u.origin_key,r.content_text FROM business.thought_unit u
+         JOIN business.thought_unit_revision r ON r.workspace_id=u.workspace_id AND r.unit_id=u.id
+         WHERE u.workspace_id=$1 AND u.id=$2 AND r.revision=1`,
+          [operator.workspaceId, unitId],
+        );
+        return row.rows[0]!;
+      },
+    );
+    const sourcedContent = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { blockId },
+          content: [
+            {
+              type: "sourceReference",
+              attrs: {
+                label: "원문",
+                ref: {
+                  sourceKind: "unit",
+                  sourceId: unitId,
+                  sourceRevision: 1,
+                  originKey: unitSource.origin_key,
+                  sourceHash: createHash("sha256")
+                    .update(unitSource.content_text)
+                    .digest("hex"),
+                  span: {
+                    start: 0,
+                    end: unitSource.content_text.length,
+                    encoding: "utf16",
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const sourcedSave = await app.inject({
+      method: "PUT",
+      url: saveUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be11-source-save-01" },
+      payload: {
+        baseVersion: 3,
+        saveSequence: 4,
+        schemaVersion: 1,
+        content: sourcedContent,
+      },
+    });
+    expect(sourcedSave.statusCode).toBe(200);
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: saveUrl,
+          headers: {
+            ...documentHeaders,
+            "idempotency-key": "be11-source-bad-01",
+          },
+          payload: {
+            baseVersion: 4,
+            saveSequence: 5,
+            schemaVersion: 1,
+            content: {
+              ...sourcedContent,
+              content: [
+                {
+                  ...sourcedContent.content[0],
+                  content: [
+                    {
+                      ...sourcedContent.content[0]!.content[0],
+                      attrs: {
+                        ...sourcedContent.content[0]!.content[0]!.attrs,
+                        ref: {
+                          ...sourcedContent.content[0]!.content[0]!.attrs.ref,
+                          sourceHash: "bad",
+                        },
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        })
+      ).statusCode,
+    ).toBe(422);
+
+    const [tabA, tabB] = await Promise.all([
+      app.inject({
+        method: "PUT",
+        url: saveUrl,
+        headers: { ...documentHeaders, "idempotency-key": "be11-tab-a-01" },
+        payload: {
+          baseVersion: 4,
+          saveSequence: 6,
+          schemaVersion: 1,
+          content: documentContent,
+        },
+      }),
+      app.inject({
+        method: "PUT",
+        url: saveUrl,
+        headers: { ...documentHeaders, "idempotency-key": "be11-tab-b-01" },
+        payload: {
+          baseVersion: 4,
+          saveSequence: 7,
+          schemaVersion: 1,
+          content: secondContent,
+        },
+      }),
+    ]);
+    expect([tabA.statusCode, tabB.statusCode].sort()).toEqual([200, 409]);
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: wikiBase,
+          headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+        })
+      ).json(),
+    ).toMatchObject({ draftVersion: 5 });
+
+    const revisionRef = {
+      sourceKind: "document_revision",
+      sourceId: wikiId,
+      sourceRevision: 1,
+      originKey: `document:${wikiId}`,
+      sourceHash: sealed.json<{ contentHash: string }>().contentHash,
+      span: { start: 0, end: "첫 문장".length, encoding: "utf16" },
+    };
+    const revisionSourceContent = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { blockId },
+          content: [
+            {
+              type: "sourceReference",
+              attrs: { label: "이전 문서", ref: revisionRef },
+            },
+          ],
+        },
+      ],
+    };
+    const revisionRefSave = await app.inject({
+      method: "PUT",
+      url: saveUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be11-document-source-01",
+      },
+      payload: {
+        baseVersion: 5,
+        saveSequence: 8,
+        schemaVersion: 1,
+        content: revisionSourceContent,
+      },
+    });
+    expect(revisionRefSave.statusCode).toBe(200);
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: saveUrl,
+          headers: {
+            ...documentHeaders,
+            "idempotency-key": "be11-document-source-bad-01",
+          },
+          payload: {
+            baseVersion: 6,
+            saveSequence: 9,
+            schemaVersion: 1,
+            content: {
+              ...revisionSourceContent,
+              content: [
+                {
+                  ...revisionSourceContent.content[0],
+                  content: [
+                    {
+                      type: "sourceReference",
+                      attrs: {
+                        label: "범위 오류",
+                        ref: {
+                          ...revisionRef,
+                          span: { start: 0, end: 100, encoding: "utf16" },
+                        },
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        })
+      ).statusCode,
+    ).toBe(422);
 
     const enableMfa = await app.inject({
       method: "POST",

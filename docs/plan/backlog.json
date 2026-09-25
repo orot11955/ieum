@@ -459,7 +459,7 @@
         "BE-05",
         "FE-02"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "Wiki/Article/Note의 공통 document identity와 mutable draft, immutable revision을 구현한다. autosave는 baseVersion을 검사하고 seal/restore는 새 revision으로 처리한다. 위키 내부 링크와 역링크를 관리한다.",
       "contract": "모듈: documents. Tiptap JSON+schemaVersion이 편집 정본; plain text/search/HTML/Markdown은 파생 표현. 안정적 blockId와 변경된 claim의 invalidation 계약을 둔다.",
       "tests": "두 탭 저장 충돌, 응답 순서 역전, 빈 문서, 지원하지 않는 node/schema, 불변 revision 수정 거부, 내부 링크 삭제, 복원 시 현재 draft 보존.",

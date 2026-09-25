@@ -8,6 +8,7 @@ import { TaskModule } from "./tasks/task.module.js";
 import { CalendarModule } from "./calendar/calendar.module.js";
 import { JudgementModule } from "./judgement/judgement.module.js";
 import { ExtractionModule } from "./extraction/extraction.module.js";
+import { DocumentModule } from "./documents/document.module.js";
 import type { IdentityRuntime } from "./identity/identity.runtime.js";
 import { ProblemFilter } from "./problem.filter.js";
 import { SystemModule } from "./system/system.module.js";
@@ -29,6 +30,7 @@ export class AppModule {
             CalendarModule.register(identity),
             JudgementModule.register(identity),
             ExtractionModule.register(identity),
+            DocumentModule.register(identity),
           ]
         : [],
     };
