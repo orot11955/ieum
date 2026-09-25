@@ -34,7 +34,7 @@ jobs:
         run: git diff --exit-code
 
   workspace:
-    name: Core, lab and API workspace
+    name: Product workspace
     needs: preparation
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -65,6 +65,10 @@ jobs:
         run: pnpm lab:smoke
       - name: Run built API and worker smoke entry
         run: pnpm api:smoke
+      - name: Install browser for FE-01 gallery
+        run: pnpm --filter @ieum/web exec playwright install chromium
+      - name: Verify FE-01 gallery in Chromium
+        run: pnpm test:web
       - name: Verify tracked sources remain unchanged
         run: git diff --exit-code
 

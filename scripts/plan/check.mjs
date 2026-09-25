@@ -60,7 +60,13 @@ try {
   for (let n = 1; n <= 14; n++) requireCheck(trace.includes(`| R${String(n).padStart(2, '0')} |`), `Missing requirement R${n}`);
   for (const [file, expected] of expectedDocuments()) requireCheck(fs.existsSync(file) && fs.readFileSync(file, 'utf8') === expected, `Generated document drift: ${path.relative(root,file)}`);
   const cleanup = JSON.parse(read('docs/status/cleanup-manifest.json'));
-  for (const item of cleanup.deleted) requireCheck(!exists(item.path), `Retired file remains: ${item.path}`);
+  const fe01Started = byId.get('FE-01')?.status !== 'PLANNED';
+  const fe01Recreated = new Set(['apps/web/index.html', 'apps/web/vite.config.ts']);
+  for (const item of cleanup.deleted) {
+    // BASE-01 records the retired blobs; FE-01 creates a new executable web harness at these paths.
+    if (fe01Started && fe01Recreated.has(item.path)) continue;
+    requireCheck(!exists(item.path), `Retired file remains: ${item.path}`);
+  }
   for (const f of ['README.md', 'AGENTS.md', 'docs/plan/07-codex-execution-playbook.md']) {
     const text = read(f);
     requireCheck(!/git\s+(checkout\s+-b|switch\s+-c)|HEAD:feat\/|새 작업 브랜치는/.test(text), `Obsolete branch instructions: ${f}`);

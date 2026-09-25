@@ -49,7 +49,7 @@
 | BE-24 | P8 | PLANNED | 배포·백업·복원·migration 복구 | BE-21, BE-22, BE-23 |
 | BE-25 | P9 | PLANNED | 성능·관측·병목 최적화 | BE-12, BE-20, BE-24 |
 | BE-26 | P4 | PLANNED | 통합 검색·필터·안전한 read model | BE-07, BE-08, BE-09, BE-10, BE-11, CORE-04 |
-| FE-01 | P0 | PLANNED | Paper/Dark 토큰·공통 UI·상태 gallery | BASE-02 |
+| FE-01 | P0 | IMPLEMENTED | Paper/Dark 토큰·공통 UI·상태 gallery | BASE-02 |
 | FE-02 | P0 | PLANNED | 편집기·폼·HTTP 계약 spike | FE-01, BASE-03 |
 | FE-03 | P2 | PLANNED | 앱 shell·라우팅·서버 상태·권한 표시 | FE-01, BE-04 |
 | FE-04 | P2 | PLANNED | 로그인·초대·MFA·복구·세션 관리 | FE-03, BE-04 |

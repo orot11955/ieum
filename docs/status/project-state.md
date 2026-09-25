@@ -1,9 +1,9 @@
-# IEUM 프로젝트 상태 · BE-14 VERIFIED, CORE-16 BLOCKED
+# IEUM 프로젝트 상태 · BE-15 VERIFIED, FE-01 구현, CORE-16 BLOCKED
 
-- 검증 기준: BE-14 구현 `9b4d987`과 Linux GitHub Actions run `35918032669` 네 job 성공(2026-09-24 KST)
+- 검증 기준: BE-15 Linux GitHub Actions run `35921525076` 네 job 성공; FE-01은 로컬 Chromium 3/3 성공 후 Linux 검사 대기(2026-09-25 KST)
 - 실행 정본: [계획 1.1](../plan/README.md), [backlog](../plan/backlog.json)
-- 완료 범위: **BASE-01–03, CORE-01–15, BE-01–10, BE-12–14 VERIFIED**. 원본·근거·시점 snapshot, lexical/semantic/hybrid 관찰 검색과 합성 평가, 근거 묶음, 추출 후보, 구조 진단·변경안 미리보기, 문서 계획·claim 검증 계약, Nest/Fastify 조립, 실제 DB 인증·업무 workspace/RLS·계정/초대/세션/복구·명령/감사/outbox relay·원문/unit revision·다중 Context 소속과 관계·독립 Task 수명·결과 원본·일정 시간대/DST·제품 observe 판단 job까지 확인했다.
-- 진행 중: **BE-14 추출 후보 승인·업무 항목 생성은 VERIFIED**다. 다음 독립 서버 카드는 BE-15다. BE-11은 FE-01→FE-02 선행 검증을 기다린다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록/holdout 부재로 BLOCKED**다.
+- 완료 범위: **BASE-01–03, CORE-01–15, BE-01–10, BE-12–15 VERIFIED**. 원본·근거·시점 snapshot, lexical/semantic/hybrid 관찰 검색과 합성 평가, 근거 묶음, 추출 후보, 구조 진단·변경안 미리보기/승인·역변경, 문서 계획·claim 검증 계약, Nest/Fastify 조립, 실제 DB 인증·업무 workspace/RLS·계정/초대/세션/복구·명령/감사/outbox relay·원문/unit revision·다중 Context 소속과 관계·독립 Task 수명·결과 원본·일정 시간대/DST·제품 observe 판단 job까지 확인했다.
+- 진행 중: FE-01 UI 갤러리의 Linux CI 검증. BE-11은 FE-01→FE-02 선행 검증을 기다린다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록/holdout 부재로 BLOCKED**다.
 - 브랜치 정책: main 직접 작업, 새 브랜치/PR/force push 없음
 
 ## 실제 현재 상태
@@ -11,14 +11,14 @@
 | 영역 | 상태 | 다음 담당 |
 |---|---|---|
 | 원본 제품 목적·권한·도메인·화면/ERD 계약 | 보존된 설계; 새 실행 정본 아래 참고 | 해당 BASE/CORE/BE/FE 카드 |
-| Paper/Dark 토큰·recipe·lock·생성/검사 스크립트 | 보존, 준비 검사 대상 | FE-01 |
-| 공통 React UI·theme-init·theme unit test | 보존한 소스 표본; runtime/브라우저 미검증 | FE-01 |
-| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03·CORE-01–15·BE-01–10·BE-12–14 VERIFIED, CORE-16 BLOCKED | BE-15·FE-01 |
+| Paper/Dark 토큰·recipe·lock·생성/검사 스크립트 | 보존, 준비 검사와 FE-01 브라우저 검사 통과 | FE-02 |
+| 공통 React UI·theme-init·상태 갤러리 | 로컬 Chromium 3/3, 320px Paper/Dark 캡처 확인; Linux 대기 | FE-01 |
+| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03·CORE-01–15·BE-01–10·BE-12–15 VERIFIED, FE-01 IMPLEMENTED, CORE-16 BLOCKED | FE-01→FE-02 |
 | pnpm workspace·strict TS·Vitest·lint/format·core/lab/API build와 CI 정의 | Node 24.18.0 로컬 검사와 Linux GitHub Actions 통과 | BE-02·FE-01 제품 기반 |
 | 관리/Delivery Zod·OpenAPI·client 타입, Core 원본·근거 검증/시점 snapshot/lexical·semantic·hybrid 후보 검색·관찰 판단 기준선 | 합성 예제와 Linux CI 통과; 계정·원문 HTTP/DB만 구현 | 후속 BE/FE 카드 |
 | 판단 Core·Lab·실제 판단 품질 | 합성 40 Context/60 query에서 B0 Recall@10 49/50, 합성 B1 37/50, B2/B3 47.5/50. 구조·문서 계약은 검증됐으나 실제 사용자 품질 미평가, 활성 제안 설정 없음 | CORE-16은 FE-14·FE-16/실제 자료 후 재개 |
-| Nest API·인증·DB·worker·업무 기능 | BE-01–10·BE-12–14 Linux CI 통과. 판단 job은 observe 모드 | BE-11·BE-15–26 |
-| 내부 업무 웹·편집기·브라우저 E2E | 미구현 | FE-01–21 |
+| Nest API·인증·DB·worker·업무 기능 | BE-01–10·BE-12–15 Linux CI 통과. 판단 job은 observe 모드 | BE-11·BE-16–26 |
+| 내부 업무 웹·편집기·브라우저 E2E | FE-01 공통 UI 구현, 실제 기능/편집기는 미구현 | FE-02–21 |
 | Delivery·운영 복원·개인 데이터 migration | 미구현/미검증 | P7–P9 |
 | 실제 운영 DB/배포/사용자 기기 작업 트리 | 미접근·미확인·미변경 | 실제 작업 전에 명시적으로 확인 |
 
