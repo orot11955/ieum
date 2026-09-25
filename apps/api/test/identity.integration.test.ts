@@ -1,6 +1,9 @@
 import "reflect-metadata";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
@@ -20,6 +23,9 @@ import { ExternalExcerptService } from "@ieum/backend/documents/external-excerpt
 import { EvidencePackService } from "@ieum/backend/documents/evidence-packs";
 import { DocumentWorkbenchService } from "@ieum/backend/documents/workbench";
 import { GenerationService } from "@ieum/backend/generation/generation-service";
+import { AssetService } from "@ieum/backend/assets/asset-service";
+import { DocumentAssetService } from "@ieum/backend/assets/document-usage";
+import { LocalAssetStorage } from "@ieum/backend/assets/storage";
 import {
   processGenerationJob,
   reconcileAbandonedGeneration,
@@ -104,6 +110,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
   let authLockPool: Pool;
   let app: Awaited<ReturnType<typeof createApiApp>>;
   let identity: IdentityService;
+  let assetRoot: string;
 
   beforeAll(async () => {
     container = await new PostgreSqlContainer(postgresImage)
@@ -150,6 +157,11 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       authLockPool,
     );
     const commands = new CommandCoordinator(identity);
+    assetRoot = await mkdtemp(join(tmpdir(), "ieum-be18-assets-"));
+    const assetStorage = await LocalAssetStorage.create(
+      join(assetRoot, "private"),
+      join(assetRoot, "derivative"),
+    );
     app = await createApiApp({
       auth: auth.auth,
       baseUrl: origin,
@@ -175,6 +187,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
           maxJobCostMicrousd: 1000,
           timeoutMs: 1000,
         }),
+        assets: new AssetService(identity, commands, assetStorage),
+        documentAssets: new DocumentAssetService(identity, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -200,6 +214,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     await app?.close();
     await admin?.end();
     await container?.stop();
+    if (assetRoot) await rm(assetRoot, { recursive: true, force: true });
   }, 120_000);
 
   async function signIn(email: string) {
@@ -1149,7 +1164,145 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(denied.statusCode).toBe(403);
 
+    const assetBase = `/api/v1/workspaces/${operator.workspaceId}/assets`;
+    const assetHeaders = {
+      host: "127.0.0.1:3000",
+      origin,
+      cookie: operatorCookie,
+    };
+    const assetBytes = Buffer.from("Private source for document.\n");
+    const pending = await app.inject({
+      method: "POST",
+      url: assetBase,
+      headers: { ...assetHeaders, "idempotency-key": "be18-create-valid-01" },
+      payload: {
+        fileName: "source.md",
+        declaredMime: "text/markdown",
+        expectedSize: assetBytes.length,
+      },
+    });
+    expect(pending.statusCode).toBe(201);
+    const assetId = pending.json<{ assetId: string }>().assetId;
+    const uploaded = await app.inject({
+      method: "PUT",
+      url: `${assetBase}/${assetId}/content`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be18-upload-valid-01",
+        "content-type": "application/octet-stream",
+      },
+      payload: assetBytes,
+    });
+    expect(uploaded.statusCode).toBe(200);
+    expect(uploaded.json()).toMatchObject({ state: "VERIFIED", assetId });
+    const assetPreview = await app.inject({
+      method: "GET",
+      url: `${assetBase}/${assetId}/preview`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(assetPreview.statusCode).toBe(200);
+    expect(assetPreview.body).toBe(assetBytes.toString());
+    expect(assetPreview.headers["cache-control"]).toBe("private, no-store");
+    expect(assetPreview.headers["content-type"]).toContain("text/plain");
+    const privateDownload = await app.inject({
+      method: "GET",
+      url: `${assetBase}/${assetId}/content`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(privateDownload.statusCode).toBe(200);
+    expect(privateDownload.headers["content-type"]).toContain("text/markdown");
+    expect(privateDownload.headers["content-disposition"]).toBe(
+      'attachment; filename="download"',
+    );
+    const deniedAsset = await app.inject({
+      method: "GET",
+      url: `${assetBase}/${assetId}/content`,
+      headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+    });
+    expect(deniedAsset.statusCode).toBe(404);
+    const badBytes = Buffer.from("<svg onload=alert(1)></svg>");
+    const badPending = await app.inject({
+      method: "POST",
+      url: assetBase,
+      headers: { ...assetHeaders, "idempotency-key": "be18-create-bad-01" },
+      payload: {
+        fileName: "fake.png",
+        declaredMime: "image/png",
+        expectedSize: badBytes.length,
+      },
+    });
+    expect(badPending.statusCode).toBe(201);
+    const badAssetId = badPending.json<{ assetId: string }>().assetId;
+    const rejectedAsset = await app.inject({
+      method: "PUT",
+      url: `${assetBase}/${badAssetId}/content`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be18-upload-bad-01",
+        "content-type": "application/octet-stream",
+      },
+      payload: badBytes,
+    });
+    expect(rejectedAsset.statusCode).toBe(200);
+    expect(rejectedAsset.json()).toMatchObject({
+      state: "REJECTED",
+      rejectionCode: "MIME_MISMATCH",
+    });
     const documentUrl = `/api/v1/workspaces/${operator.workspaceId}/documents`;
+    const assetDocument = await app.inject({
+      method: "POST",
+      url: documentUrl,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be18-document-create-01",
+      },
+      payload: { kind: "NOTE", title: "첨부 manifest 검증" },
+    });
+    expect(assetDocument.statusCode).toBe(201);
+    const assetDocumentId = assetDocument.json<{ id: string }>().id;
+    const attached = await app.inject({
+      method: "PUT",
+      url: `${documentUrl}/${assetDocumentId}/assets`,
+      headers: {
+        ...assetHeaders,
+        "idempotency-key": "be18-document-attach-01",
+      },
+      payload: { baseDraftVersion: 1, assetIds: [assetId] },
+    });
+    expect(attached.statusCode).toBe(200);
+    expect(attached.json()).toMatchObject({
+      draftVersion: 2,
+      assetIds: [assetId],
+    });
+    const assetUsage = await app.inject({
+      method: "GET",
+      url: `${assetBase}/${assetId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(assetUsage.json()).toMatchObject({
+      usedInDocumentIds: [assetDocumentId],
+    });
+    const sealedAssetDocument = await app.inject({
+      method: "POST",
+      url: `${documentUrl}/${assetDocumentId}/revisions`,
+      headers: { ...assetHeaders, "idempotency-key": "be18-document-seal-01" },
+      payload: { draftVersion: 2 },
+    });
+    expect(sealedAssetDocument.statusCode).toBe(201);
+    const sealedAssetRevision = await app.inject({
+      method: "GET",
+      url: `${documentUrl}/${assetDocumentId}/revisions/1`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(sealedAssetRevision.statusCode).toBe(200);
+    expect(sealedAssetRevision.json()).toMatchObject({ assetIds: [assetId] });
+    const usedDelete = await app.inject({
+      method: "DELETE",
+      url: `${assetBase}/${assetId}`,
+      headers: { ...assetHeaders, "idempotency-key": "be18-delete-used-01" },
+    });
+    expect(usedDelete.statusCode).toBe(409);
+    expect(usedDelete.json()).toMatchObject({ code: "ASSET_IN_USE" });
     const documentHeaders = {
       host: "127.0.0.1:3000",
       origin,

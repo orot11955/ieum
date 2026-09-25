@@ -1497,6 +1497,178 @@ export const generationApplication = business.table(
   ],
 );
 
+export const asset = business.table(
+  "asset",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    uploaderId: text("uploader_id").notNull(),
+    originalName: text("original_name").notNull(),
+    declaredMime: text("declared_mime").notNull(),
+    expectedSize: integer("expected_size").notNull(),
+    state: text("state").notNull().default("PENDING"),
+    rejectionCode: text("rejection_code"),
+    originalStorageKey: text("original_storage_key"),
+    detectedMime: text("detected_mime"),
+    byteSize: integer("byte_size"),
+    contentHash: text("content_hash"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("asset_workspace_id_unique").on(table.workspaceId, table.id),
+    index("asset_workspace_state_created_idx").on(
+      table.workspaceId,
+      table.state,
+      table.createdAt,
+    ),
+    check(
+      "asset_state_check",
+      sql`${table.state} IN ('PENDING','VERIFIED','REJECTED','DELETED')`,
+    ),
+    check(
+      "asset_expected_size_check",
+      sql`${table.expectedSize}>0 AND ${table.expectedSize}<=20971520`,
+    ),
+    check(
+      "asset_content_hash_check",
+      sql`${table.contentHash} IS NULL OR length(${table.contentHash})=64`,
+    ),
+  ],
+);
+
+export const publicAsset = business.table(
+  "public_asset",
+  {
+    id: uuid("id").primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    sourceAssetId: uuid("source_asset_id").notNull(),
+    storageKey: text("storage_key").notNull(),
+    mime: text("mime").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    contentHash: text("content_hash").notNull(),
+    transformRevision: text("transform_revision").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    state: text("state").notNull().default("VERIFIED"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("public_asset_workspace_source_unique").on(
+      table.workspaceId,
+      table.sourceAssetId,
+    ),
+    unique("public_asset_workspace_id_unique").on(table.workspaceId, table.id),
+    foreignKey({
+      name: "public_asset_source_fk",
+      columns: [table.workspaceId, table.sourceAssetId],
+      foreignColumns: [asset.workspaceId, asset.id],
+    }),
+    check(
+      "public_asset_state_check",
+      sql`${table.state} IN ('VERIFIED','DISABLED')`,
+    ),
+    check(
+      "public_asset_size_check",
+      sql`${table.byteSize}>0 AND ${table.byteSize}<=20971520`,
+    ),
+    check("public_asset_hash_check", sql`length(${table.contentHash})=64`),
+  ],
+);
+
+export const documentAssetDraft = business.table(
+  "document_asset_draft",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    assetId: uuid("asset_id").notNull(),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "document_asset_draft_pk",
+      columns: [table.workspaceId, table.documentId, table.assetId],
+    }),
+    unique("document_asset_draft_position_unique").on(
+      table.workspaceId,
+      table.documentId,
+      table.position,
+    ),
+    foreignKey({
+      name: "document_asset_draft_document_fk",
+      columns: [table.workspaceId, table.documentId],
+      foreignColumns: [document.workspaceId, document.id],
+    }),
+    foreignKey({
+      name: "document_asset_draft_asset_fk",
+      columns: [table.workspaceId, table.assetId],
+      foreignColumns: [asset.workspaceId, asset.id],
+    }),
+    check("document_asset_draft_position_check", sql`${table.position}>=0`),
+  ],
+);
+
+export const documentAssetRevision = business.table(
+  "document_asset_revision",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    revision: integer("revision").notNull(),
+    assetId: uuid("asset_id").notNull(),
+    publicAssetId: uuid("public_asset_id").notNull(),
+    position: integer("position").notNull(),
+    originalHash: text("original_hash").notNull(),
+    derivativeHash: text("derivative_hash").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "document_asset_revision_pk",
+      columns: [
+        table.workspaceId,
+        table.documentId,
+        table.revision,
+        table.assetId,
+      ],
+    }),
+    unique("document_asset_revision_position_unique").on(
+      table.workspaceId,
+      table.documentId,
+      table.revision,
+      table.position,
+    ),
+    foreignKey({
+      name: "document_asset_revision_document_fk",
+      columns: [table.workspaceId, table.documentId, table.revision],
+      foreignColumns: [
+        documentRevision.workspaceId,
+        documentRevision.documentId,
+        documentRevision.revision,
+      ],
+    }),
+    foreignKey({
+      name: "document_asset_revision_asset_fk",
+      columns: [table.workspaceId, table.assetId],
+      foreignColumns: [asset.workspaceId, asset.id],
+    }),
+    foreignKey({
+      name: "document_asset_revision_public_fk",
+      columns: [table.workspaceId, table.publicAssetId],
+      foreignColumns: [publicAsset.workspaceId, publicAsset.id],
+    }),
+    check("document_asset_revision_position_check", sql`${table.position}>=0`),
+    check(
+      "document_asset_revision_hash_check",
+      sql`length(${table.originalHash})=64 AND length(${table.derivativeHash})=64`,
+    ),
+  ],
+);
+
 export const task = business.table(
   "task",
   {

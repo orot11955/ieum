@@ -9,6 +9,7 @@ import { extractionOpenApiPaths } from "./extraction.js";
 import { documentOpenApiPaths } from "./documents.js";
 import { workbenchOpenApiPaths } from "./workbench.js";
 import { generationOpenApiPaths } from "./generation.js";
+import { assetOpenApiPaths } from "./assets.js";
 
 export const createCapturePath = "/api/v1/workspaces/{wid}/captures" as const;
 export const capturePath = "/api/v1/workspaces/{wid}/captures/{id}" as const;
@@ -196,6 +197,7 @@ export const managementOpenApi = {
     ...documentOpenApiPaths,
     ...workbenchOpenApiPaths,
     ...generationOpenApiPaths,
+    ...assetOpenApiPaths,
     [createCapturePath]: {
       post: {
         operationId: "createCapture",

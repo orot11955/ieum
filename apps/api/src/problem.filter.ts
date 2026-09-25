@@ -18,6 +18,9 @@ import { EvidencePackError } from "@ieum/backend/documents/evidence-packs";
 import { WorkbenchError } from "@ieum/backend/documents/workbench";
 import { SourceUnavailableError } from "@ieum/backend/documents/source-resolver";
 import { GenerationError } from "@ieum/backend/generation/generation-service";
+import { AssetError } from "@ieum/backend/assets/asset-service";
+import { AssetValidationError } from "@ieum/backend/assets/validation";
+import { DocumentAssetError } from "@ieum/backend/assets/document-usage";
 
 type FieldErrors = Record<string, string[]>;
 
@@ -53,7 +56,7 @@ export class ProblemFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const request = host.switchToHttp().getRequest<FastifyRequest>();
     const reply = host.switchToHttp().getResponse<FastifyReply>();
-    const status =
+    let status =
       exception instanceof GenerationError
         ? exception.code === "GENERATION_NOT_FOUND"
           ? 404
@@ -158,6 +161,17 @@ export class ProblemFilter implements ExceptionFilter {
                                         : exception instanceof HttpException
                                           ? exception.getStatus()
                                           : HttpStatus.INTERNAL_SERVER_ERROR;
+    if (exception instanceof AssetValidationError) status = 422;
+    if (exception instanceof DocumentAssetError)
+      status = exception.code === "DOCUMENT_NOT_FOUND" ? 404 : 409;
+    if (exception instanceof AssetError)
+      status =
+        exception.code === "ASSET_DISABLED" ||
+        exception.code === "ASSET_UNAVAILABLE"
+          ? 503
+          : exception.code === "ASSET_NOT_FOUND"
+            ? 404
+            : 409;
     const title =
       status === 422
         ? "Unprocessable Content"
@@ -166,7 +180,7 @@ export class ProblemFilter implements ExceptionFilter {
           : status >= 500
             ? "Internal Server Error"
             : "Request Error";
-    const code =
+    let code =
       exception instanceof GenerationError
         ? exception.code
         : exception instanceof ExternalExcerptError ||
@@ -206,6 +220,12 @@ export class ProblemFilter implements ExceptionFilter {
                                         : status >= 500
                                           ? "INTERNAL_ERROR"
                                           : "HTTP_ERROR";
+    if (
+      exception instanceof AssetValidationError ||
+      exception instanceof AssetError ||
+      exception instanceof DocumentAssetError
+    )
+      code = exception.code;
     const fieldErrors =
       exception instanceof HttpException
         ? fieldErrorsFor(exception)

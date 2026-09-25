@@ -68,6 +68,22 @@
       "types": "./dist/generation/openai-provider.d.ts",
       "default": "./dist/generation/openai-provider.js"
     },
+    "./assets/asset-service": {
+      "types": "./dist/assets/asset-service.d.ts",
+      "default": "./dist/assets/asset-service.js"
+    },
+    "./assets/storage": {
+      "types": "./dist/assets/storage.d.ts",
+      "default": "./dist/assets/storage.js"
+    },
+    "./assets/document-usage": {
+      "types": "./dist/assets/document-usage.d.ts",
+      "default": "./dist/assets/document-usage.js"
+    },
+    "./assets/validation": {
+      "types": "./dist/assets/validation.d.ts",
+      "default": "./dist/assets/validation.js"
+    },
     "./platform/jobs/generation": {
       "types": "./dist/platform/jobs/generation.d.ts",
       "default": "./dist/platform/jobs/generation.js"
@@ -128,11 +144,12 @@
     "test:db": "vitest run test/*.integration.test.ts"
   },
   "dependencies": {
-    "@ieum/core": "workspace:*",
     "@ieum/contracts": "workspace:*",
+    "@ieum/core": "workspace:*",
     "drizzle-orm": "0.45.3",
     "pg": "8.23.0",
-    "pg-boss": "12.32.0"
+    "pg-boss": "12.32.0",
+    "sharp": "0.35.4"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "12.1.0",

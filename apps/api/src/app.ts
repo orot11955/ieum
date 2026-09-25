@@ -25,6 +25,14 @@ export async function createApiApp(authConfig?: {
     { logger: false },
   );
   await app.register(helmet);
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addContentTypeParser(
+      "application/octet-stream",
+      { parseAs: "buffer", bodyLimit: 20 * 1024 * 1024 },
+      (_request, body, done) => done(null, body),
+    );
   if (authConfig) {
     const fastify = app.getHttpAdapter().getInstance();
     registerAuthRoutes(

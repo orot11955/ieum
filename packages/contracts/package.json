@@ -54,6 +54,10 @@
     "./generation": {
       "types": "./dist/generation.d.ts",
       "default": "./dist/generation.js"
+    },
+    "./assets": {
+      "types": "./dist/assets.d.ts",
+      "default": "./dist/assets.js"
     }
   },
   "scripts": {

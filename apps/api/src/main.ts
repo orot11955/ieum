@@ -17,6 +17,9 @@ import { EvidencePackService } from "@ieum/backend/documents/evidence-packs";
 import { DocumentWorkbenchService } from "@ieum/backend/documents/workbench";
 import { GenerationService } from "@ieum/backend/generation/generation-service";
 import { generationPolicyFromEnv } from "@ieum/backend/generation/input";
+import { AssetService } from "@ieum/backend/assets/asset-service";
+import { DocumentAssetService } from "@ieum/backend/assets/document-usage";
+import { LocalAssetStorage } from "@ieum/backend/assets/storage";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { createApiApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
@@ -40,6 +43,12 @@ const databaseUrl = process.env.AUTH_DATABASE_URL;
 const applicationDatabaseUrl = process.env.APPLICATION_DATABASE_URL;
 const baseUrl = process.env.AUTH_BASE_URL;
 const secret = process.env.AUTH_SECRET;
+const privateAssetRoot = process.env.IEUM_ASSET_PRIVATE_ROOT;
+const derivativeAssetRoot = process.env.IEUM_ASSET_DERIVATIVE_ROOT;
+if (Boolean(privateAssetRoot) !== Boolean(derivativeAssetRoot))
+  throw new Error(
+    "IEUM_ASSET_PRIVATE_ROOT and IEUM_ASSET_DERIVATIVE_ROOT must be set together",
+  );
 const authValues = [databaseUrl, applicationDatabaseUrl, baseUrl, secret];
 if (authValues.some(Boolean) && !authValues.every(Boolean)) {
   throw new Error(
@@ -66,6 +75,10 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
       authLockPool,
     );
     const commands = new CommandCoordinator(service);
+    const assetStorage =
+      privateAssetRoot && derivativeAssetRoot
+        ? await LocalAssetStorage.create(privateAssetRoot, derivativeAssetRoot)
+        : null;
     runtime = {
       auth: auth.auth,
       baseUrl,
@@ -85,6 +98,8 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
         evidencePacks: new EvidencePackService(service, commands),
         workbench: new DocumentWorkbenchService(service, commands),
         generation: new GenerationService(service, commands, generationPolicy),
+        assets: new AssetService(service, commands, assetStorage),
+        documentAssets: new DocumentAssetService(service, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin: new URL(baseUrl).origin,

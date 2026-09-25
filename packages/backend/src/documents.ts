@@ -8,6 +8,12 @@ import type { EditorEnvelope, EditorSourceRef } from "@ieum/contracts/editor";
 import { CommandCoordinator, CommandError } from "./command-coordinator.js";
 import type { CommandOutcome } from "./command-coordinator.js";
 import { IdentityService } from "./identity-service.js";
+import {
+  copyRevisionAssets,
+  draftAssetIds,
+  revisionAssetIds,
+  sealDraftAssets,
+} from "./assets/document-usage.js";
 
 export type DocumentKind = "WIKI" | "ARTICLE" | "NOTE";
 export type DocumentErrorCode =
@@ -307,6 +313,7 @@ export class DocumentService {
           linkVersion: row.link_version,
           content: content(row.content),
           links: links.rows.map((link) => link.to_document_id),
+          assetIds: await draftAssetIds(client, access.workspaceId, id),
           backlinks: backlinks.rows.map((link) => link.from_document_id),
           createdAt: row.created_at.toISOString(),
           updatedAt: row.updated_at.toISOString(),
@@ -470,6 +477,7 @@ export class DocumentService {
            WHERE workspace_id=$1 AND id=$2`,
           [access.workspaceId, input.id, revision],
         );
+        await sealDraftAssets(client, access.workspaceId, input.id, revision);
         return {
           response: {
             id: input.id,
@@ -523,6 +531,12 @@ export class DocumentService {
           revision,
           title: row.title,
           content: content(row.content),
+          assetIds: await revisionAssetIds(
+            client,
+            access.workspaceId,
+            id,
+            revision,
+          ),
           contentHash: row.content_hash,
           draftVersion: row.draft_version,
           restoredFromRevision: row.restored_from_revision,
@@ -596,6 +610,13 @@ export class DocumentService {
           `UPDATE business.document SET latest_revision=$3,updated_at=now()
            WHERE workspace_id=$1 AND id=$2`,
           [access.workspaceId, input.id, revision],
+        );
+        await copyRevisionAssets(
+          client,
+          access.workspaceId,
+          input.id,
+          input.sourceRevision,
+          revision,
         );
         return {
           response: {

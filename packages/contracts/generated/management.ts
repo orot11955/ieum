@@ -975,6 +975,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{wid}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAssets"];
+        put?: never;
+        post: operations["createAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAsset"];
+        put?: never;
+        post?: never;
+        delete: operations["deleteAsset"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/assets/{assetId}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["downloadPrivateAsset"];
+        put: operations["completeAsset"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/assets/{assetId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["previewAssetDerivative"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{wid}/documents/{id}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["replaceDocumentAssets"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{wid}/captures": {
         parameters: {
             query?: never;
@@ -3647,6 +3727,7 @@ export interface operations {
                                 })[];
                             };
                         };
+                        assetIds: string[];
                         links: string[];
                         backlinks: string[];
                         /** Format: date-time */
@@ -3939,6 +4020,7 @@ export interface operations {
                                 })[];
                             };
                         };
+                        assetIds: string[];
                         contentHash: string;
                         draftVersion: number | null;
                         restoredFromRevision: number | null;
@@ -4858,6 +4940,302 @@ export interface operations {
                         draftVersion: number;
                         appliedProposalIds: string[];
                         recheckBlockIds: string[];
+                    };
+                };
+            };
+        };
+    };
+    listAssets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private assets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        assets: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workspaceId: string;
+                            fileName: string;
+                            /** @enum {string} */
+                            declaredMime: "text/plain" | "text/markdown" | "image/png" | "image/jpeg" | "image/webp";
+                            expectedSize: number;
+                            /** @enum {string} */
+                            state: "PENDING" | "VERIFIED" | "REJECTED" | "DELETED";
+                            rejectionCode: string | null;
+                            detectedMime: string | null;
+                            byteSize: number | null;
+                            contentHash: string | null;
+                            /** Format: uuid */
+                            publicAssetId: string | null;
+                            derivativeMime: string | null;
+                            derivativeHash: string | null;
+                            usedInDocumentIds: string[];
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    createAsset: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileName: string;
+                    /** @enum {string} */
+                    declaredMime: "text/plain" | "text/markdown" | "image/png" | "image/jpeg" | "image/webp";
+                    expectedSize: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Pending asset */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        assetId: string;
+                        /** @enum {string} */
+                        state: "PENDING";
+                    };
+                };
+            };
+        };
+    };
+    getAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private asset metadata */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        workspaceId: string;
+                        fileName: string;
+                        /** @enum {string} */
+                        declaredMime: "text/plain" | "text/markdown" | "image/png" | "image/jpeg" | "image/webp";
+                        expectedSize: number;
+                        /** @enum {string} */
+                        state: "PENDING" | "VERIFIED" | "REJECTED" | "DELETED";
+                        rejectionCode: string | null;
+                        detectedMime: string | null;
+                        byteSize: number | null;
+                        contentHash: string | null;
+                        /** Format: uuid */
+                        publicAssetId: string | null;
+                        derivativeMime: string | null;
+                        derivativeHash: string | null;
+                        usedInDocumentIds: string[];
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+        };
+    };
+    deleteAsset: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unused asset removed from use */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        assetId: string;
+                        /** @enum {string} */
+                        state: "DELETED";
+                    };
+                };
+            };
+        };
+    };
+    downloadPrivateAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Owner-only original bytes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                    "text/markdown": string;
+                    "image/png": string;
+                    "image/jpeg": string;
+                    "image/webp": string;
+                };
+            };
+        };
+    };
+    completeAsset: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Verified or rejected asset */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        assetId: string;
+                        /** @enum {string} */
+                        state: "PENDING" | "VERIFIED" | "REJECTED" | "DELETED";
+                        rejectionCode: string | null;
+                        /** Format: uuid */
+                        publicAssetId: string | null;
+                    };
+                };
+            };
+        };
+    };
+    previewAssetDerivative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wid: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Owner-only public derivative preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                    "image/png": string;
+                };
+            };
+        };
+    };
+    replaceDocumentAssets: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                wid: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    baseDraftVersion: number;
+                    assetIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Draft asset manifest replaced */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        commandId: string;
+                        replayed: boolean;
+                        /** Format: uuid */
+                        documentId: string;
+                        draftVersion: number;
+                        assetIds: string[];
                     };
                 };
             };

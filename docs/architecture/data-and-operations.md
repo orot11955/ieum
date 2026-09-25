@@ -23,7 +23,7 @@
 
 파일 metadata에 workspace, uploader, originalName, opaque storageKey, detectedType, size, checksum, validationState, usage refs, createdAt을 둔다. 파일명/경로는 사용자 입력으로 저장 위치를 결정하지 않는다. 저장 구현은 로컬 volume 또는 S3-compatible adapter 중 하나로 시작하고 API 계약은 asset ID를 사용한다.
 
-초기 허용안은 Markdown/plain text, PNG/JPEG/WebP, PDF다. 파일별 20 MiB, 이미지 pixel 한도, 사용자별 quota 등은 설정값 예시이며 실제 장비와 사용성 시험에서 조정한다. 확장자·선언 MIME·signature를 함께 검사하고 실행 파일, HTML, SVG, MDX, 임의 archive는 일반 첨부로 기본 차단한다. 허용 PDF도 무해하다는 뜻은 아니며 private download 또는 격리 preview로 처리한다.
+BE-18 초기 허용 형식은 Markdown/plain text와 PNG/JPEG/WebP다. PDF는 격리 preview·검사 정책이 준비되는 후속 범위로 보류한다. 파일별 20 MiB와 이미지 2천만 pixel 한도를 적용하며 사용자별 quota는 후속 운영 정책에서 결정한다. 확장자·선언 MIME·signature를 함께 검사하고 실행 파일, HTML, SVG, MDX, 임의 archive는 일반 첨부로 기본 차단한다.
 
 상태는 PENDING→VERIFIED/REJECTED다. 악성 콘텐츠 검사/안전한 이미지 재인코딩/metadata 제거를 적용하고 public upload를 켜기 전 필수 검사기를 검증한다. 검사 전 본문 삽입·공개·model ingestion을 허용하지 않는다. 저장소는 webroot 밖에 두고 private 다운로드마다 권한을 검사한다. [OWASP File Upload](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html)
 

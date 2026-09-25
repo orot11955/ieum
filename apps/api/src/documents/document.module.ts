@@ -4,6 +4,7 @@ import type { IdentityRuntime } from "../identity/identity.runtime.js";
 import { DocumentController } from "./document.controller.js";
 import { WorkbenchController } from "./workbench.controller.js";
 import { GenerationController } from "./generation.controller.js";
+import { AssetController } from "./asset.controller.js";
 import { DOCUMENT_RUNTIME } from "./document.runtime.js";
 
 @Module({})
@@ -15,6 +16,7 @@ export class DocumentModule {
         DocumentController,
         WorkbenchController,
         GenerationController,
+        AssetController,
       ],
       providers: [{ provide: DOCUMENT_RUNTIME, useValue: runtime }],
     };
