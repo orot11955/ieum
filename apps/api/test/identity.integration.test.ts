@@ -3999,17 +3999,17 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(
       transferPreview.rows
         .filter((row) => row.recordKind === "event")
-        .every((row) => row.state === "NEW"),
+        .every((row) => row.state === "DUPLICATE"),
     ).toBe(true);
     expect(
       transferPreview.rows
         .filter((row) => row.recordKind === "context")
-        .every((row) => row.state === "NEW"),
+        .every((row) => row.state === "DUPLICATE"),
     ).toBe(true);
     const initialTaskStates = transferPreview.rows
       .filter((row) => row.recordKind === "task")
       .map((row) => row.state);
-    expect(initialTaskStates).toContain("NEW");
+    expect(initialTaskStates).toContain("DUPLICATE");
     expect(initialTaskStates).toContain("MISSING_REFERENCE");
     const changedPreview = await app.inject({
       method: "POST",
@@ -4032,14 +4032,13 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     );
     expect(missingTransferReferences.rows).toEqual([
       { record_kind: "task", reason_code: "MISSING_REFERENCE" },
-      { record_kind: "task_result", reason_code: "CONTENT_CONFLICT" },
     ]);
     const linkedImportedTasks = await admin.query<{ count: string }>(
       `SELECT count(*)::text AS count FROM business.transfer_row tr
        JOIN business.task t ON t.workspace_id=tr.workspace_id AND t.id=tr.target_id
        JOIN business.transfer_row cr ON cr.workspace_id=tr.workspace_id AND cr.run_id=tr.run_id
-         AND cr.record_kind='context' AND cr.target_id=t.context_id AND cr.state='IMPORTED'
-       WHERE tr.workspace_id=$1 AND tr.run_id=$2 AND tr.record_kind='task' AND tr.state='IMPORTED'`,
+         AND cr.record_kind='context' AND cr.target_id=t.context_id AND cr.state='SKIPPED'
+       WHERE tr.workspace_id=$1 AND tr.run_id=$2 AND tr.record_kind='task' AND tr.state='SKIPPED'`,
       [operator.workspaceId, importId],
     );
     expect(Number(linkedImportedTasks.rows[0]?.count)).toBeGreaterThan(0);
@@ -4112,7 +4111,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     ).toBe(true);
     expect(
       transitiveRows.some(
-        (row) => row.recordKind === "task_result" && row.state === "CONFLICT",
+        (row) => row.recordKind === "task_result" && row.state === "DUPLICATE",
       ),
     ).toBe(true);
     const transitiveApplied = await app.inject({
@@ -4128,7 +4127,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(transitiveApplied.json<{ state: string }>().state).toBe("PARTIAL");
     const repeatedResults = await admin.query<{ count: string }>(
       `SELECT count(*)::text AS count FROM business.transfer_row
-       WHERE run_id=$1 AND record_kind='task_result' AND state='FAILED'`,
+       WHERE run_id=$1 AND record_kind='task_result' AND state='SKIPPED'`,
       [restaged.json<{ id: string }>().id],
     );
     expect(Number(repeatedResults.rows[0]?.count)).toBeGreaterThan(0);

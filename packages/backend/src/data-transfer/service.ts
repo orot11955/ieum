@@ -937,13 +937,20 @@ export class DataTransferService {
       target_id: string;
       same: boolean | null;
     }>(
-      `SELECT o.target_id,
+      `WITH candidate AS (
+         SELECT target_id,source_revision,0 AS priority FROM business.transfer_origin
+         WHERE workspace_id=$1 AND record_kind='context'
+           AND source_workspace_id=$2 AND source_id=$3
+         UNION ALL
+         SELECT id,identity_revision,1 FROM business.context
+         WHERE workspace_id=$1 AND id=$3 AND $1::uuid=$2::uuid
+       )
+       SELECT o.target_id,
          o.source_revision=$4 AND c.name=$5 AND c.purpose=$6 AND c.scope=$7
          AND c.kind=$8 AND c.state=$9 AND c.superseded_by_id IS NULL AS same
-       FROM business.transfer_origin o LEFT JOIN business.context c
-         ON c.workspace_id=o.workspace_id AND c.id=o.target_id
-       WHERE o.workspace_id=$1 AND o.record_kind='context'
-         AND o.source_workspace_id=$2 AND o.source_id=$3 LIMIT 1`,
+       FROM candidate o LEFT JOIN business.context c
+         ON c.workspace_id=$1 AND c.id=o.target_id
+       ORDER BY o.priority LIMIT 1`,
       [
         workspaceId,
         record.originWorkspaceId,
@@ -1001,19 +1008,26 @@ export class DataTransferService {
     if (!context.valid || record.originUnitId)
       return { ...base, state: "MISSING_REFERENCE", targetId: null };
     const existing = await client.query<{ target_id: string; same: boolean }>(
-      `SELECT o.target_id,
+      `WITH candidate AS (
+         SELECT target_id,source_revision,0 AS priority FROM business.transfer_origin
+         WHERE workspace_id=$1 AND record_kind='task'
+           AND source_workspace_id=$2 AND source_id=$3
+         UNION ALL
+         SELECT id,version,1 FROM business.task
+         WHERE workspace_id=$1 AND id=$3 AND $1::uuid=$2::uuid
+       )
+       SELECT o.target_id,
          o.source_revision=$4 AND t.title=$5 AND t.description=$6 AND t.state=$7
          AND t.version=$4 AND t.due_kind=$8
          AND t.due_date IS NOT DISTINCT FROM $9::date
          AND t.due_at IS NOT DISTINCT FROM $10::timestamptz
          AND t.due_time_zone IS NOT DISTINCT FROM $11::text
          AND t.context_id IS NOT DISTINCT FROM $14::uuid AND t.origin_unit_id IS NULL
-         AND t.completed_at IS NOT DISTINCT FROM $12::timestamptz
+         AND date_trunc('milliseconds',t.completed_at) IS NOT DISTINCT FROM $12::timestamptz
          AND t.completion_version IS NOT DISTINCT FROM $13::integer AS same
-       FROM business.transfer_origin o LEFT JOIN business.task t
-         ON t.workspace_id=o.workspace_id AND t.id=o.target_id
-       WHERE o.workspace_id=$1 AND o.record_kind='task'
-         AND o.source_workspace_id=$2 AND o.source_id=$3 LIMIT 1`,
+       FROM candidate o LEFT JOIN business.task t
+         ON t.workspace_id=$1 AND t.id=o.target_id
+       ORDER BY o.priority LIMIT 1`,
       [
         workspaceId,
         record.originWorkspaceId,
@@ -1119,7 +1133,15 @@ export class DataTransferService {
         targetId: row.rows[0].target_id,
       };
     const existing = await client.query<{ target_id: string; same: boolean }>(
-      `SELECT o.target_id,
+      `WITH candidate AS (
+         SELECT target_id,source_revision,0 AS priority FROM business.transfer_origin
+         WHERE workspace_id=$1 AND record_kind='event'
+           AND source_workspace_id=$2 AND source_id=$3
+         UNION ALL
+         SELECT id,version,1 FROM business.calendar_event
+         WHERE workspace_id=$1 AND id=$3 AND $1::uuid=$2::uuid
+       )
+       SELECT o.target_id,
          o.source_revision=$4 AND e.title=$5 AND e.description=$6 AND e.state=$7
          AND e.version=$4 AND e.schedule_kind=$8 AND e.time_zone=$9
          AND e.start_at IS NOT DISTINCT FROM $10::timestamptz
@@ -1130,10 +1152,9 @@ export class DataTransferService {
          AND e.end_offset_minutes IS NOT DISTINCT FROM $15::integer
          AND e.start_date IS NOT DISTINCT FROM $16::date
          AND e.end_date_exclusive IS NOT DISTINCT FROM $17::date AS same
-       FROM business.transfer_origin o LEFT JOIN business.calendar_event e
-         ON e.workspace_id=o.workspace_id AND e.id=o.target_id
-       WHERE o.workspace_id=$1 AND o.record_kind='event'
-         AND o.source_workspace_id=$2 AND o.source_id=$3 LIMIT 1`,
+       FROM candidate o LEFT JOIN business.calendar_event e
+         ON e.workspace_id=$1 AND e.id=o.target_id
+       ORDER BY o.priority LIMIT 1`,
       [
         workspaceId,
         record.originWorkspaceId,
@@ -1216,15 +1237,22 @@ export class DataTransferService {
       target_id: string;
       same: boolean | null;
     }>(
-      `SELECT o.target_id,
+      `WITH candidate AS (
+         SELECT target_id,source_revision,0 AS priority FROM business.transfer_origin
+         WHERE workspace_id=$1 AND record_kind='task_result'
+           AND source_workspace_id=$2 AND source_id=$3
+         UNION ALL
+         SELECT id,completion_version,1 FROM business.task_result
+         WHERE workspace_id=$1 AND id=$3 AND $1::uuid=$2::uuid
+       )
+       SELECT o.target_id,
          o.source_revision=$4 AND tr.task_id IS NOT DISTINCT FROM $5::uuid
          AND tr.capture_id IS NOT DISTINCT FROM $6::uuid
          AND tr.completion_version=$4
-         AND tr.recorded_at=$7::timestamptz AS same
-       FROM business.transfer_origin o LEFT JOIN business.task_result tr
-         ON tr.workspace_id=o.workspace_id AND tr.id=o.target_id
-       WHERE o.workspace_id=$1 AND o.record_kind='task_result'
-         AND o.source_workspace_id=$2 AND o.source_id=$3 LIMIT 1`,
+         AND date_trunc('milliseconds',tr.recorded_at)=$7::timestamptz AS same
+       FROM candidate o LEFT JOIN business.task_result tr
+         ON tr.workspace_id=$1 AND tr.id=o.target_id
+       ORDER BY o.priority LIMIT 1`,
       [
         workspaceId,
         record.originWorkspaceId,
