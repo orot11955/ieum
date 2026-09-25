@@ -6,6 +6,7 @@ import {
   createContextBundle,
   createPersonalBundle,
   createTaskHistoryBundle,
+  createTaskResultBundle,
   readCaptureBundle,
 } from "./manifest.js";
 
@@ -31,7 +32,7 @@ describe("BE-21 portable capture manifest", () => {
     const bundle = createCaptureBundle(workspaceId, [record]);
     const files = unpackTransferArchive(bundle);
     const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
-    manifest.version = 5;
+    manifest.version = 6;
     expect(() =>
       readCaptureBundle(
         packTransferArchive([
@@ -359,6 +360,140 @@ describe("BE-21 portable capture manifest", () => {
             path: "manifest.json",
             bytes: Buffer.from(JSON.stringify(manifest)),
           },
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
+  });
+
+  it("requires version 5 Task results to reference a Capture and DONE transition", () => {
+    const taskId = randomUUID();
+    const captureId = randomUUID();
+    const resultId = randomUUID();
+    const bundle = createTaskResultBundle(
+      workspaceId,
+      [{ id: captureId, revision: 1, title: "결과", rawBody: "본문" }],
+      [
+        {
+          id: taskId,
+          originWorkspaceId: workspaceId,
+          originId: taskId,
+          title: "완료",
+          description: "",
+          state: "DONE",
+          version: 2,
+          dueKind: "NONE",
+          dueDate: null,
+          dueAt: null,
+          dueTimeZone: null,
+          contextId: null,
+          originUnitId: null,
+          originUnitRevision: null,
+          completedAt: "2026-09-25T00:00:00.000Z",
+          completionVersion: 2,
+        },
+      ],
+      [],
+      [],
+      [
+        {
+          taskId,
+          version: 2,
+          fromState: "TODO",
+          toState: "DONE",
+          recordedAt: "2026-09-25T00:00:00.000Z",
+        },
+      ],
+      [
+        {
+          id: resultId,
+          originWorkspaceId: workspaceId,
+          originId: resultId,
+          taskId,
+          captureId,
+          completionVersion: 2,
+          recordedAt: "2026-09-25T00:01:00.000Z",
+        },
+      ],
+    );
+    expect(readCaptureBundle(bundle).manifest.version).toBe(5);
+    const files = unpackTransferArchive(bundle);
+    const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
+    manifest.taskResults[0].taskId = taskId.toUpperCase();
+    manifest.taskResults[0].captureId = captureId.toUpperCase();
+    manifest.taskTransitions[0].taskId = taskId.toUpperCase();
+    expect(
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+          ...[...files]
+            .filter(([path]) => path !== "manifest.json")
+            .map(([path, bytes]) => ({ path, bytes })),
+        ]),
+      ).manifest.version,
+    ).toBe(5);
+    manifest.taskResults[0].taskId = taskId;
+    manifest.taskResults[0].captureId = captureId;
+    manifest.taskTransitions[0].taskId = taskId;
+    manifest.taskResults[0].captureId = randomUUID();
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+          ...[...files]
+            .filter(([path]) => path !== "manifest.json")
+            .map(([path, bytes]) => ({ path, bytes })),
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
+    manifest.taskResults[0].captureId = captureId;
+    manifest.taskTransitions = [];
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+          ...[...files]
+            .filter(([path]) => path !== "manifest.json")
+            .map(([path, bytes]) => ({ path, bytes })),
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
+    const duplicate = JSON.parse(files.get("manifest.json")!.toString("utf8"));
+    const otherTaskId = randomUUID();
+    duplicate.tasks.push({
+      ...duplicate.tasks[0],
+      id: otherTaskId,
+      originId: otherTaskId,
+    });
+    duplicate.taskTransitions.push({
+      ...duplicate.taskTransitions[0],
+      taskId: otherTaskId,
+    });
+    const otherResultId = randomUUID();
+    duplicate.taskResults.push({
+      ...duplicate.taskResults[0],
+      id: otherResultId,
+      originId: otherResultId,
+      taskId: otherTaskId,
+    });
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(duplicate)),
+          },
+          ...[...files]
+            .filter(([path]) => path !== "manifest.json")
+            .map(([path, bytes]) => ({ path, bytes })),
         ]),
       ),
     ).toThrow("INVALID_BUNDLE");

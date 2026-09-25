@@ -35,6 +35,7 @@ import {
   createContextBundle,
   createPersonalBundle,
   createTaskHistoryBundle,
+  createTaskResultBundle,
   readCaptureBundle,
 } from "@ieum/backend/data-transfer/manifest";
 import {
@@ -4311,8 +4312,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const linkedManifest = readCaptureBundle(
       linkedDownload.rawPayload,
     ).manifest;
-    expect(linkedManifest.version).toBe(4);
-    if (linkedManifest.version !== 4) throw new Error("expected v4");
+    expect(linkedManifest.version).toBe(5);
+    if (linkedManifest.version !== 5) throw new Error("expected v5");
     expect(
       linkedManifest.contexts.find(
         (context) => context.id === linkedTargets.rows[0]?.context_id,
@@ -4442,6 +4443,121 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         .json<{ rows: { state: string }[] }>()
         .rows.map((row) => row.state),
     ).toEqual(["DUPLICATE"]);
+    const resultSource = randomUUID();
+    const resultTaskId = randomUUID();
+    const portableResultCaptureId = randomUUID();
+    const resultId = randomUUID();
+    const resultBundle = createTaskResultBundle(
+      resultSource,
+      [
+        {
+          id: portableResultCaptureId,
+          revision: 1,
+          title: "완료 결과 원문",
+          rawBody: "완료 결과 본문",
+        },
+      ],
+      [
+        {
+          id: resultTaskId,
+          originWorkspaceId: resultSource,
+          originId: resultTaskId,
+          title: "결과가 있는 할일",
+          description: "",
+          state: "DONE",
+          version: 2,
+          dueKind: "NONE",
+          dueDate: null,
+          dueAt: null,
+          dueTimeZone: null,
+          contextId: null,
+          originUnitId: null,
+          originUnitRevision: null,
+          completedAt: "2026-09-25T00:00:00.000Z",
+          completionVersion: 2,
+        },
+      ],
+      [],
+      [],
+      [
+        {
+          taskId: resultTaskId.toUpperCase(),
+          version: 2,
+          fromState: "TODO",
+          toState: "DONE",
+          recordedAt: "2026-09-25T00:00:00.000Z",
+        },
+      ],
+      [
+        {
+          id: resultId,
+          originWorkspaceId: resultSource,
+          originId: resultId,
+          taskId: resultTaskId.toUpperCase(),
+          captureId: portableResultCaptureId.toUpperCase(),
+          completionVersion: 2,
+          recordedAt: "2026-09-25T00:01:00.000Z",
+        },
+      ],
+    );
+    const resultStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: resultBundle,
+    });
+    expect(resultStage.statusCode, resultStage.body).toBe(201);
+    expect(resultStage.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS",
+    );
+    const resultRunId = resultStage.json<{ id: string }>().id;
+    const resultPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${resultRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(resultPreview.statusCode, resultPreview.body).toBe(200);
+    expect(
+      resultPreview
+        .json<{ rows: { state: string }[] }>()
+        .rows.map((row) => row.state),
+    ).toEqual(["NEW", "NEW", "NEW"]);
+    const resultApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${resultRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: resultPreview.json<{ previewHash: string }>().previewHash,
+      },
+    });
+    expect(resultApplied.statusCode, resultApplied.body).toBe(201);
+    expect(resultApplied.json<{ state: string }>().state).toBe("APPLIED");
+    const resultTargets = await admin.query<{
+      task_id: string;
+      capture_id: string;
+      mapped_task_id: string;
+      mapped_capture_id: string;
+    }>(
+      `SELECT tr.task_id,tr.capture_id,ot.target_id AS mapped_task_id,
+              oc.target_id AS mapped_capture_id
+       FROM business.transfer_origin orr
+       JOIN business.task_result tr ON tr.workspace_id=orr.workspace_id AND tr.id=orr.target_id
+       JOIN business.transfer_origin ot ON ot.workspace_id=orr.workspace_id
+         AND ot.record_kind='task' AND ot.source_id=$3
+       JOIN business.transfer_origin oc ON oc.workspace_id=orr.workspace_id
+         AND oc.record_kind='capture' AND oc.source_id=$4
+       WHERE orr.workspace_id=$1 AND orr.record_kind='task_result' AND orr.source_id=$2`,
+      [operator.workspaceId, resultId, resultTaskId, portableResultCaptureId],
+    );
+    expect(resultTargets.rows[0]?.task_id).toBe(
+      resultTargets.rows[0]?.mapped_task_id,
+    );
+    expect(resultTargets.rows[0]?.capture_id).toBe(
+      resultTargets.rows[0]?.mapped_capture_id,
+    );
     await admin.query("DELETE FROM business.task WHERE id=$1", [
       transferredTask.rows[0]?.target_id,
     ]);
