@@ -1208,7 +1208,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["createCaptureExport"];
+        post: operations["createPortableExport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1222,7 +1222,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["downloadCaptureExport"];
+        get: operations["downloadPortableExport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1240,7 +1240,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["stageCaptureImport"];
+        post: operations["stagePortableImport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1254,7 +1254,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["previewCaptureImport"];
+        get: operations["previewPortableImport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1272,7 +1272,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["applyCaptureImport"];
+        post: operations["applyPortableImport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5937,7 +5937,7 @@ export interface operations {
             };
         };
     };
-    createCaptureExport: {
+    createPortableExport: {
         parameters: {
             query?: never;
             header?: never;
@@ -5948,7 +5948,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Capture-only export run; expires in 24 hours */
+            /** @description Capture, Task and Event export run; expires in 24 hours */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -5971,7 +5971,7 @@ export interface operations {
             };
         };
     };
-    downloadCaptureExport: {
+    downloadPortableExport: {
         parameters: {
             query?: never;
             header?: never;
@@ -6013,7 +6013,7 @@ export interface operations {
             };
         };
     };
-    stageCaptureImport: {
+    stagePortableImport: {
         parameters: {
             query?: never;
             header?: never;
@@ -6044,7 +6044,7 @@ export interface operations {
             };
         };
     };
-    previewCaptureImport: {
+    previewPortableImport: {
         parameters: {
             query?: never;
             header?: never;
@@ -6079,7 +6079,7 @@ export interface operations {
             };
         };
     };
-    applyCaptureImport: {
+    applyPortableImport: {
         parameters: {
             query?: never;
             header?: never;

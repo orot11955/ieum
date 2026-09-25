@@ -10,18 +10,68 @@ const capture = z.strictObject({
   path: z.string().regex(/^captures\/[0-9a-f-]{36}\.md$/),
   sha256,
 });
-export const TransferManifestSchema = z.strictObject({
+export const TransferManifestV1Schema = z.strictObject({
   format: z.literal("ieum-personal"),
   version: z.literal(1),
   exportedAt: z.iso.datetime({ offset: true }),
   sourceWorkspaceId: z.uuid(),
   captures: z.array(capture).max(255),
 });
-export type TransferManifest = z.infer<typeof TransferManifestSchema>;
+export type TransferManifest = z.infer<typeof TransferManifestV1Schema>;
+
+const portableTask = z.strictObject({
+  id: z.uuid(),
+  originWorkspaceId: z.uuid(),
+  originId: z.uuid(),
+  title: z.string().trim().min(1).max(300),
+  description: z.string().max(10000),
+  state: z.enum(["TODO", "IN_PROGRESS", "ON_HOLD", "DONE", "CANCELED"]),
+  version: z.int().positive(),
+  dueKind: z.enum(["NONE", "DATE", "INSTANT"]),
+  dueDate: z.iso.date().nullable(),
+  dueAt: z.iso.datetime({ offset: true }).nullable(),
+  dueTimeZone: z.string().min(1).max(100).nullable(),
+  contextId: z.uuid().nullable(),
+  originUnitId: z.uuid().nullable(),
+  originUnitRevision: z.int().positive().nullable(),
+  completedAt: z.iso.datetime({ offset: true }).nullable(),
+  completionVersion: z.int().positive().nullable(),
+});
+const portableEvent = z.strictObject({
+  id: z.uuid(),
+  originWorkspaceId: z.uuid(),
+  originId: z.uuid(),
+  title: z.string().trim().min(1).max(300),
+  description: z.string().max(10000),
+  state: z.enum(["CONFIRMED", "CANCELED"]),
+  version: z.int().positive(),
+  scheduleKind: z.enum(["TIMED", "ALL_DAY"]),
+  timeZone: z.string().min(1).max(100),
+  startAt: z.iso.datetime({ offset: true }).nullable(),
+  endAt: z.iso.datetime({ offset: true }).nullable(),
+  startLocal: z.string().nullable(),
+  endLocal: z.string().nullable(),
+  startOffsetMinutes: z.int().nullable(),
+  endOffsetMinutes: z.int().nullable(),
+  startDate: z.iso.date().nullable(),
+  endDateExclusive: z.iso.date().nullable(),
+});
+export const TransferManifestV2Schema = TransferManifestV1Schema.omit({
+  version: true,
+}).extend({
+  version: z.literal(2),
+  tasks: z.array(portableTask).max(4096),
+  events: z.array(portableEvent).max(4096),
+});
+export const TransferManifestSchema = z.discriminatedUnion("version", [
+  TransferManifestV1Schema,
+  TransferManifestV2Schema,
+]);
+export type TransferManifestV2 = z.infer<typeof TransferManifestV2Schema>;
 
 export const TransferRunSchema = z.strictObject({
   id: z.uuid(),
-  scope: z.literal("CAPTURES_ONLY"),
+  scope: z.enum(["CAPTURES_ONLY", "CAPTURES_TASKS_EVENTS"]),
   kind: z.enum(["EXPORT", "IMPORT"]),
   state: z.enum(["READY", "STAGED", "APPLIED", "PARTIAL"]),
   bundleHash: sha256,
@@ -31,12 +81,14 @@ export const TransferRunSchema = z.strictObject({
   appliedAt: z.iso.datetime({ offset: true }).nullable(),
 });
 export const TransferPreviewRowSchema = z.strictObject({
+  recordKind: z.enum(["capture", "task", "event"]),
   sourceId: z.uuid(),
   sourceRevision: z.int().positive(),
   state: z.enum([
     "NEW",
     "DUPLICATE",
     "CONFLICT",
+    "MISSING_REFERENCE",
     "IMPORTED",
     "SKIPPED",
     "FAILED",
@@ -72,10 +124,13 @@ const error = { description: "Problem response" };
 export const dataTransferOpenApiPaths = {
   "/api/v1/workspaces/{wid}/data-transfer/exports": {
     post: {
-      operationId: "createCaptureExport",
+      operationId: "createPortableExport",
       parameters: [wid],
       responses: {
-        "201": { description: "Capture-only export run; expires in 24 hours" },
+        "201": {
+          description:
+            "Capture, Task and Event export run; expires in 24 hours",
+        },
         "403": error,
         "503": error,
       },
@@ -83,7 +138,7 @@ export const dataTransferOpenApiPaths = {
   },
   "/api/v1/workspaces/{wid}/data-transfer/exports/{id}/download": {
     get: {
-      operationId: "downloadCaptureExport",
+      operationId: "downloadPortableExport",
       parameters: [wid, id],
       responses: {
         "200": { description: "Private gzipped tar bundle" },
@@ -95,7 +150,7 @@ export const dataTransferOpenApiPaths = {
   },
   "/api/v1/workspaces/{wid}/data-transfer/imports": {
     post: {
-      operationId: "stageCaptureImport",
+      operationId: "stagePortableImport",
       parameters: [wid],
       requestBody: {
         required: true,
@@ -113,7 +168,7 @@ export const dataTransferOpenApiPaths = {
   },
   "/api/v1/workspaces/{wid}/data-transfer/imports/{id}/preview": {
     get: {
-      operationId: "previewCaptureImport",
+      operationId: "previewPortableImport",
       parameters: [wid, id],
       responses: {
         "200": { description: "Current duplicate/conflict preview" },
@@ -124,7 +179,7 @@ export const dataTransferOpenApiPaths = {
   },
   "/api/v1/workspaces/{wid}/data-transfer/imports/{id}/apply": {
     post: {
-      operationId: "applyCaptureImport",
+      operationId: "applyPortableImport",
       parameters: [wid, id],
       requestBody: {
         required: true,

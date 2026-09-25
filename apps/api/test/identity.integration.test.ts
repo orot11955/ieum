@@ -30,7 +30,10 @@ import { PublicationService } from "@ieum/backend/publishing/publication-service
 import { DeliveryCredentialService } from "@ieum/backend/delivery/credential-service";
 import { DataTransferService } from "@ieum/backend/data-transfer/service";
 import { LocalTransferStorage } from "@ieum/backend/data-transfer/storage";
-import { createCaptureBundle } from "@ieum/backend/data-transfer/manifest";
+import {
+  createCaptureBundle,
+  createPersonalBundle,
+} from "@ieum/backend/data-transfer/manifest";
 import {
   assertDeliveryDatabaseRole,
   DeliveryReader,
@@ -3980,10 +3983,24 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(dryRun.statusCode, dryRun.body).toBe(200);
     const transferPreview = dryRun.json<{
       previewHash: string;
-      rows: { state: string }[];
+      rows: { recordKind: string; state: string }[];
     }>();
     expect(transferPreview.rows.length).toBeGreaterThan(0);
-    expect(transferPreview.rows.every((row) => row.state === "NEW")).toBe(true);
+    expect(
+      transferPreview.rows
+        .filter((row) => row.recordKind === "capture")
+        .every((row) => row.state === "NEW"),
+    ).toBe(true);
+    expect(
+      transferPreview.rows
+        .filter((row) => row.recordKind === "event")
+        .every((row) => row.state === "NEW"),
+    ).toBe(true);
+    expect(
+      transferPreview.rows
+        .filter((row) => row.recordKind === "task")
+        .every((row) => row.state === "MISSING_REFERENCE"),
+    ).toBe(true);
     const changedPreview = await app.inject({
       method: "POST",
       url: `${transferBase}/imports/${importId}/apply`,
@@ -3998,7 +4015,15 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       payload: { previewHash: transferPreview.previewHash },
     });
     expect(transferApplied.statusCode, transferApplied.body).toBe(201);
-    expect(transferApplied.json()).toMatchObject({ state: "APPLIED" });
+    expect(transferApplied.json()).toMatchObject({ state: "PARTIAL" });
+    const missingTransferReferences = await admin.query(
+      "SELECT record_kind,reason_code FROM business.transfer_row WHERE run_id=$1 AND state='FAILED' ORDER BY record_kind",
+      [importId],
+    );
+    expect(missingTransferReferences.rows).toEqual([
+      { record_kind: "task", reason_code: "MISSING_REFERENCE" },
+      { record_kind: "task", reason_code: "MISSING_REFERENCE" },
+    ]);
     const repeated = await app.inject({
       method: "POST",
       url: `${transferBase}/imports`,
@@ -4018,8 +4043,11 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(repeatedPreview.statusCode, repeatedPreview.body).toBe(200);
     expect(
       repeatedPreview
-        .json<{ rows: { state: string }[] }>()
-        .rows.every((row) => row.state === "IMPORTED"),
+        .json<{ rows: { recordKind: string; state: string }[] }>()
+        .rows.every(
+          (row) =>
+            row.state === (row.recordKind === "task" ? "FAILED" : "IMPORTED"),
+        ),
     ).toBe(true);
     const reexport = await app.inject({
       method: "POST",
@@ -4049,9 +4077,288 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(
       transitivePreview
-        .json<{ rows: { state: string }[] }>()
-        .rows.every((row) => row.state === "DUPLICATE"),
+        .json<{ rows: { recordKind: string; state: string }[] }>()
+        .rows.every(
+          (row) =>
+            row.state ===
+            (row.recordKind === "task" ? "MISSING_REFERENCE" : "DUPLICATE"),
+        ),
     ).toBe(true);
+    const portableSource = randomUUID();
+    const portableTaskId = randomUUID();
+    const portableEventId = randomUUID();
+    const portable = createPersonalBundle(
+      portableSource,
+      [],
+      [
+        {
+          id: portableTaskId,
+          originWorkspaceId: portableSource,
+          originId: portableTaskId,
+          title: "이식 완료 할일",
+          description: "완료 상태 유지",
+          state: "DONE",
+          version: 2,
+          dueKind: "DATE",
+          dueDate: "2026-10-01",
+          dueAt: null,
+          dueTimeZone: null,
+          contextId: null,
+          originUnitId: null,
+          originUnitRevision: null,
+          completedAt: "2026-09-25T00:00:00.000Z",
+          completionVersion: 2,
+        },
+      ],
+      [
+        {
+          id: portableEventId,
+          originWorkspaceId: portableSource,
+          originId: portableEventId,
+          title: "이식 종일 일정",
+          description: "종일",
+          state: "CONFIRMED",
+          version: 1,
+          scheduleKind: "ALL_DAY",
+          timeZone: "Asia/Seoul",
+          startAt: null,
+          endAt: null,
+          startLocal: null,
+          endLocal: null,
+          startOffsetMinutes: null,
+          endOffsetMinutes: null,
+          startDate: "2026-10-02",
+          endDateExclusive: "2026-10-03",
+        },
+      ],
+    );
+    const portableStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: portable,
+    });
+    expect(portableStage.statusCode, portableStage.body).toBe(201);
+    const portableRunId = portableStage.json<{ id: string; scope: string }>()
+      .id;
+    expect(portableStage.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS",
+    );
+    const portablePreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${portableRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(portablePreview.statusCode, portablePreview.body).toBe(200);
+    expect(
+      portablePreview
+        .json<{ rows: { state: string }[] }>()
+        .rows.map((row) => row.state),
+    ).toEqual(["NEW", "NEW"]);
+    const portableApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${portableRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: portablePreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(portableApplied.statusCode, portableApplied.body).toBe(201);
+    expect(portableApplied.json()).toMatchObject({
+      state: "APPLIED",
+      counts: { IMPORTED: 2 },
+    });
+    const transferredTask = await admin.query(
+      `SELECT o.target_id,t.state,t.due_date,t.completed_at FROM business.transfer_origin o
+       JOIN business.task t ON t.id=o.target_id WHERE o.workspace_id=$1 AND o.record_kind='task' AND o.source_id=$2`,
+      [operator.workspaceId, portableTaskId],
+    );
+    expect(transferredTask.rows[0]?.state).toBe("DONE");
+    expect(transferredTask.rows[0]?.completed_at).not.toBeNull();
+    const transferredEvent = await admin.query(
+      `SELECT e.schedule_kind,e.start_date,e.end_date_exclusive FROM business.transfer_origin o
+       JOIN business.calendar_event e ON e.id=o.target_id WHERE o.workspace_id=$1 AND o.record_kind='event' AND o.source_id=$2`,
+      [operator.workspaceId, portableEventId],
+    );
+    expect(transferredEvent.rows[0]?.schedule_kind).toBe("ALL_DAY");
+    const portableRestaged = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: portable,
+    });
+    expect(portableRestaged.json<{ id: string }>().id).toBe(portableRunId);
+    await admin.query("DELETE FROM business.task WHERE id=$1", [
+      transferredTask.rows[0]?.target_id,
+    ]);
+    const staleTaskId = randomUUID();
+    const staleArchive = createPersonalBundle(
+      portableSource,
+      [],
+      [
+        {
+          id: staleTaskId,
+          originWorkspaceId: portableSource,
+          originId: portableTaskId,
+          title: "이식 완료 할일",
+          description: "완료 상태 유지",
+          state: "DONE",
+          version: 2,
+          dueKind: "DATE",
+          dueDate: "2026-10-01",
+          dueAt: null,
+          dueTimeZone: null,
+          contextId: null,
+          originUnitId: null,
+          originUnitRevision: null,
+          completedAt: "2026-09-25T00:00:00.000Z",
+          completionVersion: 2,
+        },
+      ],
+      [],
+    );
+    const staleStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: staleArchive,
+    });
+    expect(staleStage.statusCode, staleStage.body).toBe(201);
+    const stalePreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${staleStage.json<{ id: string }>().id}/preview`,
+      headers: transferHeaders,
+    });
+    expect(
+      stalePreview.json<{ rows: { state: string }[] }>().rows[0]?.state,
+    ).toBe("CONFLICT");
+    const caseSource = randomUUID();
+    const caseTaskOrigin = randomUUID();
+    const caseEventOrigin = randomUUID();
+    const caseArchives = [true, false].map((upper) => {
+      const source = upper ? caseSource.toUpperCase() : caseSource;
+      const taskOrigin = upper ? caseTaskOrigin.toUpperCase() : caseTaskOrigin;
+      const eventOrigin = upper
+        ? caseEventOrigin.toUpperCase()
+        : caseEventOrigin;
+      return createPersonalBundle(
+        source,
+        [],
+        [
+          {
+            id: randomUUID(),
+            originWorkspaceId: source,
+            originId: taskOrigin,
+            title: "대소문자 잠금 할일",
+            description: "",
+            state: "TODO",
+            version: 1,
+            dueKind: "NONE",
+            dueDate: null,
+            dueAt: null,
+            dueTimeZone: null,
+            contextId: null,
+            originUnitId: null,
+            originUnitRevision: null,
+            completedAt: null,
+            completionVersion: null,
+          },
+        ],
+        [
+          {
+            id: randomUUID(),
+            originWorkspaceId: source,
+            originId: eventOrigin,
+            title: "대소문자 잠금 일정",
+            description: "",
+            state: "CONFIRMED",
+            version: 1,
+            scheduleKind: "ALL_DAY",
+            timeZone: "Asia/Seoul",
+            startAt: null,
+            endAt: null,
+            startLocal: null,
+            endLocal: null,
+            startOffsetMinutes: null,
+            endOffsetMinutes: null,
+            startDate: "2026-10-04",
+            endDateExclusive: "2026-10-05",
+          },
+        ],
+      );
+    });
+    const caseStages = await Promise.all(
+      caseArchives.map((bytes) =>
+        app.inject({
+          method: "POST",
+          url: `${transferBase}/imports`,
+          headers: {
+            ...transferHeaders,
+            "content-type": "application/vnd.ieum.bundle+gzip",
+          },
+          payload: bytes,
+        }),
+      ),
+    );
+    expect(caseStages.every((response) => response.statusCode === 201)).toBe(
+      true,
+    );
+    const caseRunIds = caseStages.map(
+      (response) => response.json<{ id: string }>().id,
+    );
+    const casePreviews = await Promise.all(
+      caseRunIds.map((id) =>
+        app.inject({
+          method: "GET",
+          url: `${transferBase}/imports/${id}/preview`,
+          headers: transferHeaders,
+        }),
+      ),
+    );
+    expect(
+      casePreviews.every((response) =>
+        response
+          .json<{ rows: { state: string }[] }>()
+          .rows.every((row) => row.state === "NEW"),
+      ),
+    ).toBe(true);
+    const caseApplies = await Promise.all(
+      caseRunIds.map((id, index) =>
+        app.inject({
+          method: "POST",
+          url: `${transferBase}/imports/${id}/apply`,
+          headers: transferHeaders,
+          payload: {
+            previewHash: casePreviews[index]!.json<{ previewHash: string }>()
+              .previewHash,
+          },
+        }),
+      ),
+    );
+    expect(
+      caseApplies.every((response) => response.statusCode === 201),
+      caseApplies.map((response) => response.body).join("\n"),
+    ).toBe(true);
+    const caseTasks = await admin.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM business.task WHERE workspace_id=$1 AND title=$2",
+      [operator.workspaceId, "대소문자 잠금 할일"],
+    );
+    const caseEvents = await admin.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM business.calendar_event WHERE workspace_id=$1 AND title=$2",
+      [operator.workspaceId, "대소문자 잠금 일정"],
+    );
+    expect(caseTasks.rows[0]?.count).toBe("1");
+    expect(caseEvents.rows[0]?.count).toBe("1");
     const invalidBundle = await app.inject({
       method: "POST",
       url: `${transferBase}/imports`,

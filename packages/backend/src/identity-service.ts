@@ -211,8 +211,9 @@ export class IdentityService {
   async withPersonalWorkspace<T>(
     userId: string,
     operation: (client: PoolClient, access: PersonalAccess) => Promise<T>,
+    isolation: "READ COMMITTED" | "REPEATABLE READ" = "READ COMMITTED",
   ): Promise<T> {
-    return withActivePersonalWorkspace(this.pool, userId, operation);
+    return withActivePersonalWorkspace(this.pool, userId, operation, isolation);
   }
 
   async getMe(userId: string): Promise<

@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { TransferManifestV2 } from "@ieum/contracts/data-transfer";
 import type { PoolClient } from "pg";
 import { CommandCoordinator } from "../command-coordinator.js";
 import { insertCaptureInTransaction } from "../captures.js";
 import { IdentityService } from "../identity-service.js";
 import { transferHash } from "./archive.js";
-import { createCaptureBundle, readCaptureBundle } from "./manifest.js";
+import { createPersonalBundle, readCaptureBundle } from "./manifest.js";
 import type { TransferStoragePort } from "./storage.js";
 
 const UUID =
@@ -41,24 +42,41 @@ interface Run {
 }
 
 export interface TransferPreviewRow {
+  recordKind: "capture" | "task" | "event";
   sourceId: string;
   sourceRevision: number;
-  state: "NEW" | "DUPLICATE" | "CONFLICT" | "IMPORTED" | "SKIPPED" | "FAILED";
+  state:
+    | "NEW"
+    | "DUPLICATE"
+    | "CONFLICT"
+    | "MISSING_REFERENCE"
+    | "IMPORTED"
+    | "SKIPPED"
+    | "FAILED";
   targetId: string | null;
 }
 
 function sourceKey(workspaceId: string, captureId: string): string {
-  return `ieum:${workspaceId}:${captureId}`;
+  return `ieum:${workspaceId.toLowerCase()}:${captureId.toLowerCase()}`;
+}
+
+function sourceLock(
+  workspaceId: string,
+  sourceWorkspaceId: string,
+  sourceId: string,
+  kind: string,
+): string {
+  return `${workspaceId.toLowerCase()}:${sourceWorkspaceId.toLowerCase()}:${sourceId.toLowerCase()}:${kind}`;
 }
 
 function requireUuid(value: string): void {
   if (!UUID.test(value)) throw new DataTransferError("TRANSFER_NOT_FOUND");
 }
 
-function publicRun(run: Run) {
+function publicRun(run: Run, scope: "CAPTURES_ONLY" | "CAPTURES_TASKS_EVENTS") {
   return {
     id: run.id,
-    scope: "CAPTURES_ONLY" as const,
+    scope,
     kind: run.kind,
     state: run.state,
     bundleHash: run.bundle_hash,
@@ -90,6 +108,16 @@ async function loadRun(
 
 function previewHash(rows: TransferPreviewRow[]): string {
   return transferHash(Buffer.from(JSON.stringify(rows)));
+}
+
+function bundleScope(
+  version: number,
+): "CAPTURES_ONLY" | "CAPTURES_TASKS_EVENTS" {
+  return version === 2 ? "CAPTURES_TASKS_EVENTS" : "CAPTURES_ONLY";
+}
+
+function dateOnly(value: string | Date | null): string | null {
+  return value instanceof Date ? value.toISOString().slice(0, 10) : value;
 }
 
 async function lockQuota(
@@ -143,7 +171,7 @@ export class DataTransferService {
 
   async createExport(actorId: string, workspaceId: string) {
     const storage = this.enabled();
-    const captures = await this.identity.withPersonalWorkspace(
+    const snapshot = await this.identity.withPersonalWorkspace(
       actorId,
       async (client, access) => {
         if (access.workspaceId !== workspaceId)
@@ -166,7 +194,7 @@ export class DataTransferService {
         );
         if (result.rows.length > 255)
           throw new DataTransferError("TRANSFER_UNAVAILABLE");
-        return result.rows.map((row) => {
+        const captures = result.rows.map((row) => {
           const origin =
             row.source_kind === "import" && row.source_key
               ? /^ieum:([0-9a-f-]{36}):([0-9a-f-]{36})$/i.exec(row.source_key)
@@ -180,9 +208,118 @@ export class DataTransferService {
             originCaptureId: origin?.[2] ?? row.id,
           };
         });
+        const tasks = await client.query<{
+          id: string;
+          title: string;
+          description: string;
+          state: TransferManifestV2["tasks"][number]["state"];
+          version: number;
+          due_kind: TransferManifestV2["tasks"][number]["dueKind"];
+          due_date: string | Date | null;
+          due_at: Date | null;
+          due_time_zone: string | null;
+          context_id: string | null;
+          origin_unit_id: string | null;
+          origin_unit_revision: number | null;
+          completed_at: Date | null;
+          completion_version: number | null;
+          origin_workspace_id: string | null;
+          origin_id: string | null;
+        }>(
+          `SELECT t.id,t.title,t.description,t.state,t.version,t.due_kind,t.due_date,
+                  t.due_at,t.due_time_zone,t.context_id,t.origin_unit_id,
+                  t.origin_unit_revision,t.completed_at,t.completion_version,
+                  o.source_workspace_id AS origin_workspace_id,o.source_id AS origin_id
+           FROM business.task t LEFT JOIN LATERAL (
+             SELECT source_workspace_id,source_id FROM business.transfer_origin
+             WHERE workspace_id=t.workspace_id AND record_kind='task' AND target_id=t.id
+             ORDER BY source_workspace_id,source_id LIMIT 1
+           ) o ON true
+           WHERE t.workspace_id=$1 ORDER BY t.id LIMIT 4097`,
+          [workspaceId],
+        );
+        const events = await client.query<{
+          id: string;
+          title: string;
+          description: string;
+          state: TransferManifestV2["events"][number]["state"];
+          version: number;
+          schedule_kind: TransferManifestV2["events"][number]["scheduleKind"];
+          time_zone: string;
+          start_at: Date | null;
+          end_at: Date | null;
+          start_local: string | null;
+          end_local: string | null;
+          start_offset_minutes: number | null;
+          end_offset_minutes: number | null;
+          start_date: string | Date | null;
+          end_date_exclusive: string | Date | null;
+          origin_workspace_id: string | null;
+          origin_id: string | null;
+        }>(
+          `SELECT e.id,e.title,e.description,e.state,e.version,e.schedule_kind,
+                  e.time_zone,e.start_at,e.end_at,e.start_local,e.end_local,
+                  e.start_offset_minutes,e.end_offset_minutes,e.start_date,e.end_date_exclusive,
+                  o.source_workspace_id AS origin_workspace_id,o.source_id AS origin_id
+           FROM business.calendar_event e LEFT JOIN LATERAL (
+             SELECT source_workspace_id,source_id FROM business.transfer_origin
+             WHERE workspace_id=e.workspace_id AND record_kind='event' AND target_id=e.id
+             ORDER BY source_workspace_id,source_id LIMIT 1
+           ) o ON true
+           WHERE e.workspace_id=$1 ORDER BY e.id LIMIT 4097`,
+          [workspaceId],
+        );
+        if (tasks.rows.length > 4096 || events.rows.length > 4096)
+          throw new DataTransferError("TRANSFER_UNAVAILABLE");
+        return {
+          captures,
+          tasks: tasks.rows.map((row) => ({
+            id: row.id,
+            originWorkspaceId: row.origin_workspace_id ?? workspaceId,
+            originId: row.origin_id ?? row.id,
+            title: row.title,
+            description: row.description,
+            state: row.state,
+            version: row.version,
+            dueKind: row.due_kind,
+            dueDate: dateOnly(row.due_date),
+            dueAt: row.due_at?.toISOString() ?? null,
+            dueTimeZone: row.due_time_zone,
+            contextId: row.context_id,
+            originUnitId: row.origin_unit_id,
+            originUnitRevision: row.origin_unit_revision,
+            completedAt: row.completed_at?.toISOString() ?? null,
+            completionVersion: row.completion_version,
+          })),
+          events: events.rows.map((row) => ({
+            id: row.id,
+            originWorkspaceId: row.origin_workspace_id ?? workspaceId,
+            originId: row.origin_id ?? row.id,
+            title: row.title,
+            description: row.description,
+            state: row.state,
+            version: row.version,
+            scheduleKind: row.schedule_kind,
+            timeZone: row.time_zone,
+            startAt: row.start_at?.toISOString() ?? null,
+            endAt: row.end_at?.toISOString() ?? null,
+            startLocal: row.start_local,
+            endLocal: row.end_local,
+            startOffsetMinutes: row.start_offset_minutes,
+            endOffsetMinutes: row.end_offset_minutes,
+            startDate: dateOnly(row.start_date),
+            endDateExclusive: dateOnly(row.end_date_exclusive),
+          })),
+        };
       },
+      "REPEATABLE READ",
     );
-    const bytes = createCaptureBundle(workspaceId, captures);
+    const bytes = createPersonalBundle(
+      workspaceId,
+      snapshot.captures,
+      snapshot.tasks,
+      snapshot.events,
+    );
     const id = randomUUID();
     const storageKey = randomUUID();
     let wrote = false;
@@ -209,7 +346,7 @@ export class DataTransferService {
               bytes.length,
             ],
           );
-          return publicRun(result.rows[0]!);
+          return publicRun(result.rows[0]!, "CAPTURES_TASKS_EVENTS");
         },
       );
     } catch (error) {
@@ -261,7 +398,7 @@ export class DataTransferService {
         return existingImport(client, workspaceId, actorId, hash);
       },
     );
-    if (previous) return publicRun(previous);
+    if (previous) return publicRun(previous, bundleScope(manifest.version));
     const id = randomUUID();
     const storageKey = randomUUID();
     let wrote = false;
@@ -281,7 +418,11 @@ export class DataTransferService {
             actorId,
             hash,
           );
-          if (concurrent) return { run: publicRun(concurrent), reused: true };
+          if (concurrent)
+            return {
+              run: publicRun(concurrent, bundleScope(manifest.version)),
+              reused: true,
+            };
           await lockQuota(client, workspaceId, actorId, bytes.length);
           await storage.write(storageKey, bytes);
           wrote = true;
@@ -299,7 +440,24 @@ export class DataTransferService {
                VALUES($1,$2,'capture',$3,$4)`,
               [workspaceId, id, record.id, record.revision],
             );
-          return { run: publicRun(result.rows[0]!), reused: false };
+          if (manifest.version === 2) {
+            for (const [kind, records] of [
+              ["task", manifest.tasks],
+              ["event", manifest.events],
+            ] as const) {
+              for (const record of records)
+                await client.query(
+                  `INSERT INTO business.transfer_row
+                 (workspace_id,run_id,record_kind,source_id,source_revision)
+                 VALUES($1,$2,$3,$4,$5)`,
+                  [workspaceId, id, kind, record.id, record.version],
+                );
+            }
+          }
+          return {
+            run: publicRun(result.rows[0]!, bundleScope(manifest.version)),
+            reused: false,
+          };
         },
       );
       return result.run;
@@ -354,6 +512,7 @@ export class DataTransferService {
           const imported = status.rows[0];
           if (imported && imported.state !== "PENDING") {
             rows.push({
+              recordKind: "capture",
               sourceId: record.id,
               sourceRevision: record.revision,
               state: imported.state,
@@ -377,21 +536,176 @@ export class DataTransferService {
             ],
           );
           const previous = existing.rows[0];
+          const stale = !previous
+            ? await client.query<{ target_id: string }>(
+                `SELECT target_id FROM business.transfer_origin
+             WHERE workspace_id=$1 AND record_kind='capture'
+               AND source_workspace_id=$2 AND source_id=$3`,
+                [workspaceId, record.originWorkspaceId, record.originCaptureId],
+              )
+            : null;
           rows.push({
+            recordKind: "capture",
             sourceId: record.id,
             sourceRevision: record.revision,
             state: !previous
-              ? "NEW"
+              ? stale?.rows[0]
+                ? "CONFLICT"
+                : "NEW"
               : previous.title === record.title &&
                   previous.raw_body === record.rawBody
                 ? "DUPLICATE"
                 : "CONFLICT",
-            targetId: previous?.id ?? null,
+            targetId: previous?.id ?? stale?.rows[0]?.target_id ?? null,
           });
         }
-        return { run: publicRun(run), rows, previewHash: previewHash(rows) };
+        if (bundle.manifest.version === 2) {
+          for (const record of bundle.manifest.tasks)
+            rows.push(await this.previewTask(client, workspaceId, id, record));
+          for (const record of bundle.manifest.events)
+            rows.push(await this.previewEvent(client, workspaceId, id, record));
+        }
+        return {
+          run: publicRun(run, bundleScope(bundle.manifest.version)),
+          rows,
+          previewHash: previewHash(rows),
+        };
       },
     );
+  }
+
+  private async previewTask(
+    client: PoolClient,
+    workspaceId: string,
+    runId: string,
+    record: TransferManifestV2["tasks"][number],
+  ): Promise<TransferPreviewRow> {
+    const base = {
+      recordKind: "task" as const,
+      sourceId: record.id,
+      sourceRevision: record.version,
+    };
+    const row = await client.query<{
+      state: "PENDING" | "IMPORTED" | "SKIPPED" | "FAILED";
+      target_id: string | null;
+    }>(
+      `SELECT state,target_id FROM business.transfer_row
+       WHERE workspace_id=$1 AND run_id=$2 AND record_kind='task' AND source_id=$3`,
+      [workspaceId, runId, record.id],
+    );
+    if (row.rows[0] && row.rows[0].state !== "PENDING")
+      return {
+        ...base,
+        state: row.rows[0].state,
+        targetId: row.rows[0].target_id,
+      };
+    if (record.contextId || record.originUnitId)
+      return { ...base, state: "MISSING_REFERENCE", targetId: null };
+    const existing = await client.query<{ target_id: string; same: boolean }>(
+      `SELECT o.target_id,
+         o.source_revision=$4 AND t.title=$5 AND t.description=$6 AND t.state=$7
+         AND t.version=$4 AND t.due_kind=$8
+         AND t.due_date IS NOT DISTINCT FROM $9::date
+         AND t.due_at IS NOT DISTINCT FROM $10::timestamptz
+         AND t.due_time_zone IS NOT DISTINCT FROM $11::text
+         AND t.context_id IS NULL AND t.origin_unit_id IS NULL
+         AND t.completed_at IS NOT DISTINCT FROM $12::timestamptz
+         AND t.completion_version IS NOT DISTINCT FROM $13::integer AS same
+       FROM business.transfer_origin o LEFT JOIN business.task t
+         ON t.workspace_id=o.workspace_id AND t.id=o.target_id
+       WHERE o.workspace_id=$1 AND o.record_kind='task'
+         AND o.source_workspace_id=$2 AND o.source_id=$3 LIMIT 1`,
+      [
+        workspaceId,
+        record.originWorkspaceId,
+        record.originId,
+        record.version,
+        record.title,
+        record.description,
+        record.state,
+        record.dueKind,
+        record.dueDate,
+        record.dueAt,
+        record.dueTimeZone,
+        record.completedAt,
+        record.completionVersion,
+      ],
+    );
+    const prior = existing.rows[0];
+    return {
+      ...base,
+      state: !prior ? "NEW" : prior.same ? "DUPLICATE" : "CONFLICT",
+      targetId: prior?.target_id ?? null,
+    };
+  }
+
+  private async previewEvent(
+    client: PoolClient,
+    workspaceId: string,
+    runId: string,
+    record: TransferManifestV2["events"][number],
+  ): Promise<TransferPreviewRow> {
+    const base = {
+      recordKind: "event" as const,
+      sourceId: record.id,
+      sourceRevision: record.version,
+    };
+    const row = await client.query<{
+      state: "PENDING" | "IMPORTED" | "SKIPPED" | "FAILED";
+      target_id: string | null;
+    }>(
+      `SELECT state,target_id FROM business.transfer_row
+       WHERE workspace_id=$1 AND run_id=$2 AND record_kind='event' AND source_id=$3`,
+      [workspaceId, runId, record.id],
+    );
+    if (row.rows[0] && row.rows[0].state !== "PENDING")
+      return {
+        ...base,
+        state: row.rows[0].state,
+        targetId: row.rows[0].target_id,
+      };
+    const existing = await client.query<{ target_id: string; same: boolean }>(
+      `SELECT o.target_id,
+         o.source_revision=$4 AND e.title=$5 AND e.description=$6 AND e.state=$7
+         AND e.version=$4 AND e.schedule_kind=$8 AND e.time_zone=$9
+         AND e.start_at IS NOT DISTINCT FROM $10::timestamptz
+         AND e.end_at IS NOT DISTINCT FROM $11::timestamptz
+         AND e.start_local IS NOT DISTINCT FROM $12::text
+         AND e.end_local IS NOT DISTINCT FROM $13::text
+         AND e.start_offset_minutes IS NOT DISTINCT FROM $14::integer
+         AND e.end_offset_minutes IS NOT DISTINCT FROM $15::integer
+         AND e.start_date IS NOT DISTINCT FROM $16::date
+         AND e.end_date_exclusive IS NOT DISTINCT FROM $17::date AS same
+       FROM business.transfer_origin o LEFT JOIN business.calendar_event e
+         ON e.workspace_id=o.workspace_id AND e.id=o.target_id
+       WHERE o.workspace_id=$1 AND o.record_kind='event'
+         AND o.source_workspace_id=$2 AND o.source_id=$3 LIMIT 1`,
+      [
+        workspaceId,
+        record.originWorkspaceId,
+        record.originId,
+        record.version,
+        record.title,
+        record.description,
+        record.state,
+        record.scheduleKind,
+        record.timeZone,
+        record.startAt,
+        record.endAt,
+        record.startLocal,
+        record.endLocal,
+        record.startOffsetMinutes,
+        record.endOffsetMinutes,
+        record.startDate,
+        record.endDateExclusive,
+      ],
+    );
+    const prior = existing.rows[0];
+    return {
+      ...base,
+      state: !prior ? "NEW" : prior.same ? "DUPLICATE" : "CONFLICT",
+      targetId: prior?.target_id ?? null,
+    };
   }
 
   async applyImport(
@@ -447,7 +761,12 @@ export class DataTransferService {
           await client.query(
             "SELECT pg_advisory_xact_lock(hashtextextended($1, 2122))",
             [
-              `${workspaceId}:${record.originWorkspaceId}:${record.originCaptureId}:capture`,
+              sourceLock(
+                workspaceId,
+                record.originWorkspaceId,
+                record.originCaptureId,
+                "capture",
+              ),
             ],
           );
           const existing = await client.query<{
@@ -466,32 +785,47 @@ export class DataTransferService {
             ],
           );
           const previous = existing.rows[0];
+          const stale = !previous
+            ? await client.query<{ target_id: string }>(
+                `SELECT target_id FROM business.transfer_origin
+             WHERE workspace_id=$1 AND record_kind='capture'
+               AND source_workspace_id=$2 AND source_id=$3`,
+                [workspaceId, record.originWorkspaceId, record.originCaptureId],
+              )
+            : null;
           const state = previous
             ? previous.title === record.title &&
               previous.raw_body === record.rawBody
               ? "SKIPPED"
               : "FAILED"
-            : "IMPORTED";
+            : stale?.rows[0]
+              ? "FAILED"
+              : "IMPORTED";
           const targetId = previous
             ? previous.id
-            : (
-                await insertCaptureInTransaction(client, {
-                  workspaceId,
-                  actorId,
-                  title: record.title,
-                  rawBody: record.rawBody,
-                  sourceKind: "import",
-                  sourceKey: sourceKey(
-                    record.originWorkspaceId,
-                    record.originCaptureId,
-                  ),
-                })
-              ).id;
-          if (state !== "FAILED")
-            await client.query(
+            : stale?.rows[0]
+              ? stale.rows[0].target_id
+              : (
+                  await insertCaptureInTransaction(client, {
+                    workspaceId,
+                    actorId,
+                    title: record.title,
+                    rawBody: record.rawBody,
+                    sourceKind: "import",
+                    sourceKey: sourceKey(
+                      record.originWorkspaceId,
+                      record.originCaptureId,
+                    ),
+                  })
+                ).id;
+          if (state !== "FAILED") {
+            const origin = await client.query(
               `INSERT INTO business.transfer_origin
                (workspace_id,record_kind,source_workspace_id,source_id,source_revision,target_id)
-               VALUES($1,'capture',$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
+               VALUES($1,'capture',$2,$3,$4,$5)
+               ON CONFLICT (workspace_id,record_kind,source_workspace_id,source_id)
+               DO NOTHING
+               RETURNING target_id`,
               [
                 workspaceId,
                 record.originWorkspaceId,
@@ -500,6 +834,17 @@ export class DataTransferService {
                 targetId,
               ],
             );
+            if (origin.rowCount !== 1) {
+              const mapped = await client.query<{ target_id: string }>(
+                `SELECT target_id FROM business.transfer_origin
+                 WHERE workspace_id=$1 AND record_kind='capture'
+                   AND source_workspace_id=$2 AND source_id=$3`,
+                [workspaceId, record.originWorkspaceId, record.originCaptureId],
+              );
+              if (mapped.rows[0]?.target_id !== targetId)
+                throw new DataTransferError("TRANSFER_UNAVAILABLE");
+            }
+          }
           await client.query(
             `UPDATE business.transfer_row SET state=$4,target_id=$5,reason_code=$6
              WHERE workspace_id=$1 AND run_id=$2 AND record_kind='capture' AND source_id=$3`,
@@ -529,6 +874,12 @@ export class DataTransferService {
         },
       });
     }
+    if (bundle.manifest.version === 2) {
+      for (const record of bundle.manifest.tasks)
+        await this.applyTask(actorId, workspaceId, id, record);
+      for (const record of bundle.manifest.events)
+        await this.applyEvent(actorId, workspaceId, id, record);
+    }
     return this.identity.withPersonalWorkspace(
       actorId,
       async (client, access) => {
@@ -551,5 +902,285 @@ export class DataTransferService {
         return { state, counts };
       },
     );
+  }
+
+  private async applyTask(
+    actorId: string,
+    workspaceId: string,
+    runId: string,
+    record: TransferManifestV2["tasks"][number],
+  ): Promise<void> {
+    await this.commands.execute({
+      actorId,
+      kind: "transfer.task.apply",
+      idempotencyKey: createHash("sha256")
+        .update(`${runId}:task:${record.id}`)
+        .digest("hex"),
+      payload: {
+        workspaceId,
+        runId,
+        sourceId: record.id,
+        sourceRevision: record.version,
+      },
+      apply: async (client, access) => {
+        if (access.workspaceId !== workspaceId)
+          throw new DataTransferError("TRANSFER_NOT_FOUND");
+        await loadRun(client, workspaceId, actorId, runId, "IMPORT");
+        const locked = await client.query<{
+          state: string;
+          target_id: string | null;
+        }>(
+          `SELECT state,target_id FROM business.transfer_row
+           WHERE workspace_id=$1 AND run_id=$2 AND record_kind='task' AND source_id=$3 FOR UPDATE`,
+          [workspaceId, runId, record.id],
+        );
+        if (!locked.rows[0]) throw new DataTransferError("TRANSFER_NOT_FOUND");
+        if (locked.rows[0].state !== "PENDING")
+          return {
+            response: {
+              id: locked.rows[0].target_id,
+              state: locked.rows[0].state,
+            },
+            audit: {
+              action: "transfer.task.replay",
+              targetType: "transfer_row",
+              targetId: record.id,
+              beforeVersion: null,
+              afterVersion: null,
+              changedFieldNames: [],
+            },
+          };
+        await client.query(
+          "SELECT pg_advisory_xact_lock(hashtextextended($1, 2122))",
+          [
+            sourceLock(
+              workspaceId,
+              record.originWorkspaceId,
+              record.originId,
+              "task",
+            ),
+          ],
+        );
+        const preview = await this.previewTask(
+          client,
+          workspaceId,
+          runId,
+          record,
+        );
+        const state =
+          preview.state === "NEW"
+            ? "IMPORTED"
+            : preview.state === "DUPLICATE"
+              ? "SKIPPED"
+              : "FAILED";
+        const targetId = state === "IMPORTED" ? randomUUID() : preview.targetId;
+        if (state === "IMPORTED") {
+          await client.query(
+            `INSERT INTO business.task
+             (id,workspace_id,created_by_id,title,description,state,version,due_kind,due_date,
+              due_at,due_time_zone,context_id,origin_kind,origin_unit_id,origin_unit_revision,
+              completed_at,completion_version)
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,'EXPLICIT',NULL,NULL,$12,$13)`,
+            [
+              targetId,
+              workspaceId,
+              actorId,
+              record.title,
+              record.description,
+              record.state,
+              record.version,
+              record.dueKind,
+              record.dueDate,
+              record.dueAt,
+              record.dueTimeZone,
+              record.completedAt,
+              record.completionVersion,
+            ],
+          );
+        }
+        if (state === "IMPORTED")
+          await client.query(
+            `INSERT INTO business.transfer_origin
+             (workspace_id,record_kind,source_workspace_id,source_id,source_revision,target_id)
+             VALUES($1,'task',$2,$3,$4,$5)`,
+            [
+              workspaceId,
+              record.originWorkspaceId,
+              record.originId,
+              record.version,
+              targetId,
+            ],
+          );
+        await client.query(
+          `UPDATE business.transfer_row SET state=$4,target_id=$5,reason_code=$6
+           WHERE workspace_id=$1 AND run_id=$2 AND record_kind='task' AND source_id=$3`,
+          [
+            workspaceId,
+            runId,
+            record.id,
+            state,
+            targetId,
+            state === "FAILED"
+              ? preview.state === "MISSING_REFERENCE"
+                ? "MISSING_REFERENCE"
+                : "CONTENT_CONFLICT"
+              : null,
+          ],
+        );
+        return {
+          response: { id: targetId, state },
+          audit: {
+            action: "transfer.task.apply",
+            targetType: state === "IMPORTED" ? "task" : "transfer_row",
+            targetId: state === "IMPORTED" ? targetId! : record.id,
+            beforeVersion: null,
+            afterVersion: state === "IMPORTED" ? record.version : null,
+            changedFieldNames:
+              state === "IMPORTED"
+                ? ["title", "description", "state", "due"]
+                : ["state"],
+          },
+        };
+      },
+    });
+  }
+
+  private async applyEvent(
+    actorId: string,
+    workspaceId: string,
+    runId: string,
+    record: TransferManifestV2["events"][number],
+  ): Promise<void> {
+    await this.commands.execute({
+      actorId,
+      kind: "transfer.event.apply",
+      idempotencyKey: createHash("sha256")
+        .update(`${runId}:event:${record.id}`)
+        .digest("hex"),
+      payload: {
+        workspaceId,
+        runId,
+        sourceId: record.id,
+        sourceRevision: record.version,
+      },
+      apply: async (client, access) => {
+        if (access.workspaceId !== workspaceId)
+          throw new DataTransferError("TRANSFER_NOT_FOUND");
+        await loadRun(client, workspaceId, actorId, runId, "IMPORT");
+        const locked = await client.query<{
+          state: string;
+          target_id: string | null;
+        }>(
+          `SELECT state,target_id FROM business.transfer_row
+           WHERE workspace_id=$1 AND run_id=$2 AND record_kind='event' AND source_id=$3 FOR UPDATE`,
+          [workspaceId, runId, record.id],
+        );
+        if (!locked.rows[0]) throw new DataTransferError("TRANSFER_NOT_FOUND");
+        if (locked.rows[0].state !== "PENDING")
+          return {
+            response: {
+              id: locked.rows[0].target_id,
+              state: locked.rows[0].state,
+            },
+            audit: {
+              action: "transfer.event.replay",
+              targetType: "transfer_row",
+              targetId: record.id,
+              beforeVersion: null,
+              afterVersion: null,
+              changedFieldNames: [],
+            },
+          };
+        await client.query(
+          "SELECT pg_advisory_xact_lock(hashtextextended($1, 2122))",
+          [
+            sourceLock(
+              workspaceId,
+              record.originWorkspaceId,
+              record.originId,
+              "event",
+            ),
+          ],
+        );
+        const preview = await this.previewEvent(
+          client,
+          workspaceId,
+          runId,
+          record,
+        );
+        const state =
+          preview.state === "NEW"
+            ? "IMPORTED"
+            : preview.state === "DUPLICATE"
+              ? "SKIPPED"
+              : "FAILED";
+        const targetId = state === "IMPORTED" ? randomUUID() : preview.targetId;
+        if (state === "IMPORTED")
+          await client.query(
+            `INSERT INTO business.calendar_event
+           (id,workspace_id,created_by_id,title,description,state,version,schedule_kind,time_zone,
+            start_at,end_at,start_local,end_local,start_offset_minutes,end_offset_minutes,start_date,end_date_exclusive)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+            [
+              targetId,
+              workspaceId,
+              actorId,
+              record.title,
+              record.description,
+              record.state,
+              record.version,
+              record.scheduleKind,
+              record.timeZone,
+              record.startAt,
+              record.endAt,
+              record.startLocal,
+              record.endLocal,
+              record.startOffsetMinutes,
+              record.endOffsetMinutes,
+              record.startDate,
+              record.endDateExclusive,
+            ],
+          );
+        if (state === "IMPORTED")
+          await client.query(
+            `INSERT INTO business.transfer_origin
+             (workspace_id,record_kind,source_workspace_id,source_id,source_revision,target_id)
+             VALUES($1,'event',$2,$3,$4,$5)`,
+            [
+              workspaceId,
+              record.originWorkspaceId,
+              record.originId,
+              record.version,
+              targetId,
+            ],
+          );
+        await client.query(
+          `UPDATE business.transfer_row SET state=$4,target_id=$5,reason_code=$6
+           WHERE workspace_id=$1 AND run_id=$2 AND record_kind='event' AND source_id=$3`,
+          [
+            workspaceId,
+            runId,
+            record.id,
+            state,
+            targetId,
+            state === "FAILED" ? "CONTENT_CONFLICT" : null,
+          ],
+        );
+        return {
+          response: { id: targetId, state },
+          audit: {
+            action: "transfer.event.apply",
+            targetType: state === "IMPORTED" ? "event" : "transfer_row",
+            targetId: state === "IMPORTED" ? targetId! : record.id,
+            beforeVersion: null,
+            afterVersion: state === "IMPORTED" ? record.version : null,
+            changedFieldNames:
+              state === "IMPORTED"
+                ? ["title", "description", "state", "schedule"]
+                : ["state"],
+          },
+        };
+      },
+    });
   }
 }

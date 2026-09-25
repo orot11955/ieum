@@ -14247,7 +14247,7 @@
     },
     "/api/v1/workspaces/{wid}/data-transfer/exports": {
       "post": {
-        "operationId": "createCaptureExport",
+        "operationId": "createPortableExport",
         "parameters": [
           {
             "name": "wid",
@@ -14261,7 +14261,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Capture-only export run; expires in 24 hours"
+            "description": "Capture, Task and Event export run; expires in 24 hours"
           },
           "403": {
             "description": "Problem response"
@@ -14274,7 +14274,7 @@
     },
     "/api/v1/workspaces/{wid}/data-transfer/exports/{id}/download": {
       "get": {
-        "operationId": "downloadCaptureExport",
+        "operationId": "downloadPortableExport",
         "parameters": [
           {
             "name": "wid",
@@ -14313,7 +14313,7 @@
     },
     "/api/v1/workspaces/{wid}/data-transfer/imports": {
       "post": {
-        "operationId": "stageCaptureImport",
+        "operationId": "stagePortableImport",
         "parameters": [
           {
             "name": "wid",
@@ -14348,7 +14348,7 @@
     },
     "/api/v1/workspaces/{wid}/data-transfer/imports/{id}/preview": {
       "get": {
-        "operationId": "previewCaptureImport",
+        "operationId": "previewPortableImport",
         "parameters": [
           {
             "name": "wid",
@@ -14384,7 +14384,7 @@
     },
     "/api/v1/workspaces/{wid}/data-transfer/imports/{id}/apply": {
       "post": {
-        "operationId": "applyCaptureImport",
+        "operationId": "applyPortableImport",
         "parameters": [
           {
             "name": "wid",

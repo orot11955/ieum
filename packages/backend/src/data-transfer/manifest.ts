@@ -1,6 +1,8 @@
 import {
   TransferManifestSchema,
+  TransferManifestV2Schema,
   type TransferManifest,
+  type TransferManifestV2,
 } from "@ieum/contracts/data-transfer";
 import {
   packTransferArchive,
@@ -8,6 +10,11 @@ import {
   unpackTransferArchive,
 } from "./archive.js";
 import { validRawBody, validText } from "../captures.js";
+import {
+  resolveLocalTime,
+  timeZoneFormat,
+  validCalendarDate,
+} from "../calendar-time.js";
 
 export class TransferManifestError extends Error {
   constructor(public readonly code: "UNSUPPORTED_SCHEMA" | "INVALID_BUNDLE") {
@@ -51,13 +58,50 @@ export function createCaptureBundle(
   ]);
 }
 
+export function createPersonalBundle(
+  sourceWorkspaceId: string,
+  records: Parameters<typeof createCaptureBundle>[1],
+  tasks: TransferManifestV2["tasks"],
+  events: TransferManifestV2["events"],
+): Buffer {
+  const files = records.map((record) => ({
+    path: `captures/${record.id}.md`,
+    bytes: Buffer.from(record.rawBody, "utf8"),
+  }));
+  const manifest = TransferManifestV2Schema.parse({
+    format: "ieum-personal",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    sourceWorkspaceId,
+    captures: records.map((record, index) => ({
+      id: record.id,
+      revision: record.revision,
+      title: record.title,
+      originWorkspaceId: record.originWorkspaceId ?? sourceWorkspaceId,
+      originCaptureId: record.originCaptureId ?? record.id,
+      path: files[index]!.path,
+      sha256: transferHash(files[index]!.bytes),
+    })),
+    tasks,
+    events,
+  });
+  return packTransferArchive([
+    { path: "manifest.json", bytes: Buffer.from(JSON.stringify(manifest)) },
+    ...files,
+  ]);
+}
+
 export function readCaptureBundle(packed: Buffer): {
-  manifest: TransferManifest;
+  manifest: TransferManifest | TransferManifestV2;
   captures: (TransferManifest["captures"][number] & { rawBody: string })[];
 } {
   const files = unpackTransferArchive(packed);
   const manifestBytes = files.get("manifest.json");
   if (!manifestBytes) throw new TransferManifestError("INVALID_BUNDLE");
+  if (
+    !Buffer.from(manifestBytes.toString("utf8"), "utf8").equals(manifestBytes)
+  )
+    throw new TransferManifestError("INVALID_BUNDLE");
   let input: unknown;
   try {
     input = JSON.parse(manifestBytes.toString("utf8"));
@@ -68,12 +112,102 @@ export function readCaptureBundle(packed: Buffer): {
     typeof input === "object" &&
     input !== null &&
     "version" in input &&
-    input.version !== 1
+    input.version !== 1 &&
+    input.version !== 2
   )
     throw new TransferManifestError("UNSUPPORTED_SCHEMA");
   const parsed = TransferManifestSchema.safeParse(input);
   if (!parsed.success) throw new TransferManifestError("INVALID_BUNDLE");
   const manifest = parsed.data;
+  if (manifest.version === 2) {
+    for (const task of manifest.tasks) {
+      if (
+        !validText(task.title, 300) ||
+        task.description.includes("\u0000") ||
+        (task.dueDate !== null && !validCalendarDate(task.dueDate)) ||
+        (task.dueTimeZone !== null && !validTaskTimeZone(task.dueTimeZone)) ||
+        (task.dueKind === "NONE" &&
+          (task.dueDate !== null ||
+            task.dueAt !== null ||
+            task.dueTimeZone !== null)) ||
+        (task.dueKind === "DATE" &&
+          (task.dueDate === null ||
+            task.dueAt !== null ||
+            task.dueTimeZone !== null)) ||
+        (task.dueKind === "INSTANT" &&
+          (task.dueDate !== null ||
+            task.dueAt === null ||
+            task.dueTimeZone === null)) ||
+        (task.originUnitId === null) !== (task.originUnitRevision === null) ||
+        (task.state === "DONE" &&
+          (task.completedAt === null ||
+            task.completionVersion === null ||
+            task.completionVersion <= 1 ||
+            task.completionVersion > task.version)) ||
+        (task.state !== "DONE" &&
+          (task.completedAt !== null || task.completionVersion !== null))
+      )
+        throw new TransferManifestError("INVALID_BUNDLE");
+    }
+    for (const event of manifest.events) {
+      if (
+        !validText(event.title, 300) ||
+        event.description.includes("\u0000") ||
+        !validCalendarTimeZone(event.timeZone) ||
+        (event.startDate !== null && !validCalendarDate(event.startDate)) ||
+        (event.endDateExclusive !== null &&
+          !validCalendarDate(event.endDateExclusive)) ||
+        (event.startLocal !== null && event.startLocal.includes("\u0000")) ||
+        (event.endLocal !== null && event.endLocal.includes("\u0000")) ||
+        (event.scheduleKind === "TIMED" &&
+          (event.startAt === null ||
+            event.endAt === null ||
+            Date.parse(event.startAt) >= Date.parse(event.endAt) ||
+            event.startLocal === null ||
+            event.endLocal === null ||
+            event.startOffsetMinutes === null ||
+            event.endOffsetMinutes === null ||
+            event.startDate !== null ||
+            event.endDateExclusive !== null)) ||
+        (event.scheduleKind === "ALL_DAY" &&
+          (event.startDate === null ||
+            event.endDateExclusive === null ||
+            event.startDate >= event.endDateExclusive ||
+            event.startAt !== null ||
+            event.endAt !== null ||
+            event.startLocal !== null ||
+            event.endLocal !== null ||
+            event.startOffsetMinutes !== null ||
+            event.endOffsetMinutes !== null))
+      )
+        throw new TransferManifestError("INVALID_BUNDLE");
+      if (event.scheduleKind === "TIMED") {
+        try {
+          const start = resolveLocalTime(
+            event.startLocal!,
+            event.timeZone,
+            event.startOffsetMinutes!,
+          );
+          const end = resolveLocalTime(
+            event.endLocal!,
+            event.timeZone,
+            event.endOffsetMinutes!,
+          );
+          if (start.at !== event.startAt || end.at !== event.endAt)
+            throw new Error("time mismatch");
+        } catch {
+          throw new TransferManifestError("INVALID_BUNDLE");
+        }
+      }
+    }
+    if (
+      new Set(manifest.tasks.map((task) => task.id)).size !==
+        manifest.tasks.length ||
+      new Set(manifest.events.map((event) => event.id)).size !==
+        manifest.events.length
+    )
+      throw new TransferManifestError("INVALID_BUNDLE");
+  }
   const expectedPaths = new Set(["manifest.json"]);
   const ids = new Set<string>();
   const captures = manifest.captures.map((record) => {
@@ -100,4 +234,23 @@ export function readCaptureBundle(packed: Buffer): {
   if (files.size !== expectedPaths.size)
     throw new TransferManifestError("INVALID_BUNDLE");
   return { manifest, captures };
+}
+
+function validTaskTimeZone(value: string): boolean {
+  if (value.length < 1 || value.length > 100) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validCalendarTimeZone(value: string): boolean {
+  try {
+    timeZoneFormat(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
