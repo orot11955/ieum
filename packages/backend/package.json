@@ -36,6 +36,22 @@
       "types": "./dist/documents.d.ts",
       "default": "./dist/documents.js"
     },
+    "./documents/external-excerpts": {
+      "types": "./dist/documents/external-excerpts.d.ts",
+      "default": "./dist/documents/external-excerpts.js"
+    },
+    "./documents/evidence-packs": {
+      "types": "./dist/documents/evidence-packs.d.ts",
+      "default": "./dist/documents/evidence-packs.js"
+    },
+    "./documents/workbench": {
+      "types": "./dist/documents/workbench.d.ts",
+      "default": "./dist/documents/workbench.js"
+    },
+    "./documents/source-resolver": {
+      "types": "./dist/documents/source-resolver.d.ts",
+      "default": "./dist/documents/source-resolver.js"
+    },
     "./calendar": {
       "types": "./dist/calendar.d.ts",
       "default": "./dist/calendar.js"

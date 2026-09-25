@@ -16,6 +16,13 @@ import { JudgementService } from "@ieum/backend/judgement/judgement-service";
 import { ProposalService } from "@ieum/backend/judgement/proposals";
 import { ExtractionService } from "@ieum/backend/extraction/extraction-service";
 import { DocumentService } from "@ieum/backend/documents";
+import { ExternalExcerptService } from "@ieum/backend/documents/external-excerpts";
+import { EvidencePackService } from "@ieum/backend/documents/evidence-packs";
+import { DocumentWorkbenchService } from "@ieum/backend/documents/workbench";
+import {
+  EditorEnvelopeSchema,
+  canonicalEditorBlock,
+} from "@ieum/contracts/editor";
 import { processJudgementJob } from "@ieum/backend/judgement/judgement-worker";
 import { withWorkspaceTransaction } from "@ieum/backend/platform/database/scope";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
@@ -153,6 +160,9 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         proposals: new ProposalService(appPool, commands),
         extraction: new ExtractionService(identity, commands),
         documents: new DocumentService(identity, commands),
+        externalExcerpts: new ExternalExcerptService(identity, commands),
+        evidencePacks: new EvidencePackService(identity, commands),
+        workbench: new DocumentWorkbenchService(identity, commands),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -1640,6 +1650,401 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         })
       ).statusCode,
     ).toBe(422);
+
+    // BE-16: immutable source snapshots, live status, and draft claim review.
+    const excerptUrl = `/api/v1/workspaces/${operator.workspaceId}/external-excerpts`;
+    const excerptFields = {
+      title: "외부 관점",
+      url: "https://example.org/research",
+      author: "자료 작성자",
+      publishedAt: "2026-01-02",
+      excerpt: "외부 견해",
+    };
+    const excerptCreated = await app.inject({
+      method: "POST",
+      url: excerptUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be16-excerpt-create-01",
+      },
+      payload: excerptFields,
+    });
+    expect(excerptCreated.statusCode, excerptCreated.body).toBe(201);
+    const excerptId = excerptCreated.json<{ id: string }>().id;
+    const excerptDetail = await app.inject({
+      method: "GET",
+      url: `${excerptUrl}/${excerptId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(excerptDetail.statusCode, excerptDetail.body).toBe(200);
+    expect(excerptDetail.json()).toMatchObject({ publishedAt: "2026-01-02" });
+    const inviteeExcerpt = await app.inject({
+      method: "POST",
+      url: excerptUrl.replace(operator.workspaceId, invitedWorkspaceId),
+      headers: {
+        host: "127.0.0.1:3000",
+        origin,
+        cookie: inviteeCookie,
+        "idempotency-key": "be16-invitee-excerpt-01",
+      },
+      payload: excerptFields,
+    });
+    expect(inviteeExcerpt.statusCode, inviteeExcerpt.body).toBe(201);
+    const foreignId = inviteeExcerpt.json<{ id: string }>().id;
+    const packUrl = `${wikiBase}/evidence-packs`;
+    const foreignPack = await app.inject({
+      method: "POST",
+      url: packUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be16-cross-workspace-pack",
+      },
+      payload: {
+        title: "타인 자료",
+        sources: [{ kind: "external_excerpt", id: foreignId, revision: 1 }],
+      },
+    });
+    expect(foreignPack.statusCode).toBe(422);
+    expect(foreignPack.json()).toMatchObject({ code: "SOURCE_UNAVAILABLE" });
+    const workbenchCapture = await app.inject({
+      method: "POST",
+      url: captureUrl,
+      headers: { ...captureHeaders, "idempotency-key": "be16-capture-01" },
+      payload: { title: "경험 기록", rawBody: "내 경험" },
+    });
+    expect(workbenchCapture.statusCode, workbenchCapture.body).toBe(201);
+    const workbenchCaptureId = workbenchCapture.json<{ id: string }>().id;
+    const packCreated = await app.inject({
+      method: "POST",
+      url: packUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be16-pack-create-01" },
+      payload: {
+        title: "문서 근거",
+        sources: [
+          { kind: "external_excerpt", id: excerptId, revision: 1 },
+          {
+            kind: "external_excerpt",
+            id: excerptId,
+            revision: 1,
+            span: { start: 0, end: 2, encoding: "utf16" },
+          },
+          { kind: "document_revision", id: wikiId, revision: 2 },
+          {
+            kind: "task_result",
+            id: resultCreated.json<{ id: string }>().id,
+            revision: 2,
+          },
+          {
+            kind: "capture_revision",
+            id: workbenchCaptureId,
+            revision: 1,
+            span: { start: 0, end: "내 경험".length, encoding: "utf16" },
+          },
+        ],
+      },
+    });
+    expect(packCreated.statusCode, packCreated.body).toBe(201);
+    const packId = packCreated.json<{ id: string }>().id;
+    const packRevisionUrl = `${packUrl}/${packId}/revisions/1`;
+    const packBefore = await app.inject({
+      method: "GET",
+      url: packRevisionUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(packBefore.statusCode, packBefore.body).toBe(200);
+    expect(packBefore.json()).toMatchObject({
+      sourceStates: ["fresh", "fresh", "fresh", "fresh", "fresh"],
+    });
+    expect(
+      packBefore.json<{ originFamilies: string[] }>().originFamilies,
+    ).toHaveLength(4);
+    expect(
+      packBefore
+        .json<{ originFamilies: string[] }>()
+        .originFamilies.slice(0, 2),
+    ).toEqual([`external_excerpt:${excerptId}`, `document:${wikiId}`]);
+    const workbenchContent = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { blockId },
+          content: [
+            { type: "text", text: "외부 견해" },
+            {
+              type: "sourceReference",
+              attrs: {
+                label: "근거",
+                ref: {
+                  sourceKind: "external_excerpt",
+                  sourceId: excerptId,
+                  sourceRevision: 1,
+                  originKey: `external_excerpt:${excerptId}`,
+                  sourceHash: excerptCreated.json<{ contentHash: string }>()
+                    .contentHash,
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const workbenchDraft = await app.inject({
+      method: "PUT",
+      url: saveUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be16-draft-01" },
+      payload: {
+        baseVersion: 6,
+        saveSequence: 10,
+        schemaVersion: 1,
+        content: workbenchContent,
+      },
+    });
+    expect(workbenchDraft.statusCode, workbenchDraft.body).toBe(200);
+    const workbenchBlock = EditorEnvelopeSchema.parse({
+      schemaVersion: 1,
+      content: workbenchContent,
+    }).content.content![0]!;
+    const claimId = randomUUID();
+    const workbenchUrl = `${wikiBase}/workbench`;
+    const savedWorkbench = await app.inject({
+      method: "PUT",
+      url: workbenchUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be16-workbench-01" },
+      payload: {
+        baseVersion: 0,
+        draftVersion: 7,
+        packId,
+        packRevision: 1,
+        purpose: "guide",
+        audience: "독자",
+        outline: [
+          {
+            itemId: "preconditions",
+            citations: [{ sourceIndex: 0, role: "external_claim" }],
+            authorInterpretation: null,
+          },
+        ],
+        conflicts: [],
+        claims: [
+          {
+            blockId,
+            claimId,
+            textHash: createHash("sha256")
+              .update("외부 견해근거")
+              .digest("hex"),
+            blockHash: createHash("sha256")
+              .update(canonicalEditorBlock(workbenchBlock))
+              .digest("hex"),
+            transform: "quote",
+            sourceIndices: [0],
+            semanticReview: "unreviewed",
+          },
+        ],
+      },
+    });
+    expect(savedWorkbench.statusCode, savedWorkbench.body).toBe(200);
+    const invalidMapping = await app.inject({
+      method: "PUT",
+      url: workbenchUrl,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be16-invalid-claim-01",
+      },
+      payload: {
+        baseVersion: 1,
+        draftVersion: 7,
+        packId,
+        packRevision: 1,
+        purpose: "guide",
+        audience: "독자",
+        outline: [],
+        conflicts: [],
+        claims: [
+          {
+            blockId,
+            claimId: randomUUID(),
+            textHash: createHash("sha256").update("다른 문장").digest("hex"),
+            blockHash: createHash("sha256")
+              .update(canonicalEditorBlock(workbenchBlock))
+              .digest("hex"),
+            transform: "quote",
+            sourceIndices: [0],
+            semanticReview: "unreviewed",
+          },
+        ],
+      },
+    });
+    expect(invalidMapping.statusCode).toBe(422);
+    expect(invalidMapping.json()).toMatchObject({
+      code: "WORKBENCH_INVALID_MAPPING",
+    });
+    const workbenchBefore = await app.inject({
+      method: "GET",
+      url: workbenchUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(workbenchBefore.statusCode, workbenchBefore.body).toBe(200);
+    expect(workbenchBefore.json()).toMatchObject({
+      claimStates: [{ claimId, state: "current" }],
+      readiness: {
+        status: "needs_material",
+        missingItems: ["steps", "verification_scope"],
+        independentOriginFamilies: [`external_excerpt:${excerptId}`],
+      },
+    });
+    const excerptRevised = await app.inject({
+      method: "PUT",
+      url: `${excerptUrl}/${excerptId}`,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be16-excerpt-revise-01",
+      },
+      payload: {
+        ...excerptFields,
+        excerpt: "수정한 외부 견해",
+        baseVersion: 1,
+      },
+    });
+    expect(excerptRevised.statusCode, excerptRevised.body).toBe(200);
+    const stalePack = await app.inject({
+      method: "GET",
+      url: packRevisionUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(stalePack.json()).toMatchObject({
+      sourceStates: ["stale", "stale", "fresh", "fresh", "fresh"],
+    });
+    expect(
+      stalePack.json<{ sources: { text: string }[] }>().sources[0]!.text,
+    ).toBe("외부 견해");
+    const packRevised = await app.inject({
+      method: "POST",
+      url: `${packUrl}/${packId}/revisions`,
+      headers: { ...documentHeaders, "idempotency-key": "be16-pack-revise-01" },
+      payload: {
+        baseRevision: 1,
+        title: "갱신한 근거",
+        sources: [
+          { kind: "external_excerpt", id: excerptId, revision: 2 },
+          { kind: "document_revision", id: wikiId, revision: 2 },
+        ],
+      },
+    });
+    expect(packRevised.statusCode, packRevised.body).toBe(201);
+    const latestPack = await app.inject({
+      method: "GET",
+      url: `${packUrl}/${packId}/revisions/2`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(latestPack.json()).toMatchObject({
+      sourceStates: ["fresh", "fresh"],
+    });
+    expect(
+      latestPack.json<{
+        sources: { text: string; publishedAt: string | null }[];
+      }>().sources[0],
+    ).toMatchObject({ text: "수정한 외부 견해", publishedAt: "2026-01-02" });
+    const historicalPack = await app.inject({
+      method: "GET",
+      url: packRevisionUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(historicalPack.json()).toMatchObject({
+      currentRevision: 2,
+    });
+    expect(
+      historicalPack.json<{ sources: { text: string }[] }>().sources[0]!.text,
+    ).toBe("외부 견해");
+    const staleWorkbench = await app.inject({
+      method: "GET",
+      url: workbenchUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(staleWorkbench.json()).toMatchObject({
+      claimStates: [{ claimId, state: "source_stale" }],
+    });
+    const newDraft = await app.inject({
+      method: "PUT",
+      url: saveUrl,
+      headers: { ...documentHeaders, "idempotency-key": "be16-draft-02" },
+      payload: {
+        baseVersion: 7,
+        saveSequence: 11,
+        schemaVersion: 1,
+        content: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              attrs: { blockId },
+              content: [
+                { type: "text", text: "외부 견해" },
+                {
+                  type: "sourceReference",
+                  attrs: {
+                    label: "근거",
+                    ref: {
+                      sourceKind: "document_revision",
+                      sourceId: wikiId,
+                      sourceRevision: 2,
+                      originKey: `document:${wikiId}`,
+                      sourceHash: restored.json<{ contentHash: string }>()
+                        .contentHash,
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    expect(newDraft.statusCode, newDraft.body).toBe(200);
+    const remap = await app.inject({
+      method: "GET",
+      url: workbenchUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(remap.json()).toMatchObject({
+      currentDraftVersion: 8,
+      claimStates: [{ claimId, state: "needs_remap" }],
+    });
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: workbenchUrl.replace(operator.workspaceId, invitedWorkspaceId),
+          headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
+        })
+      ).statusCode,
+    ).toBe(404);
+    const excerptDeleted = await app.inject({
+      method: "DELETE",
+      url: `${excerptUrl}/${excerptId}`,
+      headers: {
+        ...documentHeaders,
+        "idempotency-key": "be16-excerpt-delete-01",
+      },
+      payload: { baseVersion: 2 },
+    });
+    expect(excerptDeleted.statusCode, excerptDeleted.body).toBe(200);
+    const unresolvedPack = await app.inject({
+      method: "GET",
+      url: packRevisionUrl,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(unresolvedPack.json()).toMatchObject({
+      sourceStates: ["unresolved", "unresolved", "fresh", "fresh", "fresh"],
+    });
+    await expect(
+      identity.withPersonalWorkspace(operator.userId, (client) =>
+        client.query(
+          `UPDATE business.evidence_pack_revision SET manifest='{}'::jsonb WHERE workspace_id=$1 AND pack_id=$2`,
+          [operator.workspaceId, packId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
 
     const enableMfa = await app.inject({
       method: "POST",

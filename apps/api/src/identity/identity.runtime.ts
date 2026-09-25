@@ -10,6 +10,9 @@ import type { JudgementService } from "@ieum/backend/judgement/judgement-service
 import type { ProposalService } from "@ieum/backend/judgement/proposals";
 import type { ExtractionService } from "@ieum/backend/extraction/extraction-service";
 import type { DocumentService } from "@ieum/backend/documents";
+import type { ExternalExcerptService } from "@ieum/backend/documents/external-excerpts";
+import type { EvidencePackService } from "@ieum/backend/documents/evidence-packs";
+import type { DocumentWorkbenchService } from "@ieum/backend/documents/workbench";
 import type { createAccountAdministration } from "../auth/registration.js";
 
 export interface IdentityRuntime {
@@ -24,6 +27,9 @@ export interface IdentityRuntime {
   proposals: ProposalService;
   extraction: ExtractionService;
   documents: DocumentService;
+  externalExcerpts: ExternalExcerptService;
+  evidencePacks: EvidencePackService;
+  workbench: DocumentWorkbenchService;
   authPort: AuthPort;
   sessions: ReturnType<typeof createAccountAdministration>["sessions"];
   origin: string;

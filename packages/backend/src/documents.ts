@@ -66,7 +66,7 @@ function hashContent(value: EditorEnvelope): string {
     .update(JSON.stringify(content(value)))
     .digest("hex");
 }
-function documentText(value: EditorEnvelope): string {
+export function documentText(value: EditorEnvelope): string {
   return (value.content.content ?? [])
     .map((block) =>
       (block.content ?? [])
@@ -136,8 +136,29 @@ async function validateSources(
           ref.span.end > documentText(content(result.rows[0].content)).length)
       )
         throw new DocumentError("DOCUMENT_SOURCE_UNAVAILABLE");
+    } else if (ref.sourceKind === "external_excerpt") {
+      const result = await client.query<{
+        origin_key: string;
+        content_hash: string;
+        excerpt: string;
+        state: string;
+      }>(
+        `SELECT 'external_excerpt:' || e.id AS origin_key,r.content_hash,r.excerpt,e.state
+         FROM business.external_excerpt_revision r
+         JOIN business.external_excerpt e ON e.workspace_id=r.workspace_id AND e.id=r.excerpt_id
+         WHERE r.workspace_id=$1 AND r.excerpt_id=$2 AND r.revision=$3`,
+        [workspaceId, ref.sourceId, ref.sourceRevision],
+      );
+      const row = result.rows[0];
+      if (
+        !row ||
+        row.state !== "ACTIVE" ||
+        row.origin_key !== ref.originKey ||
+        row.content_hash !== ref.sourceHash ||
+        (ref.span && ref.span.end > row.excerpt.length)
+      )
+        throw new DocumentError("DOCUMENT_SOURCE_UNAVAILABLE");
     } else {
-      // External excerpt persistence arrives with BE-16; an unverified ID is never saved.
       throw new DocumentError("DOCUMENT_SOURCE_UNAVAILABLE");
     }
   }
