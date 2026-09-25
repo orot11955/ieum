@@ -564,7 +564,7 @@
         "BE-06",
         "CORE-15"
       ],
-      "status": "IMPLEMENTED",
+      "status": "VERIFIED",
       "scope": "하나의 허용 provider부터 outline/문장 정제/초안 생성에 연결한다. 입력 source allowlist, 외부 전송 opt-in, timeout/token·비용 budget, 취소, model/prompt revision을 둔다. 사용자 문서를 즉시 교체하지 않는다.",
       "contract": "모듈: generation adapter 및 job. 모델에는 텍스트와 허용 source ID만 전달; DB·파일·임의 tool 권한 없음. 결과는 generation artifact와 diff로 저장한 뒤 별도 apply command.",
       "tests": "provider 불가, source 내 지시, hallucinated source, 무한 retry, 예산 초과, 실행 중 draft 수정, 비밀/prompt 본문 로그 유출.",
