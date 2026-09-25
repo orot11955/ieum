@@ -5948,7 +5948,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Capture, Context, Task and Event current-state export run; expires in 24 hours */
+            /** @description Capture, Context, Task and Event current-state plus Task transition export run; expires in 24 hours */
             201: {
                 headers: {
                     [name: string]: unknown;

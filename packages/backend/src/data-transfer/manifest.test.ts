@@ -5,6 +5,7 @@ import {
   createCaptureBundle,
   createContextBundle,
   createPersonalBundle,
+  createTaskHistoryBundle,
   readCaptureBundle,
 } from "./manifest.js";
 
@@ -30,7 +31,7 @@ describe("BE-21 portable capture manifest", () => {
     const bundle = createCaptureBundle(workspaceId, [record]);
     const files = unpackTransferArchive(bundle);
     const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
-    manifest.version = 4;
+    manifest.version = 5;
     expect(() =>
       readCaptureBundle(
         packTransferArchive([
@@ -262,6 +263,95 @@ describe("BE-21 portable capture manifest", () => {
     expect(readCaptureBundle(splitBundle).manifest.version).toBe(3);
     manifest.contexts[0].state = "ACTIVE";
     manifest.contexts[0].supersededById = randomUUID();
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
+  });
+
+  it("round trips version 4 Task transitions and rejects an inconsistent chain", () => {
+    const taskId = randomUUID();
+    const task = {
+      id: taskId,
+      originWorkspaceId: workspaceId,
+      originId: taskId,
+      title: "상태 이력",
+      description: "",
+      state: "DONE" as const,
+      version: 4,
+      dueKind: "NONE" as const,
+      dueDate: null,
+      dueAt: null,
+      dueTimeZone: null,
+      contextId: null,
+      originUnitId: null,
+      originUnitRevision: null,
+      completedAt: "2026-09-25T00:00:00.000Z",
+      completionVersion: 4,
+    };
+    const transitions = [
+      {
+        taskId,
+        version: 2,
+        fromState: "TODO" as const,
+        toState: "IN_PROGRESS" as const,
+        recordedAt: "2026-09-24T00:00:00.000Z",
+      },
+      {
+        taskId,
+        version: 4,
+        fromState: "IN_PROGRESS" as const,
+        toState: "DONE" as const,
+        recordedAt: "2026-09-25T00:00:00.000Z",
+      },
+    ];
+    const bundle = createTaskHistoryBundle(
+      workspaceId,
+      [],
+      [task],
+      [],
+      [],
+      transitions,
+    );
+    const parsed = readCaptureBundle(bundle).manifest;
+    expect(parsed.version).toBe(4);
+    if (parsed.version !== 4) throw new Error("expected v4");
+    expect(parsed.taskTransitions).toEqual(transitions);
+    const manifest = JSON.parse(
+      unpackTransferArchive(bundle).get("manifest.json")!.toString("utf8"),
+    );
+    manifest.taskTransitions[1].fromState = "TODO";
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
+    manifest.taskTransitions[1].fromState = "IN_PROGRESS";
+    manifest.tasks[0].completionVersion = 2;
+    expect(() =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+        ]),
+      ),
+    ).toThrow("INVALID_BUNDLE");
+    manifest.tasks[0].completionVersion = 4;
+    manifest.taskTransitions[0].toState = "CANCELED";
+    manifest.taskTransitions[1].fromState = "CANCELED";
     expect(() =>
       readCaptureBundle(
         packTransferArchive([

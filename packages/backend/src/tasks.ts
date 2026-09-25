@@ -173,6 +173,9 @@ const transitions: Record<TaskState, readonly TaskState[]> = {
   DONE: ["TODO", "IN_PROGRESS"],
   CANCELED: ["TODO", "IN_PROGRESS"],
 };
+export function taskTransitionAllowed(from: TaskState, to: TaskState): boolean {
+  return transitions[from].includes(to);
+}
 
 /** Reuses Task validation inside an already authorized command transaction. */
 export async function insertExtractedTaskInTransaction(
@@ -431,7 +434,7 @@ export class TaskService {
         const row = await this.lockTask(client, access.workspaceId, input.id);
         if (row.version !== input.baseVersion)
           throw new CommandError("VERSION_CONFLICT", row.version);
-        if (!transitions[row.state].includes(input.targetState))
+        if (!taskTransitionAllowed(row.state, input.targetState))
           throw new TaskError("TASK_TRANSITION_INVALID");
         const version = row.version + 1,
           done = input.targetState === "DONE";

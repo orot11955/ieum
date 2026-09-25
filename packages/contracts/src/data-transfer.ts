@@ -82,13 +82,28 @@ export const TransferManifestV3Schema = TransferManifestV2Schema.omit({
   version: z.literal(3),
   contexts: z.array(portableContext).max(4096),
 });
+const portableTaskTransition = z.strictObject({
+  taskId: z.uuid(),
+  version: z.int().min(2),
+  fromState: portableTask.shape.state,
+  toState: portableTask.shape.state,
+  recordedAt: z.iso.datetime({ offset: true }),
+});
+export const TransferManifestV4Schema = TransferManifestV3Schema.omit({
+  version: true,
+}).extend({
+  version: z.literal(4),
+  taskTransitions: z.array(portableTaskTransition).max(16384),
+});
 export const TransferManifestSchema = z.discriminatedUnion("version", [
   TransferManifestV1Schema,
   TransferManifestV2Schema,
   TransferManifestV3Schema,
+  TransferManifestV4Schema,
 ]);
 export type TransferManifestV2 = z.infer<typeof TransferManifestV2Schema>;
 export type TransferManifestV3 = z.infer<typeof TransferManifestV3Schema>;
+export type TransferManifestV4 = z.infer<typeof TransferManifestV4Schema>;
 
 export const TransferRunSchema = z.strictObject({
   id: z.uuid(),
@@ -96,6 +111,7 @@ export const TransferRunSchema = z.strictObject({
     "CAPTURES_ONLY",
     "CAPTURES_TASKS_EVENTS",
     "CAPTURES_TASKS_EVENTS_CONTEXTS",
+    "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY",
   ]),
   kind: z.enum(["EXPORT", "IMPORT"]),
   state: z.enum(["READY", "STAGED", "APPLIED", "PARTIAL"]),
@@ -154,7 +170,7 @@ export const dataTransferOpenApiPaths = {
       responses: {
         "201": {
           description:
-            "Capture, Context, Task and Event current-state export run; expires in 24 hours",
+            "Capture, Context, Task and Event current-state plus Task transition export run; expires in 24 hours",
         },
         "403": error,
         "503": error,

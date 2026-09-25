@@ -2,13 +2,14 @@ import { createHash, randomUUID } from "node:crypto";
 import type {
   TransferManifestV2,
   TransferManifestV3,
+  TransferManifestV4,
 } from "@ieum/contracts/data-transfer";
 import type { PoolClient } from "pg";
 import { CommandCoordinator } from "../command-coordinator.js";
 import { insertCaptureInTransaction } from "../captures.js";
 import { IdentityService } from "../identity-service.js";
 import { transferHash } from "./archive.js";
-import { createContextBundle, readCaptureBundle } from "./manifest.js";
+import { createTaskHistoryBundle, readCaptureBundle } from "./manifest.js";
 import type { TransferStoragePort } from "./storage.js";
 
 const UUID =
@@ -77,7 +78,10 @@ function requireUuid(value: string): void {
 }
 
 type TransferScope =
-  "CAPTURES_ONLY" | "CAPTURES_TASKS_EVENTS" | "CAPTURES_TASKS_EVENTS_CONTEXTS";
+  | "CAPTURES_ONLY"
+  | "CAPTURES_TASKS_EVENTS"
+  | "CAPTURES_TASKS_EVENTS_CONTEXTS"
+  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY";
 function publicRun(run: Run, scope: TransferScope) {
   return {
     id: run.id,
@@ -116,11 +120,13 @@ function previewHash(rows: TransferPreviewRow[]): string {
 }
 
 function bundleScope(version: number): TransferScope {
-  return version === 3
-    ? "CAPTURES_TASKS_EVENTS_CONTEXTS"
-    : version === 2
-      ? "CAPTURES_TASKS_EVENTS"
-      : "CAPTURES_ONLY";
+  return version === 4
+    ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY"
+    : version === 3
+      ? "CAPTURES_TASKS_EVENTS_CONTEXTS"
+      : version === 2
+        ? "CAPTURES_TASKS_EVENTS"
+        : "CAPTURES_ONLY";
 }
 
 function dateOnly(value: string | Date | null): string | null {
@@ -306,10 +312,23 @@ export class DataTransferService {
            WHERE c.workspace_id=$1 ORDER BY c.id LIMIT 4097`,
           [workspaceId],
         );
+        const transitions = await client.query<{
+          task_id: string;
+          version: number;
+          from_state: TransferManifestV4["taskTransitions"][number]["fromState"];
+          to_state: TransferManifestV4["taskTransitions"][number]["toState"];
+          recorded_at: Date;
+        }>(
+          `SELECT task_id,version,from_state,to_state,recorded_at
+           FROM business.task_transition WHERE workspace_id=$1
+           ORDER BY task_id,version LIMIT 16385`,
+          [workspaceId],
+        );
         if (
           tasks.rows.length > 4096 ||
           events.rows.length > 4096 ||
-          contexts.rows.length > 4096
+          contexts.rows.length > 4096 ||
+          transitions.rows.length > 16384
         )
           throw new DataTransferError("TRANSFER_UNAVAILABLE");
         return {
@@ -364,16 +383,24 @@ export class DataTransferService {
             identityRevision: row.origin_revision ?? row.identity_revision,
             membershipRevision: row.membership_revision,
           })),
+          taskTransitions: transitions.rows.map((row) => ({
+            taskId: row.task_id,
+            version: row.version,
+            fromState: row.from_state,
+            toState: row.to_state,
+            recordedAt: row.recorded_at.toISOString(),
+          })),
         };
       },
       "REPEATABLE READ",
     );
-    const bytes = createContextBundle(
+    const bytes = createTaskHistoryBundle(
       workspaceId,
       snapshot.captures,
       snapshot.tasks,
       snapshot.events,
       snapshot.contexts,
+      snapshot.taskTransitions,
     );
     const id = randomUUID();
     const storageKey = randomUUID();
@@ -401,7 +428,10 @@ export class DataTransferService {
               bytes.length,
             ],
           );
-          return publicRun(result.rows[0]!, "CAPTURES_TASKS_EVENTS_CONTEXTS");
+          return publicRun(
+            result.rows[0]!,
+            "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY",
+          );
         },
       );
     } catch (error) {
@@ -509,7 +539,7 @@ export class DataTransferService {
                 );
             }
           }
-          if (manifest.version === 3) {
+          if (manifest.version === 3 || manifest.version === 4) {
             for (const context of manifest.contexts)
               await client.query(
                 `INSERT INTO business.transfer_row
@@ -623,7 +653,7 @@ export class DataTransferService {
             targetId: previous?.id ?? stale?.rows[0]?.target_id ?? null,
           });
         }
-        if (bundle.manifest.version === 3) {
+        if (bundle.manifest.version === 3 || bundle.manifest.version === 4) {
           for (const record of bundle.manifest.contexts)
             rows.push(
               await this.previewContext(client, workspaceId, id, record),
@@ -637,7 +667,14 @@ export class DataTransferService {
                 workspaceId,
                 id,
                 record,
-                bundle.manifest.version === 3 ? bundle.manifest.contexts : [],
+                bundle.manifest.version === 3 || bundle.manifest.version === 4
+                  ? bundle.manifest.contexts
+                  : [],
+                bundle.manifest.version === 4
+                  ? bundle.manifest.taskTransitions.filter(
+                      (transition) => transition.taskId === record.id,
+                    )
+                  : undefined,
               ),
             );
           for (const record of bundle.manifest.events)
@@ -716,6 +753,7 @@ export class DataTransferService {
     runId: string,
     record: TransferManifestV2["tasks"][number],
     contexts: TransferManifestV3["contexts"] = [],
+    transitions?: TransferManifestV4["taskTransitions"],
   ): Promise<TransferPreviewRow> {
     const base = {
       recordKind: "task" as const,
@@ -777,9 +815,37 @@ export class DataTransferService {
       ],
     );
     const prior = existing.rows[0];
+    let sameHistory = true;
+    if (prior?.same && transitions !== undefined) {
+      const actual = await client.query<{
+        version: number;
+        from_state: string;
+        to_state: string;
+        recorded_at: Date;
+      }>(
+        `SELECT version,from_state,to_state,recorded_at
+         FROM business.task_transition WHERE workspace_id=$1 AND task_id=$2 ORDER BY version`,
+        [workspaceId, prior.target_id],
+      );
+      const expected = [...transitions].sort((a, b) => a.version - b.version);
+      sameHistory =
+        actual.rows.length === expected.length &&
+        actual.rows.every(
+          (row, index) =>
+            row.version === expected[index]!.version &&
+            row.from_state === expected[index]!.fromState &&
+            row.to_state === expected[index]!.toState &&
+            row.recorded_at.getTime() ===
+              new Date(expected[index]!.recordedAt).getTime(),
+        );
+    }
     return {
       ...base,
-      state: !prior ? "NEW" : prior.same ? "DUPLICATE" : "CONFLICT",
+      state: !prior
+        ? "NEW"
+        : prior.same && sameHistory
+          ? "DUPLICATE"
+          : "CONFLICT",
       targetId: prior?.target_id ?? null,
     };
   }
@@ -1045,7 +1111,7 @@ export class DataTransferService {
         },
       });
     }
-    if (bundle.manifest.version === 3) {
+    if (bundle.manifest.version === 3 || bundle.manifest.version === 4) {
       for (const record of bundle.manifest.contexts)
         await this.applyContext(actorId, workspaceId, id, record);
     }
@@ -1056,7 +1122,14 @@ export class DataTransferService {
           workspaceId,
           id,
           record,
-          bundle.manifest.version === 3 ? bundle.manifest.contexts : [],
+          bundle.manifest.version === 3 || bundle.manifest.version === 4
+            ? bundle.manifest.contexts
+            : [],
+          bundle.manifest.version === 4
+            ? bundle.manifest.taskTransitions.filter(
+                (transition) => transition.taskId === record.id,
+              )
+            : undefined,
         );
       for (const record of bundle.manifest.events)
         await this.applyEvent(actorId, workspaceId, id, record);
@@ -1237,6 +1310,7 @@ export class DataTransferService {
     runId: string,
     record: TransferManifestV2["tasks"][number],
     contexts: TransferManifestV3["contexts"] = [],
+    transitions?: TransferManifestV4["taskTransitions"],
   ): Promise<void> {
     await this.commands.execute({
       actorId,
@@ -1295,6 +1369,7 @@ export class DataTransferService {
           runId,
           record,
           contexts,
+          transitions,
         );
         const context = await this.taskContextMapping(
           client,
@@ -1334,6 +1409,21 @@ export class DataTransferService {
               record.completionVersion,
             ],
           );
+          for (const transition of transitions ?? [])
+            await client.query(
+              `INSERT INTO business.task_transition
+               (workspace_id,task_id,version,from_state,to_state,actor_id,recorded_at)
+               VALUES($1,$2,$3,$4,$5,$6,$7)`,
+              [
+                workspaceId,
+                targetId,
+                transition.version,
+                transition.fromState,
+                transition.toState,
+                actorId,
+                transition.recordedAt,
+              ],
+            );
         }
         if (state === "IMPORTED")
           await client.query(

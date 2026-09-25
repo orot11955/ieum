@@ -34,6 +34,7 @@ import {
   createCaptureBundle,
   createContextBundle,
   createPersonalBundle,
+  createTaskHistoryBundle,
   readCaptureBundle,
 } from "@ieum/backend/data-transfer/manifest";
 import {
@@ -4310,13 +4311,137 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const linkedManifest = readCaptureBundle(
       linkedDownload.rawPayload,
     ).manifest;
-    expect(linkedManifest.version).toBe(3);
-    if (linkedManifest.version !== 3) throw new Error("expected v3");
+    expect(linkedManifest.version).toBe(4);
+    if (linkedManifest.version !== 4) throw new Error("expected v4");
     expect(
       linkedManifest.contexts.find(
         (context) => context.id === linkedTargets.rows[0]?.context_id,
       )?.identityRevision,
     ).toBe(3);
+    const historySource = randomUUID();
+    const historyTaskId = randomUUID();
+    const historyBundle = createTaskHistoryBundle(
+      historySource,
+      [],
+      [
+        {
+          id: historyTaskId,
+          originWorkspaceId: historySource,
+          originId: historyTaskId,
+          title: "전이 기록 이식",
+          description: "",
+          state: "DONE",
+          version: 4,
+          dueKind: "NONE",
+          dueDate: null,
+          dueAt: null,
+          dueTimeZone: null,
+          contextId: null,
+          originUnitId: null,
+          originUnitRevision: null,
+          completedAt: "2026-09-25T00:00:00.000Z",
+          completionVersion: 4,
+        },
+      ],
+      [],
+      [],
+      [
+        {
+          taskId: historyTaskId,
+          version: 2,
+          fromState: "TODO",
+          toState: "IN_PROGRESS",
+          recordedAt: "2026-09-24T00:00:00.000Z",
+        },
+        {
+          taskId: historyTaskId,
+          version: 4,
+          fromState: "IN_PROGRESS",
+          toState: "DONE",
+          recordedAt: "2026-09-25T00:00:00.000Z",
+        },
+      ],
+    );
+    const historyStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: historyBundle,
+    });
+    expect(historyStage.statusCode, historyStage.body).toBe(201);
+    expect(historyStage.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY",
+    );
+    const historyRunId = historyStage.json<{ id: string }>().id;
+    const historyPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${historyRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(historyPreview.statusCode, historyPreview.body).toBe(200);
+    const historyApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${historyRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: historyPreview.json<{ previewHash: string }>().previewHash,
+      },
+    });
+    expect(historyApplied.statusCode, historyApplied.body).toBe(201);
+    expect(historyApplied.json<{ state: string }>().state).toBe("APPLIED");
+    const importedHistory = await admin.query<{
+      version: number;
+      from_state: string;
+      to_state: string;
+    }>(
+      `SELECT tt.version,tt.from_state,tt.to_state
+       FROM business.transfer_origin o JOIN business.task_transition tt
+         ON tt.workspace_id=o.workspace_id AND tt.task_id=o.target_id
+       WHERE o.workspace_id=$1 AND o.record_kind='task' AND o.source_id=$2
+       ORDER BY tt.version`,
+      [operator.workspaceId, historyTaskId],
+    );
+    expect(importedHistory.rows).toMatchObject([
+      { version: 2, from_state: "TODO", to_state: "IN_PROGRESS" },
+      { version: 4, from_state: "IN_PROGRESS", to_state: "DONE" },
+    ]);
+    const historyManifest = readCaptureBundle(historyBundle).manifest;
+    if (historyManifest.version !== 4) throw new Error("expected v4");
+    const replayHistoryId = randomUUID();
+    const replayHistory = createTaskHistoryBundle(
+      historySource,
+      [],
+      [{ ...historyManifest.tasks[0]!, id: replayHistoryId }],
+      [],
+      [],
+      historyManifest.taskTransitions.map((transition) => ({
+        ...transition,
+        taskId: replayHistoryId,
+      })),
+    );
+    const replayStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: replayHistory,
+    });
+    expect(replayStage.statusCode, replayStage.body).toBe(201);
+    const replayPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${replayStage.json<{ id: string }>().id}/preview`,
+      headers: transferHeaders,
+    });
+    expect(
+      replayPreview
+        .json<{ rows: { state: string }[] }>()
+        .rows.map((row) => row.state),
+    ).toEqual(["DUPLICATE"]);
     await admin.query("DELETE FROM business.task WHERE id=$1", [
       transferredTask.rows[0]?.target_id,
     ]);

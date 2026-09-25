@@ -2,9 +2,11 @@ import {
   TransferManifestSchema,
   TransferManifestV2Schema,
   TransferManifestV3Schema,
+  TransferManifestV4Schema,
   type TransferManifest,
   type TransferManifestV2,
   type TransferManifestV3,
+  type TransferManifestV4,
 } from "@ieum/contracts/data-transfer";
 import {
   packTransferArchive,
@@ -12,6 +14,7 @@ import {
   unpackTransferArchive,
 } from "./archive.js";
 import { validRawBody, validText } from "../captures.js";
+import { taskTransitionAllowed } from "../tasks.js";
 import {
   resolveLocalTime,
   timeZoneFormat,
@@ -128,8 +131,49 @@ export function createContextBundle(
   ]);
 }
 
+export function createTaskHistoryBundle(
+  sourceWorkspaceId: string,
+  records: Parameters<typeof createCaptureBundle>[1],
+  tasks: TransferManifestV4["tasks"],
+  events: TransferManifestV4["events"],
+  contexts: TransferManifestV4["contexts"],
+  taskTransitions: TransferManifestV4["taskTransitions"],
+): Buffer {
+  const files = records.map((record) => ({
+    path: `captures/${record.id}.md`,
+    bytes: Buffer.from(record.rawBody, "utf8"),
+  }));
+  const manifest = TransferManifestV4Schema.parse({
+    format: "ieum-personal",
+    version: 4,
+    exportedAt: new Date().toISOString(),
+    sourceWorkspaceId,
+    captures: records.map((record, index) => ({
+      id: record.id,
+      revision: record.revision,
+      title: record.title,
+      originWorkspaceId: record.originWorkspaceId ?? sourceWorkspaceId,
+      originCaptureId: record.originCaptureId ?? record.id,
+      path: files[index]!.path,
+      sha256: transferHash(files[index]!.bytes),
+    })),
+    tasks,
+    events,
+    contexts,
+    taskTransitions,
+  });
+  return packTransferArchive([
+    { path: "manifest.json", bytes: Buffer.from(JSON.stringify(manifest)) },
+    ...files,
+  ]);
+}
+
 export function readCaptureBundle(packed: Buffer): {
-  manifest: TransferManifest | TransferManifestV2 | TransferManifestV3;
+  manifest:
+    | TransferManifest
+    | TransferManifestV2
+    | TransferManifestV3
+    | TransferManifestV4;
   captures: (TransferManifest["captures"][number] & { rawBody: string })[];
 } {
   const files = unpackTransferArchive(packed);
@@ -151,7 +195,8 @@ export function readCaptureBundle(packed: Buffer): {
     "version" in input &&
     input.version !== 1 &&
     input.version !== 2 &&
-    input.version !== 3
+    input.version !== 3 &&
+    input.version !== 4
   )
     throw new TransferManifestError("UNSUPPORTED_SCHEMA");
   const parsed = TransferManifestSchema.safeParse(input);
@@ -246,7 +291,7 @@ export function readCaptureBundle(packed: Buffer): {
     )
       throw new TransferManifestError("INVALID_BUNDLE");
   }
-  if (manifest.version === 3) {
+  if (manifest.version === 3 || manifest.version === 4) {
     if (
       new Set(manifest.contexts.map((context) => context.id)).size !==
       manifest.contexts.length
@@ -259,6 +304,41 @@ export function readCaptureBundle(packed: Buffer): {
         !validText(context.scope, 2000) ||
         (context.state !== "SUPERSEDED" && context.supersededById !== null) ||
         context.supersededById === context.id
+      )
+        throw new TransferManifestError("INVALID_BUNDLE");
+    }
+  }
+  if (manifest.version === 4) {
+    const tasks = new Map(manifest.tasks.map((task) => [task.id, task]));
+    const byTask = new Map<string, typeof manifest.taskTransitions>();
+    for (const transition of manifest.taskTransitions) {
+      const task = tasks.get(transition.taskId);
+      if (
+        !task ||
+        transition.version > task.version ||
+        !taskTransitionAllowed(transition.fromState, transition.toState)
+      )
+        throw new TransferManifestError("INVALID_BUNDLE");
+      const history = byTask.get(transition.taskId) ?? [];
+      history.push(transition);
+      byTask.set(transition.taskId, history);
+    }
+    for (const [taskId, history] of byTask) {
+      history.sort((a, b) => a.version - b.version);
+      for (let index = 0; index < history.length; index++) {
+        if (
+          (index > 0 &&
+            (history[index]!.version === history[index - 1]!.version ||
+              history[index]!.fromState !== history[index - 1]!.toState)) ||
+          (index === history.length - 1 &&
+            history[index]!.toState !== tasks.get(taskId)!.state)
+        )
+          throw new TransferManifestError("INVALID_BUNDLE");
+      }
+      const task = tasks.get(taskId)!;
+      if (
+        task.state === "DONE" &&
+        history[history.length - 1]!.version !== task.completionVersion
       )
         throw new TransferManifestError("INVALID_BUNDLE");
     }
