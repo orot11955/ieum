@@ -12,7 +12,7 @@ import {
   toCreateCaptureCommand,
 } from "./management.js";
 import { PublicPublicationSchema, publicationPath } from "./delivery.js";
-import { EditorEnvelopeSchema } from "./editor.js";
+import { EditorEnvelopeSchema, compareEditorBlocks } from "./editor.js";
 
 const captureId = "11111111-1111-4111-8111-111111111111";
 
@@ -136,4 +136,112 @@ it("keeps editor schema version separate from the raw source span", () => {
       content: { type: "doc" },
     }).success,
   ).toBe(false);
+});
+
+it("rejects unsupported nodes, duplicate IDs and invalid source anchors", () => {
+  const blockId = "11111111-1111-4111-8111-111111111111";
+  const paragraph = {
+    type: "paragraph",
+    attrs: { blockId },
+    content: [{ type: "text", text: "기록" }],
+  };
+  const envelope = {
+    schemaVersion: 1,
+    content: { type: "doc", content: [paragraph] },
+  };
+  expect(EditorEnvelopeSchema.safeParse(envelope).success).toBe(true);
+  expect(
+    EditorEnvelopeSchema.safeParse({
+      ...envelope,
+      content: { type: "doc", content: [paragraph, paragraph] },
+    }).success,
+  ).toBe(false);
+  expect(
+    EditorEnvelopeSchema.safeParse({
+      ...envelope,
+      content: { type: "doc", content: [{ type: "image" }] },
+    }).success,
+  ).toBe(false);
+  expect(
+    EditorEnvelopeSchema.safeParse({
+      ...envelope,
+      content: {
+        type: "doc",
+        content: [
+          {
+            ...paragraph,
+            content: [
+              {
+                type: "sourceReference",
+                attrs: {
+                  label: "원문",
+                  ref: {
+                    sourceKind: "unit",
+                    sourceId: "u1",
+                    sourceRevision: 1,
+                    originKey: "o1",
+                    sourceHash: "h1",
+                    span: { start: 2, end: 1, encoding: "utf16" },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    }).success,
+  ).toBe(false);
+  const changed = EditorEnvelopeSchema.parse({
+    ...envelope,
+    content: {
+      type: "doc",
+      content: [{ ...paragraph, content: [{ type: "text", text: "수정" }] }],
+    },
+  });
+  expect(
+    compareEditorBlocks(EditorEnvelopeSchema.parse(envelope), changed),
+  ).toEqual({ recheckBlockIds: [blockId], removedBlockIds: [] });
+  const source = {
+    type: "sourceReference",
+    attrs: {
+      label: "원문",
+      ref: {
+        sourceKind: "unit",
+        sourceId: "u1",
+        sourceRevision: 1,
+        originKey: "o1",
+        sourceHash: "h1",
+      },
+    },
+  };
+  const sourced = EditorEnvelopeSchema.parse({
+    ...envelope,
+    content: { type: "doc", content: [{ ...paragraph, content: [source] }] },
+  });
+  const reanchored = EditorEnvelopeSchema.parse({
+    ...envelope,
+    content: {
+      type: "doc",
+      content: [
+        {
+          ...paragraph,
+          content: [
+            {
+              ...source,
+              attrs: {
+                ...source.attrs,
+                ref: { ...source.attrs.ref, sourceRevision: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    },
+  });
+  expect(
+    EditorEnvelopeSchema.parse(JSON.parse(JSON.stringify(sourced))),
+  ).toEqual(sourced);
+  expect(compareEditorBlocks(sourced, reanchored).recheckBlockIds).toEqual([
+    blockId,
+  ]);
 });

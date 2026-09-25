@@ -12,6 +12,9 @@
       "types": "./dist/management.d.ts",
       "default": "./dist/management.js"
     },
+    "./management-client": {
+      "types": "./generated/management.ts"
+    },
     "./knowledge": {
       "types": "./dist/knowledge.d.ts",
       "default": "./dist/knowledge.js"

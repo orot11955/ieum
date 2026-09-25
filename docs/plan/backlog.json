@@ -756,7 +756,7 @@
         "FE-01",
         "BASE-03"
       ],
-      "status": "PLANNED",
+      "status": "IMPLEMENTED",
       "scope": "Tiptap JSON과 block ID, source reference node, 한글 IME 입력을 작은 editor로 시험한다. React Hook Form+Zod 폼 경계, typed client+TanStack Query, 오류 표시를 시험한다.",
       "contract": "산출물: editor-schema 계약, EditorAdapter, typed-client demo. 무료 코어 기능으로 시작하고 유료 cloud/협업 기능은 필수로 두지 않는다. rich text와 raw capture editor는 동일 입력기로 강제하지 않는다.",
       "tests": "한글 조합 중 Enter, 붙여넣기·잘라내기·undo/redo·block split/merge ID, schema serialize/deserialize, 출처 anchor 변경, form 서버 오류.",

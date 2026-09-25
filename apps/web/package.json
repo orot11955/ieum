@@ -10,9 +10,20 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.1",
+    "@ieum/contracts": "workspace:*",
     "@ieum/ui": "workspace:*",
+    "@tanstack/react-query": "5.103.2",
+    "@tiptap/core": "3.31.3",
+    "@tiptap/extension-unique-id": "3.31.3",
+    "@tiptap/pm": "3.31.3",
+    "@tiptap/react": "3.31.3",
+    "@tiptap/starter-kit": "3.31.3",
+    "openapi-fetch": "0.17.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-hook-form": "7.88.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

@@ -1,4 +1,7 @@
 import { useState } from "react";
+import type { EditorEnvelope } from "@ieum/contracts/editor";
+import { EditorAdapter } from "./editor-adapter";
+import { TypedClientDemo } from "./typed-client-demo";
 import {
   Button,
   Card,
@@ -24,11 +27,26 @@ const columns = [
 ] as const;
 const longUrl =
   "https://example.test/source/아주-긴-자료-주소와-출처-앵커가-좁은-화면에서도-잘리지-않고-줄바꿈되는지-확인하는-표본";
+const initialEditor: EditorEnvelope = {
+  schemaVersion: 1,
+  content: {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { blockId: "22222222-2222-4222-8222-222222222222" },
+        content: [{ type: "text", text: "한글 조합과 문단 ID 표본" }],
+      },
+    ],
+  },
+};
 
 export function Gallery() {
   const { preference, setPreference } = useTheme();
   const [clickCount, setClickCount] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editorDocument, setEditorDocument] = useState(initialEditor);
+  const [editorError, setEditorError] = useState("");
   return (
     <div className="ieum-shell" data-density="comfortable">
       <nav className="ieum-nav" aria-label="갤러리 목차">
@@ -38,6 +56,8 @@ export function Gallery() {
         <a href="#feedback">상태와 표</a>
         <a href="#login">W01 로그인 표본</a>
         <a href="#settings">W26 설정 표본</a>
+        <a href="#editor-spike">W13 편집기 표본</a>
+        <a href="#form-spike">폼·HTTP 표본</a>
       </nav>
       <main className="ieum-main" id="main">
         <Page
@@ -254,6 +274,53 @@ export function Gallery() {
                 설정 값은 이 기기에만 저장하며 계정 권한이나 본문 데이터로
                 사용하지 않습니다.
               </p>
+            </Card>
+          </section>
+          <section
+            id="editor-spike"
+            className="ieum-stack"
+            aria-labelledby="editor-title"
+          >
+            <h2 id="editor-title">W13 편집기 표본 · FE-02</h2>
+            <Card title="구조화 문서 편집">
+              {editorError && <Notice tone="danger">{editorError}</Notice>}
+              <EditorAdapter
+                initial={initialEditor}
+                onValidChange={(value) => {
+                  setEditorDocument(value);
+                  setEditorError("");
+                }}
+                onInvalid={setEditorError}
+                insertableReference={{
+                  label: "합성 원문 r1",
+                  ref: {
+                    sourceKind: "unit",
+                    sourceId: "fixture-unit",
+                    sourceRevision: 1,
+                    originKey: "fixture-origin",
+                    sourceHash: "fixture-hash",
+                  },
+                }}
+              />
+              <details>
+                <summary>저장 JSON 확인</summary>
+                <pre
+                  className="ieum-inline-code ieum-break"
+                  data-testid="editor-json-preview"
+                >
+                  {JSON.stringify(editorDocument, null, 2)}
+                </pre>
+              </details>
+            </Card>
+          </section>
+          <section
+            id="form-spike"
+            className="ieum-stack"
+            aria-labelledby="form-spike-title"
+          >
+            <h2 id="form-spike-title">폼·HTTP 계약 표본 · FE-02</h2>
+            <Card title="React Hook Form · Zod · typed client">
+              <TypedClientDemo />
             </Card>
           </section>
         </Page>
