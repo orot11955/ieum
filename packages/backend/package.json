@@ -100,6 +100,22 @@
       "types": "./dist/delivery/reader.d.ts",
       "default": "./dist/delivery/reader.js"
     },
+    "./data-transfer/service": {
+      "types": "./dist/data-transfer/service.d.ts",
+      "default": "./dist/data-transfer/service.js"
+    },
+    "./data-transfer/storage": {
+      "types": "./dist/data-transfer/storage.d.ts",
+      "default": "./dist/data-transfer/storage.js"
+    },
+    "./data-transfer/archive": {
+      "types": "./dist/data-transfer/archive.d.ts",
+      "default": "./dist/data-transfer/archive.js"
+    },
+    "./data-transfer/manifest": {
+      "types": "./dist/data-transfer/manifest.d.ts",
+      "default": "./dist/data-transfer/manifest.js"
+    },
     "./platform/jobs/generation": {
       "types": "./dist/platform/jobs/generation.d.ts",
       "default": "./dist/platform/jobs/generation.js"

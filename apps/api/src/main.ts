@@ -22,6 +22,8 @@ import { DocumentAssetService } from "@ieum/backend/assets/document-usage";
 import { LocalAssetStorage } from "@ieum/backend/assets/storage";
 import { PublicationService } from "@ieum/backend/publishing/publication-service";
 import { DeliveryCredentialService } from "@ieum/backend/delivery/credential-service";
+import { DataTransferService } from "@ieum/backend/data-transfer/service";
+import { LocalTransferStorage } from "@ieum/backend/data-transfer/storage";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { createApiApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
@@ -47,6 +49,7 @@ const baseUrl = process.env.AUTH_BASE_URL;
 const secret = process.env.AUTH_SECRET;
 const privateAssetRoot = process.env.IEUM_ASSET_PRIVATE_ROOT;
 const derivativeAssetRoot = process.env.IEUM_ASSET_DERIVATIVE_ROOT;
+const transferRoot = process.env.IEUM_TRANSFER_ROOT;
 if (Boolean(privateAssetRoot) !== Boolean(derivativeAssetRoot))
   throw new Error(
     "IEUM_ASSET_PRIVATE_ROOT and IEUM_ASSET_DERIVATIVE_ROOT must be set together",
@@ -65,6 +68,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
     max: 1,
     connectionTimeoutMillis: 10_000,
   });
+  let transferCleanupTimer: NodeJS.Timeout | null = null;
   try {
     await assertApplicationDatabaseRole(businessPool);
     const config = { databaseUrl, baseUrl, secret };
@@ -81,6 +85,21 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
       privateAssetRoot && derivativeAssetRoot
         ? await LocalAssetStorage.create(privateAssetRoot, derivativeAssetRoot)
         : null;
+    const transferStorage = transferRoot
+      ? await LocalTransferStorage.create(transferRoot)
+      : null;
+    if (transferStorage) {
+      await transferStorage.pruneExpired();
+      transferCleanupTimer = setInterval(
+        () => {
+          void transferStorage.pruneExpired().catch(() => {
+            process.stderr.write("Transfer cleanup failed\n");
+          });
+        },
+        60 * 60 * 1000,
+      );
+      transferCleanupTimer.unref();
+    }
     runtime = {
       auth: auth.auth,
       baseUrl,
@@ -104,6 +123,11 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
         documentAssets: new DocumentAssetService(service, commands),
         publications: new PublicationService(service, commands),
         deliveryCredentials: new DeliveryCredentialService(service),
+        dataTransfer: new DataTransferService(
+          service,
+          commands,
+          transferStorage,
+        ),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin: new URL(baseUrl).origin,
@@ -115,6 +139,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
       withAuthMutationLock: (operation) =>
         service.withAuthMutationLock(operation),
       close: async () => {
+        if (transferCleanupTimer) clearInterval(transferCleanupTimer);
         await Promise.all([
           auth.close(),
           administration.close(),
@@ -124,6 +149,7 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
       },
     };
   } catch (error) {
+    if (transferCleanupTimer) clearInterval(transferCleanupTimer);
     await businessPool.end();
     await authLockPool.end();
     throw error;

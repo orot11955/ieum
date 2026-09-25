@@ -18,6 +18,7 @@ import type { AssetService } from "@ieum/backend/assets/asset-service";
 import type { DocumentAssetService } from "@ieum/backend/assets/document-usage";
 import type { PublicationService } from "@ieum/backend/publishing/publication-service";
 import type { DeliveryCredentialService } from "@ieum/backend/delivery/credential-service";
+import type { DataTransferService } from "@ieum/backend/data-transfer/service";
 import type { createAccountAdministration } from "../auth/registration.js";
 
 export interface IdentityRuntime {
@@ -40,6 +41,7 @@ export interface IdentityRuntime {
   documentAssets: DocumentAssetService;
   publications: PublicationService;
   deliveryCredentials: DeliveryCredentialService;
+  dataTransfer: DataTransferService;
   authPort: AuthPort;
   sessions: ReturnType<typeof createAccountAdministration>["sessions"];
   origin: string;

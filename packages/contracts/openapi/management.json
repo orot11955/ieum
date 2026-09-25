@@ -14245,6 +14245,198 @@
         }
       }
     },
+    "/api/v1/workspaces/{wid}/data-transfer/exports": {
+      "post": {
+        "operationId": "createCaptureExport",
+        "parameters": [
+          {
+            "name": "wid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Capture-only export run; expires in 24 hours"
+          },
+          "403": {
+            "description": "Problem response"
+          },
+          "503": {
+            "description": "Problem response"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{wid}/data-transfer/exports/{id}/download": {
+      "get": {
+        "operationId": "downloadCaptureExport",
+        "parameters": [
+          {
+            "name": "wid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private gzipped tar bundle"
+          },
+          "403": {
+            "description": "Problem response"
+          },
+          "404": {
+            "description": "Problem response"
+          },
+          "410": {
+            "description": "Problem response"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{wid}/data-transfer/imports": {
+      "post": {
+        "operationId": "stageCaptureImport",
+        "parameters": [
+          {
+            "name": "wid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.ieum.bundle+gzip": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Validated staged import"
+          },
+          "422": {
+            "description": "Problem response"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{wid}/data-transfer/imports/{id}/preview": {
+      "get": {
+        "operationId": "previewCaptureImport",
+        "parameters": [
+          {
+            "name": "wid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current duplicate/conflict preview"
+          },
+          "404": {
+            "description": "Problem response"
+          },
+          "410": {
+            "description": "Problem response"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{wid}/data-transfer/imports/{id}/apply": {
+      "post": {
+        "operationId": "applyCaptureImport",
+        "parameters": [
+          {
+            "name": "wid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "previewHash"
+                ],
+                "properties": {
+                  "previewHash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Row results; partial failures retained"
+          },
+          "409": {
+            "description": "Problem response"
+          },
+          "410": {
+            "description": "Problem response"
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{wid}/captures": {
       "post": {
         "operationId": "createCapture",

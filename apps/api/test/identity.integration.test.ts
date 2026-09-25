@@ -28,6 +28,9 @@ import { DocumentAssetService } from "@ieum/backend/assets/document-usage";
 import { LocalAssetStorage } from "@ieum/backend/assets/storage";
 import { PublicationService } from "@ieum/backend/publishing/publication-service";
 import { DeliveryCredentialService } from "@ieum/backend/delivery/credential-service";
+import { DataTransferService } from "@ieum/backend/data-transfer/service";
+import { LocalTransferStorage } from "@ieum/backend/data-transfer/storage";
+import { createCaptureBundle } from "@ieum/backend/data-transfer/manifest";
 import {
   assertDeliveryDatabaseRole,
   DeliveryReader,
@@ -121,6 +124,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
   let deliveryApp: Awaited<ReturnType<typeof createDeliveryApp>>;
   let identity: IdentityService;
   let assetRoot: string;
+  let transferWriteCalls = 0;
 
   beforeAll(async () => {
     container = await new PostgreSqlContainer(postgresImage)
@@ -184,6 +188,17 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       join(assetRoot, "private"),
       join(assetRoot, "derivative"),
     );
+    const transferStorage = await LocalTransferStorage.create(
+      join(assetRoot, "transfer"),
+    );
+    const countedTransferStorage = {
+      write: async (key: string, bytes: Buffer) => {
+        transferWriteCalls++;
+        await transferStorage.write(key, bytes);
+      },
+      read: (key: string) => transferStorage.read(key),
+      remove: (key: string) => transferStorage.remove(key),
+    };
     deliveryPool = new Pool({
       connectionString: roleUrl(base, "ieum_be20_delivery"),
       max: 2,
@@ -248,6 +263,11 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         documentAssets: new DocumentAssetService(identity, commands),
         publications: new PublicationService(identity, commands),
         deliveryCredentials: new DeliveryCredentialService(identity),
+        dataTransfer: new DataTransferService(
+          identity,
+          commands,
+          countedTransferStorage,
+        ),
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -3878,6 +3898,274 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       payload: { code: enrollment.backupCodes[1] },
     });
     expect(staleAfterReactivation.statusCode).toBe(401);
+
+    const transferBase = `/api/v1/workspaces/${operator.workspaceId}/data-transfer`;
+    const transferHeaders = {
+      host: "127.0.0.1:3000",
+      origin,
+      cookie: operatorCookie,
+    };
+    const personalExport = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(personalExport.statusCode, personalExport.body).toBe(201);
+    const exportId = personalExport.json<{ id: string }>().id;
+    await admin.query(
+      "UPDATE auth.session SET created_at=now()-interval '6 minutes' WHERE user_id=$1",
+      [operator.userId],
+    );
+    const transferReauth = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(transferReauth.statusCode).toBe(403);
+    await admin.query(
+      "UPDATE auth.session SET created_at=now() WHERE user_id=$1",
+      [operator.userId],
+    );
+    const downloaded = await app.inject({
+      method: "GET",
+      url: `${transferBase}/exports/${exportId}/download`,
+      headers: transferHeaders,
+    });
+    expect(downloaded.statusCode, downloaded.body).toBe(200);
+    expect(downloaded.headers["cache-control"]).toBe("private, no-store");
+    await admin.query(
+      "UPDATE business.user_access SET state='SUSPENDED',authz_version=authz_version+1 WHERE user_id=$1",
+      [operator.userId],
+    );
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: `${transferBase}/exports/${exportId}/download`,
+          headers: transferHeaders,
+        })
+      ).statusCode,
+    ).toBe(403);
+    await admin.query(
+      "UPDATE business.user_access SET state='ACTIVE',authz_version=authz_version+1 WHERE user_id=$1",
+      [operator.userId],
+    );
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: `${transferBase.replace(operator.workspaceId, invitedWorkspaceId)}/exports/${exportId}/download`,
+          headers: transferHeaders,
+        })
+      ).statusCode,
+    ).toBe(404);
+    const bundle = downloaded.rawPayload;
+    expect(bundle.subarray(0, 2).equals(Buffer.from([0x1f, 0x8b]))).toBe(true);
+    const staged = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: bundle,
+    });
+    expect(staged.statusCode, staged.body).toBe(201);
+    const importId = staged.json<{ id: string }>().id;
+    const dryRun = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${importId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(dryRun.statusCode, dryRun.body).toBe(200);
+    const transferPreview = dryRun.json<{
+      previewHash: string;
+      rows: { state: string }[];
+    }>();
+    expect(transferPreview.rows.length).toBeGreaterThan(0);
+    expect(transferPreview.rows.every((row) => row.state === "NEW")).toBe(true);
+    const changedPreview = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${importId}/apply`,
+      headers: transferHeaders,
+      payload: { previewHash: "0".repeat(64) },
+    });
+    expect(changedPreview.statusCode).toBe(409);
+    const transferApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${importId}/apply`,
+      headers: transferHeaders,
+      payload: { previewHash: transferPreview.previewHash },
+    });
+    expect(transferApplied.statusCode, transferApplied.body).toBe(201);
+    expect(transferApplied.json()).toMatchObject({ state: "APPLIED" });
+    const repeated = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: bundle,
+    });
+    expect(repeated.statusCode, repeated.body).toBe(201);
+    expect(repeated.json<{ id: string }>().id).toBe(importId);
+    const repeatedPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${repeated.json<{ id: string }>().id}/preview`,
+      headers: transferHeaders,
+    });
+    expect(repeatedPreview.statusCode, repeatedPreview.body).toBe(200);
+    expect(
+      repeatedPreview
+        .json<{ rows: { state: string }[] }>()
+        .rows.every((row) => row.state === "IMPORTED"),
+    ).toBe(true);
+    const reexport = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(reexport.statusCode, reexport.body).toBe(201);
+    const reexportBytes = await app.inject({
+      method: "GET",
+      url: `${transferBase}/exports/${reexport.json<{ id: string }>().id}/download`,
+      headers: transferHeaders,
+    });
+    const restaged = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: reexportBytes.rawPayload,
+    });
+    expect(restaged.statusCode, restaged.body).toBe(201);
+    const transitivePreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${restaged.json<{ id: string }>().id}/preview`,
+      headers: transferHeaders,
+    });
+    expect(
+      transitivePreview
+        .json<{ rows: { state: string }[] }>()
+        .rows.every((row) => row.state === "DUPLICATE"),
+    ).toBe(true);
+    const invalidBundle = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: Buffer.from("not an archive"),
+    });
+    expect(invalidBundle.statusCode).toBe(422);
+    const racingSourceWorkspace = randomUUID();
+    const racingSourceId = randomUUID();
+    const racingArchives = ["첫 내용", "수정된 내용"].map((rawBody) =>
+      createCaptureBundle(racingSourceWorkspace, [
+        { id: racingSourceId, revision: 1, title: "경쟁 원문", rawBody },
+      ]),
+    );
+    const stagedRace = await Promise.all(
+      racingArchives.map((archive) =>
+        app.inject({
+          method: "POST",
+          url: `${transferBase}/imports`,
+          headers: {
+            ...transferHeaders,
+            "content-type": "application/vnd.ieum.bundle+gzip",
+          },
+          payload: archive,
+        }),
+      ),
+    );
+    expect(stagedRace.every((response) => response.statusCode === 201)).toBe(
+      true,
+    );
+    const racingRuns = stagedRace.map(
+      (response) => response.json<{ id: string }>().id,
+    );
+    const racingPreviews = await Promise.all(
+      racingRuns.map((runId) =>
+        app.inject({
+          method: "GET",
+          url: `${transferBase}/imports/${runId}/preview`,
+          headers: transferHeaders,
+        }),
+      ),
+    );
+    expect(
+      racingPreviews.every(
+        (response) =>
+          response.json<{ rows: { state: string }[] }>().rows[0]?.state ===
+          "NEW",
+      ),
+    ).toBe(true);
+    const racingApplied = await Promise.all(
+      racingRuns.map((runId, index) =>
+        app.inject({
+          method: "POST",
+          url: `${transferBase}/imports/${runId}/apply`,
+          headers: transferHeaders,
+          payload: {
+            previewHash: racingPreviews[index]!.json<{ previewHash: string }>()
+              .previewHash,
+          },
+        }),
+      ),
+    );
+    expect(racingApplied.every((response) => response.statusCode === 201)).toBe(
+      true,
+    );
+    expect(
+      racingApplied
+        .map((response) => response.json<{ state: string }>().state)
+        .sort(),
+    ).toEqual(["APPLIED", "PARTIAL"]);
+    const writesBeforeQuota = transferWriteCalls;
+    const quotaAttempts = await Promise.all(
+      Array.from({ length: 14 }, () =>
+        app.inject({
+          method: "POST",
+          url: `${transferBase}/exports`,
+          headers: transferHeaders,
+        }),
+      ),
+    );
+    expect(quotaAttempts.some((response) => response.statusCode === 429)).toBe(
+      true,
+    );
+    expect(
+      quotaAttempts.every((response) =>
+        [201, 429].includes(response.statusCode),
+      ),
+    ).toBe(true);
+    expect(transferWriteCalls - writesBeforeQuota).toBe(
+      quotaAttempts.filter((response) => response.statusCode === 201).length,
+    );
+    const activeRuns = await admin.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM business.transfer_run
+       WHERE workspace_id=$1 AND actor_id=$2 AND expires_at>now()`,
+      [operator.workspaceId, operator.userId],
+    );
+    expect(Number(activeRuns.rows[0]?.count)).toBeLessThanOrEqual(16);
+    await admin.query(
+      "UPDATE business.transfer_run SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour' WHERE id=$1",
+      [exportId],
+    );
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: `${transferBase}/exports/${exportId}/download`,
+          headers: transferHeaders,
+        })
+      ).statusCode,
+    ).toBe(410);
+
     let resetToken: string | null = null;
     const recovery = createAuth({
       databaseUrl: roleUrl(container.getConnectionUri(), "ieum_be04_auth"),

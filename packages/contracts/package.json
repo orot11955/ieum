@@ -66,6 +66,10 @@
     "./delivery-management": {
       "types": "./dist/delivery-management.d.ts",
       "default": "./dist/delivery-management.js"
+    },
+    "./data-transfer": {
+      "types": "./dist/data-transfer.d.ts",
+      "default": "./dist/data-transfer.js"
     }
   },
   "scripts": {

@@ -33,6 +33,14 @@ export async function createApiApp(authConfig?: {
       { parseAs: "buffer", bodyLimit: 20 * 1024 * 1024 },
       (_request, body, done) => done(null, body),
     );
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addContentTypeParser(
+      "application/vnd.ieum.bundle+gzip",
+      { parseAs: "buffer", bodyLimit: 32 * 1024 * 1024 },
+      (_request, body, done) => done(null, body),
+    );
   if (authConfig) {
     const fastify = app.getHttpAdapter().getInstance();
     registerAuthRoutes(

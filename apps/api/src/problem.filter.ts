@@ -24,6 +24,9 @@ import { DocumentAssetError } from "@ieum/backend/assets/document-usage";
 import { PublicationError } from "@ieum/backend/publishing/publication-service";
 import { PublicationManifestError } from "@ieum/backend/publishing/manifest";
 import { DeliveryCredentialError } from "@ieum/backend/delivery/credential-service";
+import { DataTransferError } from "@ieum/backend/data-transfer/service";
+import { TransferArchiveError } from "@ieum/backend/data-transfer/archive";
+import { TransferManifestError } from "@ieum/backend/data-transfer/manifest";
 
 type FieldErrors = Record<string, string[]>;
 
@@ -190,6 +193,23 @@ export class ProblemFilter implements ExceptionFilter {
             ? 422
             : 409;
     if (exception instanceof DeliveryCredentialError) status = 404;
+    if (exception instanceof DataTransferError)
+      status =
+        exception.code === "TRANSFER_DISABLED" ||
+        exception.code === "TRANSFER_UNAVAILABLE"
+          ? 503
+          : exception.code === "TRANSFER_QUOTA_EXCEEDED"
+            ? 429
+            : exception.code === "TRANSFER_NOT_FOUND"
+              ? 404
+              : exception.code === "TRANSFER_EXPIRED"
+                ? 410
+                : 409;
+    if (
+      exception instanceof TransferArchiveError ||
+      exception instanceof TransferManifestError
+    )
+      status = 422;
     const title =
       status === 422
         ? "Unprocessable Content"
@@ -250,6 +270,12 @@ export class ProblemFilter implements ExceptionFilter {
     )
       code = exception.code;
     if (exception instanceof DeliveryCredentialError) code = exception.code;
+    if (
+      exception instanceof DataTransferError ||
+      exception instanceof TransferArchiveError ||
+      exception instanceof TransferManifestError
+    )
+      code = exception.code;
     const fieldErrors =
       exception instanceof HttpException
         ? fieldErrorsFor(exception)

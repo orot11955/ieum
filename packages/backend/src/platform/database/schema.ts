@@ -2445,3 +2445,107 @@ export const identityEvent = business.table("identity_event", {
     .notNull()
     .defaultNow(),
 });
+
+export const transferRun = business.table(
+  "transfer_run",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    kind: text("kind").notNull(),
+    state: text("state").notNull(),
+    bundleHash: text("bundle_hash").notNull(),
+    storageKey: uuid("storage_key").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("transfer_run_workspace_id_unique").on(table.workspaceId, table.id),
+    index("transfer_run_actor_created_idx").on(
+      table.workspaceId,
+      table.actorId,
+      table.createdAt,
+    ),
+    check("transfer_run_kind_check", sql`${table.kind} IN ('EXPORT','IMPORT')`),
+    check(
+      "transfer_run_state_check",
+      sql`${table.state} IN ('READY','STAGED','APPLIED','PARTIAL')`,
+    ),
+    check(
+      "transfer_run_state_kind_check",
+      sql`(${table.kind}='EXPORT' AND ${table.state}='READY') OR (${table.kind}='IMPORT' AND ${table.state} IN ('STAGED','APPLIED','PARTIAL'))`,
+    ),
+    check("transfer_run_hash_check", sql`length(${table.bundleHash})=64`),
+    check(
+      "transfer_run_size_check",
+      sql`${table.byteSize}>0 AND ${table.byteSize}<=33554432`,
+    ),
+    check(
+      "transfer_run_expiry_check",
+      sql`${table.expiresAt}>${table.createdAt}`,
+    ),
+  ],
+);
+
+export const transferRow = business.table(
+  "transfer_row",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    runId: uuid("run_id").notNull(),
+    recordKind: text("record_kind").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    sourceRevision: integer("source_revision").notNull(),
+    state: text("state").notNull().default("PENDING"),
+    targetId: uuid("target_id"),
+    reasonCode: text("reason_code"),
+  },
+  (table) => [
+    primaryKey({
+      name: "transfer_row_pk",
+      columns: [
+        table.workspaceId,
+        table.runId,
+        table.recordKind,
+        table.sourceId,
+      ],
+    }),
+    foreignKey({
+      name: "transfer_row_run_fk",
+      columns: [table.workspaceId, table.runId],
+      foreignColumns: [transferRun.workspaceId, transferRun.id],
+    }),
+    check("transfer_row_revision_check", sql`${table.sourceRevision}>0`),
+    check(
+      "transfer_row_state_check",
+      sql`${table.state} IN ('PENDING','IMPORTED','SKIPPED','FAILED')`,
+    ),
+  ],
+);
+
+export const transferOrigin = business.table(
+  "transfer_origin",
+  {
+    workspaceId: uuid("workspace_id").notNull(),
+    recordKind: text("record_kind").notNull(),
+    sourceWorkspaceId: uuid("source_workspace_id").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    sourceRevision: integer("source_revision").notNull(),
+    targetId: uuid("target_id").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "transfer_origin_pk",
+      columns: [
+        table.workspaceId,
+        table.recordKind,
+        table.sourceWorkspaceId,
+        table.sourceId,
+      ],
+    }),
+    check("transfer_origin_revision_check", sql`${table.sourceRevision}>0`),
+  ],
+);

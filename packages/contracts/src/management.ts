@@ -12,6 +12,7 @@ import { generationOpenApiPaths } from "./generation.js";
 import { assetOpenApiPaths } from "./assets.js";
 import { publishingOpenApiPaths } from "./publishing.js";
 import { deliveryManagementOpenApiPaths } from "./delivery-management.js";
+import { dataTransferOpenApiPaths } from "./data-transfer.js";
 
 export const createCapturePath = "/api/v1/workspaces/{wid}/captures" as const;
 export const capturePath = "/api/v1/workspaces/{wid}/captures/{id}" as const;
@@ -202,6 +203,7 @@ export const managementOpenApi = {
     ...assetOpenApiPaths,
     ...publishingOpenApiPaths,
     ...deliveryManagementOpenApiPaths,
+    ...dataTransferOpenApiPaths,
     [createCapturePath]: {
       post: {
         operationId: "createCapture",

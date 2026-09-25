@@ -48,7 +48,7 @@ export interface CaptureDetail {
   units: CaptureUnit[];
 }
 
-function validText(value: string, max: number): boolean {
+export function validText(value: string, max: number): boolean {
   if (
     value.trim().length === 0 ||
     value.length > max ||
@@ -68,7 +68,7 @@ function validText(value: string, max: number): boolean {
   return true;
 }
 
-function validRawBody(value: string): boolean {
+export function validRawBody(value: string): boolean {
   return (
     validText(value, 1_000_000) && Buffer.byteLength(value, "utf8") <= 200_000
   );
