@@ -263,7 +263,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-16 · 자료 묶음·출처 고정·문서 작업실
 
-**구간:** P6 · **상태:** IMPLEMENTED · **선행:** BE-11, BE-07, BE-08, CORE-14
+**구간:** P6 · **상태:** VERIFIED · **선행:** BE-11, BE-07, BE-08, CORE-14
 
 **구현 범위:** 기록/위키/결과/외부 자료를 선택해 evidence pack을 저장하고 문서와 연결한다. 목적·독자·관점·outline·source claim mapping과 source stale/unresolved 알림을 구현한다.
 
