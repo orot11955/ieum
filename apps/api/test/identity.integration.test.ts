@@ -5651,11 +5651,67 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(Number(outboxAfter.rows[0]!.count)).toBe(
       Number(outboxBefore.rows[0]!.count) + 1,
     );
+    const conflictingMembershipId = randomUUID();
+    const conflictingMembershipStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: createMembershipBundle([
+        {
+          ...membershipRecords[0]!,
+          id: conflictingMembershipId,
+          originId: conflictingMembershipId,
+          contextId: membershipContextIds[1]!,
+        },
+      ]),
+    });
+    expect(
+      conflictingMembershipStage.statusCode,
+      conflictingMembershipStage.body,
+    ).toBe(201);
+    const conflictingMembershipRunId = conflictingMembershipStage.json<{
+      id: string;
+    }>().id;
+    const conflictingMembershipPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${conflictingMembershipRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(conflictingMembershipPreview.statusCode).toBe(200);
+    expect(
+      conflictingMembershipPreview
+        .json<{ rows: { recordKind: string; state: string }[] }>()
+        .rows.find((row) => row.recordKind === "context_membership")?.state,
+    ).toBe("CONFLICT");
+    const conflictingMembershipApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${conflictingMembershipRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: conflictingMembershipPreview.json<{
+          previewHash: string;
+        }>().previewHash,
+      },
+    });
+    expect(conflictingMembershipApplied.statusCode).toBe(201);
+    expect(conflictingMembershipApplied.json()).toMatchObject({
+      state: "PARTIAL",
+      counts: { SKIPPED: 4, FAILED: 1 },
+    });
     await admin.query(
       `UPDATE business.transfer_run
        SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
        WHERE id=$1`,
       [membershipReplayRunId],
+    );
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [conflictingMembershipRunId],
     );
     const historySource = randomUUID();
     const historyTaskId = randomUUID();
