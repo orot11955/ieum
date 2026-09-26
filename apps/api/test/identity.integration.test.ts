@@ -4091,6 +4091,83 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(readCaptureBundle(reexportBytes.rawPayload).manifest.version).toBe(
       8,
     );
+    const currentSupersededContextId = randomUUID();
+    const currentSupersededClient = await admin.connect();
+    try {
+      await currentSupersededClient.query("BEGIN");
+      await currentSupersededClient.query(
+        `INSERT INTO business.context
+         (id,workspace_id,name,purpose,scope,kind,state,superseded_by_id)
+         VALUES($1,$2,'현재 대체 맥락','목적','범위','TOPIC','SUPERSEDED',$3)`,
+        [currentSupersededContextId, operator.workspaceId, contextId],
+      );
+      await currentSupersededClient.query(
+        `INSERT INTO business.context_identity_revision
+         (workspace_id,context_id,revision,name,purpose,scope,kind,state,
+          superseded_by_id)
+         VALUES($1,$2,1,'현재 대체 맥락','목적','범위','TOPIC','SUPERSEDED',$3)`,
+        [operator.workspaceId, currentSupersededContextId, contextId],
+      );
+      await currentSupersededClient.query("COMMIT");
+    } catch (error) {
+      await currentSupersededClient.query("ROLLBACK");
+      throw error;
+    } finally {
+      currentSupersededClient.release();
+    }
+    const currentSupersededExport = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(
+      currentSupersededExport.statusCode,
+      currentSupersededExport.body,
+    ).toBe(201);
+    expect(currentSupersededExport.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_HISTORY",
+    );
+    const currentSupersededDownload = await app.inject({
+      method: "GET",
+      url: `${transferBase}/exports/${currentSupersededExport.json<{ id: string }>().id}/download`,
+      headers: transferHeaders,
+    });
+    expect(currentSupersededDownload.statusCode).toBe(200);
+    const currentSupersededManifest = readCaptureBundle(
+      currentSupersededDownload.rawPayload,
+    ).manifest;
+    expect(currentSupersededManifest.version).toBe(8);
+    if (currentSupersededManifest.version !== 8) throw new Error("expected v8");
+    expect(
+      currentSupersededManifest.contexts.find(
+        (context) => context.id === currentSupersededContextId,
+      )?.supersededById,
+    ).toBe(contextId);
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [currentSupersededExport.json<{ id: string }>().id],
+    );
+    const currentSupersededCleanup = await admin.connect();
+    try {
+      await currentSupersededCleanup.query("BEGIN");
+      await currentSupersededCleanup.query(
+        `DELETE FROM business.context_identity_revision
+         WHERE workspace_id=$1 AND context_id=$2`,
+        [operator.workspaceId, currentSupersededContextId],
+      );
+      await currentSupersededCleanup.query(
+        `DELETE FROM business.context WHERE workspace_id=$1 AND id=$2`,
+        [operator.workspaceId, currentSupersededContextId],
+      );
+      await currentSupersededCleanup.query("COMMIT");
+    } catch (error) {
+      await currentSupersededCleanup.query("ROLLBACK");
+      throw error;
+    } finally {
+      currentSupersededCleanup.release();
+    }
     const longHistoryContextId = randomUUID();
     const historyFixtureClient = await admin.connect();
     try {
@@ -4196,8 +4273,25 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       201,
     );
     expect(restoredHistoryExport.json<{ scope: string }>().scope).toBe(
-      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_HISTORY",
     );
+    const restoredHistoryDownload = await app.inject({
+      method: "GET",
+      url: `${transferBase}/exports/${restoredHistoryExport.json<{ id: string }>().id}/download`,
+      headers: transferHeaders,
+    });
+    expect(restoredHistoryDownload.statusCode).toBe(200);
+    const restoredManifest = readCaptureBundle(
+      restoredHistoryDownload.rawPayload,
+    ).manifest;
+    expect(restoredManifest.version).toBe(8);
+    if (restoredManifest.version !== 8) throw new Error("expected v8");
+    expect(
+      restoredManifest.contextIdentityRevisions.find(
+        (revision) =>
+          revision.contextId === restoredContextId && revision.revision === 1,
+      )?.supersededById,
+    ).toBe(contextId);
     await admin.query(
       `UPDATE business.transfer_run
        SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
@@ -4221,6 +4315,68 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       throw error;
     } finally {
       restoredCleanupClient.release();
+    }
+    const missingHistoryContextId = randomUUID();
+    const missingHistoryClient = await admin.connect();
+    try {
+      await missingHistoryClient.query("BEGIN");
+      await missingHistoryClient.query(
+        `INSERT INTO business.context
+         (id,workspace_id,name,purpose,scope,kind,state,identity_revision)
+         VALUES($1,$2,'과거 참조 누락','목적','범위','TOPIC','ACTIVE',2)`,
+        [missingHistoryContextId, operator.workspaceId],
+      );
+      await missingHistoryClient.query(
+        `INSERT INTO business.context_identity_revision
+         (workspace_id,context_id,revision,name,purpose,scope,kind,state,
+          superseded_by_id,recorded_at)
+         VALUES($1,$2,1,'과거','목적','범위','TOPIC','SUPERSEDED',$3,
+                now()-interval '1 day'),
+               ($1,$2,2,'과거 참조 누락','목적','범위','TOPIC','ACTIVE',NULL,now())`,
+        [operator.workspaceId, missingHistoryContextId, randomUUID()],
+      );
+      await missingHistoryClient.query("COMMIT");
+    } catch (error) {
+      await missingHistoryClient.query("ROLLBACK");
+      throw error;
+    } finally {
+      missingHistoryClient.release();
+    }
+    const missingHistoryExport = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(missingHistoryExport.statusCode, missingHistoryExport.body).toBe(
+      201,
+    );
+    expect(missingHistoryExport.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
+    );
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [missingHistoryExport.json<{ id: string }>().id],
+    );
+    const missingHistoryCleanup = await admin.connect();
+    try {
+      await missingHistoryCleanup.query("BEGIN");
+      await missingHistoryCleanup.query(
+        `DELETE FROM business.context_identity_revision
+         WHERE workspace_id=$1 AND context_id=$2`,
+        [operator.workspaceId, missingHistoryContextId],
+      );
+      await missingHistoryCleanup.query(
+        `DELETE FROM business.context WHERE workspace_id=$1 AND id=$2`,
+        [operator.workspaceId, missingHistoryContextId],
+      );
+      await missingHistoryCleanup.query("COMMIT");
+    } catch (error) {
+      await missingHistoryCleanup.query("ROLLBACK");
+      throw error;
+    } finally {
+      missingHistoryCleanup.release();
     }
     const restaged = await app.inject({
       method: "POST",
@@ -4679,6 +4835,502 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
           changedContextStage.json<{ id: string }>().id,
         ],
       ],
+    );
+    const supersessionSource = randomUUID();
+    const supersededContextId = randomUUID();
+    const successorContextId = randomUUID();
+    const missingSuccessorId = randomUUID();
+    const cyclicContextAId = randomUUID();
+    const cyclicContextBId = randomUUID();
+    const supersessionBundle = createContextBundle(
+      supersessionSource,
+      [],
+      [],
+      [],
+      [
+        {
+          id: supersededContextId,
+          originWorkspaceId: supersessionSource,
+          originId: supersededContextId,
+          name: "이전 맥락",
+          purpose: "목적",
+          scope: "범위",
+          kind: "TOPIC",
+          state: "SUPERSEDED",
+          supersededById: successorContextId,
+          identityRevision: 2,
+          membershipRevision: 1,
+        },
+        {
+          id: successorContextId,
+          originWorkspaceId: supersessionSource,
+          originId: successorContextId,
+          name: "후속 맥락",
+          purpose: "목적",
+          scope: "범위",
+          kind: "TOPIC",
+          state: "ACTIVE",
+          supersededById: null,
+          identityRevision: 1,
+          membershipRevision: 1,
+        },
+        {
+          id: randomUUID(),
+          originWorkspaceId: supersessionSource,
+          originId: randomUUID(),
+          name: "없는 후속 맥락",
+          purpose: "목적",
+          scope: "범위",
+          kind: "TOPIC",
+          state: "SUPERSEDED",
+          supersededById: missingSuccessorId,
+          identityRevision: 1,
+          membershipRevision: 1,
+        },
+        ...[
+          { id: cyclicContextAId, successorId: cyclicContextBId },
+          { id: cyclicContextBId, successorId: cyclicContextAId },
+        ].map(({ id, successorId }) => ({
+          id,
+          originWorkspaceId: supersessionSource,
+          originId: id,
+          name: "순환 맥락",
+          purpose: "목적",
+          scope: "범위",
+          kind: "TOPIC" as const,
+          state: "SUPERSEDED" as const,
+          supersededById: successorId,
+          identityRevision: 1,
+          membershipRevision: 1,
+        })),
+      ],
+    );
+    const supersessionStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: supersessionBundle,
+    });
+    expect(supersessionStage.statusCode, supersessionStage.body).toBe(201);
+    const supersessionRunId = supersessionStage.json<{ id: string }>().id;
+    const supersessionPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${supersessionRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(supersessionPreview.statusCode).toBe(200);
+    expect(
+      supersessionPreview.json<{ rows: { state: string }[] }>().rows,
+    ).toMatchObject([
+      { state: "NEW" },
+      { state: "NEW" },
+      { state: "MISSING_REFERENCE" },
+      { state: "MISSING_REFERENCE" },
+      { state: "MISSING_REFERENCE" },
+    ]);
+    const supersessionApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${supersessionRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: supersessionPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(supersessionApplied.statusCode, supersessionApplied.body).toBe(201);
+    expect(supersessionApplied.json()).toMatchObject({
+      state: "PARTIAL",
+      counts: { IMPORTED: 2, FAILED: 3 },
+    });
+    const supersessionTargets = await admin.query<{
+      source_id: string;
+      target_id: string;
+      superseded_by_id: string | null;
+      revision_target_id: string | null;
+    }>(
+      `SELECT o.source_id,o.target_id,c.superseded_by_id,
+              r.superseded_by_id AS revision_target_id
+       FROM business.transfer_origin o
+       JOIN business.context c ON c.workspace_id=o.workspace_id AND c.id=o.target_id
+       JOIN business.context_identity_revision r
+         ON r.workspace_id=c.workspace_id AND r.context_id=c.id
+        AND r.revision=c.identity_revision
+       WHERE o.workspace_id=$1 AND o.record_kind='context'
+         AND o.source_workspace_id=$2 AND o.source_id=ANY($3::uuid[])`,
+      [
+        operator.workspaceId,
+        supersessionSource,
+        [supersededContextId, successorContextId],
+      ],
+    );
+    const importedSuccessor = supersessionTargets.rows.find(
+      (row) => row.source_id === successorContextId,
+    );
+    const importedSuperseded = supersessionTargets.rows.find(
+      (row) => row.source_id === supersededContextId,
+    );
+    expect(importedSuccessor?.target_id).toBeDefined();
+    expect(importedSuperseded?.target_id).toBeDefined();
+    expect(importedSuperseded?.superseded_by_id).not.toBe(successorContextId);
+    expect(importedSuperseded?.superseded_by_id).toBe(
+      importedSuccessor?.target_id,
+    );
+    expect(importedSuperseded?.revision_target_id).toBe(
+      importedSuccessor?.target_id,
+    );
+    const failedSupersessions = await admin.query<{ reason_code: string }>(
+      `SELECT reason_code FROM business.transfer_row
+       WHERE workspace_id=$1 AND run_id=$2 AND record_kind='context'
+         AND state='FAILED'`,
+      [operator.workspaceId, supersessionRunId],
+    );
+    expect(failedSupersessions.rows).toHaveLength(3);
+    expect(
+      failedSupersessions.rows.every(
+        (row) => row.reason_code === "MISSING_REFERENCE",
+      ),
+    ).toBe(true);
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [supersessionRunId],
+    );
+    const v8SupersessionSource = randomUUID();
+    const v8SuccessorId = randomUUID();
+    const v8SupersededId = randomUUID();
+    const v8RestoredId = randomUUID();
+    const v8Contexts = [
+      {
+        id: v8SupersededId,
+        originWorkspaceId: v8SupersessionSource,
+        originId: v8SupersededId,
+        name: "대체된 v8 맥락",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "SUPERSEDED" as const,
+        supersededById: v8SuccessorId,
+        identityRevision: 2,
+        membershipRevision: 1,
+      },
+      {
+        id: v8RestoredId,
+        originWorkspaceId: v8SupersessionSource,
+        originId: v8RestoredId,
+        name: "다시 활성인 v8 맥락",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "ACTIVE" as const,
+        supersededById: null,
+        identityRevision: 2,
+        membershipRevision: 1,
+      },
+      {
+        id: v8SuccessorId,
+        originWorkspaceId: v8SupersessionSource,
+        originId: v8SuccessorId,
+        name: "v8 후속 맥락",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "ACTIVE" as const,
+        supersededById: null,
+        identityRevision: 1,
+        membershipRevision: 1,
+      },
+    ];
+    const v8Revisions = [
+      {
+        contextId: v8SupersededId,
+        revision: 1,
+        name: "과거 v8 맥락",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "ACTIVE" as const,
+        supersededById: null,
+        recordedAt: "2026-09-23T00:00:00.000Z",
+      },
+      {
+        contextId: v8SupersededId,
+        revision: 2,
+        name: "대체된 v8 맥락",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "SUPERSEDED" as const,
+        supersededById: v8SuccessorId,
+        recordedAt: "2026-09-24T00:00:00.000Z",
+      },
+      {
+        contextId: v8RestoredId,
+        revision: 1,
+        name: "과거 대체 v8 맥락",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "SUPERSEDED" as const,
+        supersededById: v8SuccessorId,
+        recordedAt: "2026-09-23T00:00:00.000Z",
+      },
+      {
+        contextId: v8RestoredId,
+        revision: 2,
+        name: "다시 활성인 v8 맥락",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "ACTIVE" as const,
+        supersededById: null,
+        recordedAt: "2026-09-24T00:00:00.000Z",
+      },
+      {
+        contextId: v8SuccessorId,
+        revision: 1,
+        name: "v8 후속 맥락",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "ACTIVE" as const,
+        supersededById: null,
+        recordedAt: "2026-09-23T00:00:00.000Z",
+      },
+    ];
+    const v8SupersessionBundle = createCaptureHistoryBundle(
+      v8SupersessionSource,
+      [],
+      [],
+      [],
+      v8Contexts,
+      [],
+      [],
+      [],
+      [],
+      v8Revisions,
+    );
+    const v8SupersessionStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: v8SupersessionBundle,
+    });
+    expect(v8SupersessionStage.statusCode, v8SupersessionStage.body).toBe(201);
+    const v8SupersessionRunId = v8SupersessionStage.json<{ id: string }>().id;
+    const v8SupersessionPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${v8SupersessionRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(v8SupersessionPreview.statusCode).toBe(200);
+    expect(
+      v8SupersessionPreview.json<{ rows: { state: string }[] }>().rows,
+    ).toMatchObject([{ state: "NEW" }, { state: "NEW" }, { state: "NEW" }]);
+    const v8SupersessionApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${v8SupersessionRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: v8SupersessionPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(v8SupersessionApplied.statusCode, v8SupersessionApplied.body).toBe(
+      201,
+    );
+    expect(v8SupersessionApplied.json()).toMatchObject({
+      state: "APPLIED",
+      counts: { IMPORTED: 3 },
+    });
+    const v8Targets = await admin.query<{
+      source_id: string;
+      target_id: string;
+      superseded_by_id: string | null;
+      revision: number;
+      revision_target_id: string | null;
+    }>(
+      `SELECT o.source_id,o.target_id,c.superseded_by_id,r.revision,
+              r.superseded_by_id AS revision_target_id
+       FROM business.transfer_origin o
+       JOIN business.context c ON c.workspace_id=o.workspace_id AND c.id=o.target_id
+       JOIN business.context_identity_revision r
+         ON r.workspace_id=c.workspace_id AND r.context_id=c.id
+       WHERE o.workspace_id=$1 AND o.record_kind='context'
+         AND o.source_workspace_id=$2
+         AND o.source_id=ANY($3::uuid[])`,
+      [
+        operator.workspaceId,
+        v8SupersessionSource,
+        [v8SupersededId, v8RestoredId, v8SuccessorId],
+      ],
+    );
+    const v8TargetId = v8Targets.rows.find(
+      (row) => row.source_id === v8SuccessorId,
+    )?.target_id;
+    expect(v8TargetId).toBeDefined();
+    expect(v8TargetId).not.toBe(v8SuccessorId);
+    expect(
+      v8Targets.rows.find((row) => row.source_id === v8SupersededId)
+        ?.superseded_by_id,
+    ).toBe(v8TargetId);
+    expect(
+      v8Targets.rows
+        .filter((row) => row.source_id !== v8SuccessorId)
+        .map((row) => [row.source_id, row.revision, row.revision_target_id]),
+    ).toEqual(
+      expect.arrayContaining([
+        [v8SupersededId, 2, v8TargetId],
+        [v8RestoredId, 1, v8TargetId],
+      ]),
+    );
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [v8SupersessionRunId],
+    );
+    const v8ReplayBundle = createCaptureHistoryBundle(
+      v8SupersessionSource,
+      [],
+      [],
+      [],
+      [...v8Contexts].reverse(),
+      [],
+      [],
+      [],
+      [],
+      [...v8Revisions].reverse(),
+    );
+    const v8ReplayStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: v8ReplayBundle,
+    });
+    expect(v8ReplayStage.statusCode, v8ReplayStage.body).toBe(201);
+    const v8ReplayRunId = v8ReplayStage.json<{ id: string }>().id;
+    const v8ReplayPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${v8ReplayRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(v8ReplayPreview.statusCode).toBe(200);
+    expect(
+      v8ReplayPreview.json<{ rows: { state: string }[] }>().rows,
+    ).toMatchObject([
+      { state: "DUPLICATE" },
+      { state: "DUPLICATE" },
+      { state: "DUPLICATE" },
+    ]);
+    const v8ReplayApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${v8ReplayRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: v8ReplayPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(v8ReplayApplied.statusCode, v8ReplayApplied.body).toBe(201);
+    expect(v8ReplayApplied.json()).toMatchObject({
+      state: "APPLIED",
+      counts: { SKIPPED: 3 },
+    });
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [v8ReplayRunId],
+    );
+    const restoredTargetId = v8Targets.rows.find(
+      (row) => row.source_id === v8RestoredId,
+    )?.target_id;
+    expect(restoredTargetId).toBeDefined();
+    const newHistoricalSuccessorId = randomUUID();
+    await admin.query(
+      `UPDATE business.context_identity_revision SET superseded_by_id=NULL
+       WHERE workspace_id=$1 AND context_id=$2 AND revision=1`,
+      [operator.workspaceId, restoredTargetId],
+    );
+    const unresolvedDuplicateBundle = createCaptureHistoryBundle(
+      v8SupersessionSource,
+      [],
+      [],
+      [],
+      [
+        v8Contexts.find((context) => context.id === v8RestoredId)!,
+        {
+          ...v8Contexts.find((context) => context.id === v8SuccessorId)!,
+          id: newHistoricalSuccessorId,
+          originId: newHistoricalSuccessorId,
+        },
+      ],
+      [],
+      [],
+      [],
+      [],
+      [
+        ...v8Revisions
+          .filter((revision) => revision.contextId === v8RestoredId)
+          .map((revision) => ({
+            ...revision,
+            supersededById: revision.supersededById
+              ? newHistoricalSuccessorId
+              : null,
+          })),
+        {
+          ...v8Revisions.find(
+            (revision) => revision.contextId === v8SuccessorId,
+          )!,
+          contextId: newHistoricalSuccessorId,
+        },
+      ],
+    );
+    const unresolvedDuplicateStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: unresolvedDuplicateBundle,
+    });
+    expect(
+      unresolvedDuplicateStage.statusCode,
+      unresolvedDuplicateStage.body,
+    ).toBe(201);
+    const unresolvedDuplicateRunId = unresolvedDuplicateStage.json<{
+      id: string;
+    }>().id;
+    const unresolvedDuplicatePreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${unresolvedDuplicateRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(unresolvedDuplicatePreview.statusCode).toBe(200);
+    expect(
+      unresolvedDuplicatePreview.json<{ rows: { state: string }[] }>().rows,
+    ).toMatchObject([{ state: "CONFLICT" }, { state: "NEW" }]);
+    await admin.query(
+      `UPDATE business.context_identity_revision SET superseded_by_id=$3
+       WHERE workspace_id=$1 AND context_id=$2 AND revision=1`,
+      [operator.workspaceId, restoredTargetId, v8TargetId],
+    );
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [unresolvedDuplicateRunId],
     );
     const historySource = randomUUID();
     const historyTaskId = randomUUID();

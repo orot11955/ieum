@@ -130,11 +130,81 @@ function previewHash(rows: TransferPreviewRow[]): string {
   return transferHash(Buffer.from(JSON.stringify(rows)));
 }
 
+function contextsAfterTargets(
+  contexts: TransferManifestV3["contexts"],
+  histories: TransferManifestV8["contextIdentityRevisions"] = [],
+): TransferManifestV3["contexts"] {
+  const byId = new Map(
+    contexts.map((context) => [context.id.toLowerCase(), context]),
+  );
+  const visited = new Set<string>();
+  const references = new Map<string, Set<string>>();
+  for (const revision of histories) {
+    if (!revision.supersededById) continue;
+    const id = revision.contextId.toLowerCase();
+    const targets = references.get(id) ?? new Set<string>();
+    targets.add(revision.supersededById.toLowerCase());
+    references.set(id, targets);
+  }
+  const ordered: TransferManifestV3["contexts"] = [];
+  const visit = (context: TransferManifestV3["contexts"][number]) => {
+    const id = context.id.toLowerCase();
+    if (visited.has(id)) return;
+    visited.add(id);
+    const targets = references.get(id) ?? new Set<string>();
+    if (context.supersededById)
+      targets.add(context.supersededById.toLowerCase());
+    for (const targetId of targets) {
+      const target = byId.get(targetId);
+      if (target) visit(target);
+    }
+    ordered.push(context);
+  };
+  for (const context of contexts) visit(context);
+  return ordered;
+}
+
+function contextReferencesPortable(
+  contexts: { id: string; superseded_by_id: string | null }[],
+  revisions: { context_id: string; superseded_by_id: string | null }[],
+): boolean {
+  const references = new Map<string, Set<string>>(
+    contexts.map((context) => [context.id.toLowerCase(), new Set<string>()]),
+  );
+  for (const row of [
+    ...contexts.map((context) => ({
+      context_id: context.id,
+      superseded_by_id: context.superseded_by_id,
+    })),
+    ...revisions,
+  ]) {
+    if (!row.superseded_by_id) continue;
+    const targets = references.get(row.context_id.toLowerCase());
+    if (!targets || !references.has(row.superseded_by_id.toLowerCase()))
+      return false;
+    targets.add(row.superseded_by_id.toLowerCase());
+  }
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (id: string): boolean => {
+    if (visiting.has(id)) return false;
+    if (visited.has(id)) return true;
+    visiting.add(id);
+    for (const target of references.get(id) ?? [])
+      if (!visit(target)) return false;
+    visiting.delete(id);
+    visited.add(id);
+    return true;
+  };
+  return [...references.keys()].every(visit);
+}
+
 async function sameContextHistory(
   client: PoolClient,
   workspaceId: string,
   targetId: string,
   revisions: TransferManifestV8["contextIdentityRevisions"],
+  targetIds: ReadonlyMap<string, string | null>,
 ): Promise<boolean> {
   const stored = await client.query<{
     revision: number;
@@ -164,7 +234,9 @@ async function sameContextHistory(
         row.kind === source.kind &&
         row.state === source.state &&
         row.superseded_by_id?.toLowerCase() ===
-          source.supersededById?.toLowerCase() &&
+          (source.supersededById
+            ? targetIds.get(source.supersededById.toLowerCase())?.toLowerCase()
+            : undefined) &&
         row.recorded_at.toISOString() ===
           new Date(source.recordedAt).toISOString()
       );
@@ -764,8 +836,9 @@ export class DataTransferService {
           );
         const contextHistoryComplete =
           contextIdentityRevisions.rows.length <= 16384 &&
-          contextIdentityRevisions.rows.every(
-            (row) => row.superseded_by_id === null,
+          contextReferencesPortable(
+            contexts.rows,
+            contextIdentityRevisions.rows,
           ) &&
           contexts.rows.every(
             (row) =>
@@ -945,7 +1018,7 @@ export class DataTransferService {
           );
           return publicRun(
             result.rows[0]!,
-            "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
+            bundleScope(snapshot.contextHistoryComplete ? 8 : 7),
           );
         },
       );
@@ -1301,6 +1374,10 @@ export class DataTransferService {
                         record.id.toLowerCase(),
                     )
                   : undefined,
+                bundle.manifest.contexts,
+                bundle.manifest.version === 8
+                  ? bundle.manifest.contextIdentityRevisions
+                  : [],
               ),
             );
         }
@@ -1335,6 +1412,9 @@ export class DataTransferService {
                   ? bundle.manifest.units
                   : [],
                 rows,
+                bundle.manifest.version === 8
+                  ? bundle.manifest.contextIdentityRevisions
+                  : [],
               ),
             );
           for (const record of bundle.manifest.events)
@@ -1386,12 +1466,17 @@ export class DataTransferService {
     runId: string,
     record: TransferManifestV3["contexts"][number],
     revisions?: TransferManifestV8["contextIdentityRevisions"],
+    contexts: TransferManifestV3["contexts"] = [],
+    allRevisions: TransferManifestV8["contextIdentityRevisions"] = [],
+    visiting: ReadonlySet<string> = new Set(),
   ): Promise<TransferPreviewRow> {
     const base = {
       recordKind: "context" as const,
       sourceId: record.id,
       sourceRevision: record.identityRevision,
     };
+    if (visiting.has(record.id.toLowerCase()))
+      return { ...base, state: "MISSING_REFERENCE", targetId: null };
     const row = await client.query<{
       state: "PENDING" | "IMPORTED" | "SKIPPED" | "FAILED";
       target_id: string | null;
@@ -1406,11 +1491,44 @@ export class DataTransferService {
         state: row.rows[0].state,
         targetId: row.rows[0].target_id,
       };
-    if (
-      record.state === "SUPERSEDED" ||
-      revisions?.some((revision) => revision.supersededById !== null)
-    )
-      return { ...base, state: "MISSING_REFERENCE", targetId: null };
+    const targetIds = new Map<string, string | null>();
+    const references = new Set(
+      [record.supersededById, ...(revisions ?? []).map((r) => r.supersededById)]
+        .filter((id): id is string => id !== null)
+        .map((id) => id.toLowerCase()),
+    );
+    for (const reference of references) {
+      const target = contexts.find(
+        (context) => context.id.toLowerCase() === reference,
+      );
+      if (!target)
+        return { ...base, state: "MISSING_REFERENCE", targetId: null };
+      const targetPreview = await this.previewContext(
+        client,
+        workspaceId,
+        runId,
+        target,
+        allRevisions.length
+          ? allRevisions.filter(
+              (revision) =>
+                revision.contextId.toLowerCase() === target.id.toLowerCase(),
+            )
+          : undefined,
+        contexts,
+        allRevisions,
+        new Set([...visiting, record.id.toLowerCase()]),
+      );
+      if (
+        !["NEW", "DUPLICATE", "IMPORTED", "SKIPPED"].includes(
+          targetPreview.state,
+        )
+      )
+        return { ...base, state: "MISSING_REFERENCE", targetId: null };
+      targetIds.set(reference, targetPreview.targetId);
+    }
+    const supersededTargetId = record.supersededById
+      ? (targetIds.get(record.supersededById.toLowerCase()) ?? null)
+      : null;
     const existing = await client.query<{
       target_id: string;
       same: boolean | null;
@@ -1425,7 +1543,8 @@ export class DataTransferService {
        )
        SELECT o.target_id,
          o.source_revision=$4 AND c.name=$5 AND c.purpose=$6 AND c.scope=$7
-         AND c.kind=$8 AND c.state=$9 AND c.superseded_by_id IS NULL AS same
+         AND c.kind=$8 AND c.state=$9
+         AND c.superseded_by_id IS NOT DISTINCT FROM $10::uuid AS same
        FROM candidate o LEFT JOIN business.context c
          ON c.workspace_id=$1 AND c.id=o.target_id
        ORDER BY o.priority LIMIT 1`,
@@ -1439,17 +1558,20 @@ export class DataTransferService {
         record.scope,
         record.kind,
         record.state,
+        supersededTargetId,
       ],
     );
     const prior = existing.rows[0];
     const same =
       prior?.same &&
+      [...targetIds.values()].every((targetId) => targetId !== null) &&
       (revisions === undefined ||
         (await sameContextHistory(
           client,
           workspaceId,
           prior.target_id,
           revisions,
+          targetIds,
         )));
     return {
       ...base,
@@ -1467,6 +1589,7 @@ export class DataTransferService {
     transitions?: TransferManifestV4["taskTransitions"],
     units: PortableUnit[] = [],
     references?: TransferPreviewRow[],
+    contextRevisions: TransferManifestV8["contextIdentityRevisions"] = [],
   ): Promise<TransferPreviewRow> {
     const base = {
       recordKind: "task" as const,
@@ -1493,6 +1616,7 @@ export class DataTransferService {
       runId,
       record.contextId,
       contexts,
+      contextRevisions,
     );
     const unit = await this.taskUnitMapping(
       client,
@@ -1636,6 +1760,7 @@ export class DataTransferService {
     runId: string,
     sourceId: string | null,
     contexts: TransferManifestV3["contexts"],
+    revisions: TransferManifestV8["contextIdentityRevisions"] = [],
   ): Promise<{ valid: boolean; targetId: string | null }> {
     if (!sourceId) return { valid: true, targetId: null };
     const source = contexts.find(
@@ -1647,6 +1772,14 @@ export class DataTransferService {
       workspaceId,
       runId,
       source,
+      revisions.length
+        ? revisions.filter(
+            (revision) =>
+              revision.contextId.toLowerCase() === source.id.toLowerCase(),
+          )
+        : undefined,
+      contexts,
+      revisions,
     );
     return {
       valid: ["NEW", "DUPLICATE", "IMPORTED", "SKIPPED"].includes(
@@ -2174,7 +2307,12 @@ export class DataTransferService {
       bundle.manifest.version === 7 ||
       bundle.manifest.version === 8
     ) {
-      for (const record of bundle.manifest.contexts)
+      for (const record of contextsAfterTargets(
+        bundle.manifest.contexts,
+        bundle.manifest.version === 8
+          ? bundle.manifest.contextIdentityRevisions
+          : [],
+      ))
         await this.applyContext(
           actorId,
           workspaceId,
@@ -2186,6 +2324,10 @@ export class DataTransferService {
                   revision.contextId.toLowerCase() === record.id.toLowerCase(),
               )
             : undefined,
+          bundle.manifest.contexts,
+          bundle.manifest.version === 8
+            ? bundle.manifest.contextIdentityRevisions
+            : [],
         );
     }
     if (bundle.manifest.version !== 1) {
@@ -2215,6 +2357,9 @@ export class DataTransferService {
             : undefined,
           bundle.manifest.version === 7 || bundle.manifest.version === 8
             ? bundle.manifest.units
+            : [],
+          bundle.manifest.version === 8
+            ? bundle.manifest.contextIdentityRevisions
             : [],
         );
       for (const record of bundle.manifest.events)
@@ -2270,6 +2415,8 @@ export class DataTransferService {
     runId: string,
     record: TransferManifestV3["contexts"][number],
     revisions?: TransferManifestV8["contextIdentityRevisions"],
+    contexts: TransferManifestV3["contexts"] = [],
+    allRevisions: TransferManifestV8["contextIdentityRevisions"] = [],
   ): Promise<void> {
     await this.commands.execute({
       actorId,
@@ -2328,9 +2475,39 @@ export class DataTransferService {
           runId,
           record,
           revisions,
+          contexts,
+          allRevisions,
         );
+        const targetIds = new Map<string, string>();
+        const references = new Set(
+          [
+            record.supersededById,
+            ...(revisions ?? []).map((revision) => revision.supersededById),
+          ]
+            .filter((id): id is string => id !== null)
+            .map((id) => id.toLowerCase()),
+        );
+        for (const reference of references) {
+          const target = await client.query<{
+            state: string;
+            target_id: string | null;
+          }>(
+            `SELECT state,target_id FROM business.transfer_row
+               WHERE workspace_id=$1 AND run_id=$2 AND record_kind='context' AND source_id=$3`,
+            [workspaceId, runId, reference],
+          );
+          if (
+            ["IMPORTED", "SKIPPED"].includes(target.rows[0]?.state ?? "") &&
+            target.rows[0]?.target_id
+          )
+            targetIds.set(reference, target.rows[0].target_id);
+        }
+        const missingSuccessor = references.size !== targetIds.size;
+        const successorId = record.supersededById
+          ? (targetIds.get(record.supersededById.toLowerCase()) ?? null)
+          : null;
         const state =
-          preview.state === "NEW"
+          preview.state === "NEW" && !missingSuccessor
             ? "IMPORTED"
             : preview.state === "DUPLICATE"
               ? "SKIPPED"
@@ -2339,8 +2516,8 @@ export class DataTransferService {
         if (state === "IMPORTED") {
           await client.query(
             `INSERT INTO business.context
-             (id,workspace_id,name,purpose,scope,kind,state,identity_revision)
-             VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+             (id,workspace_id,name,purpose,scope,kind,state,superseded_by_id,identity_revision)
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
             [
               targetId,
               workspaceId,
@@ -2349,14 +2526,15 @@ export class DataTransferService {
               record.scope,
               record.kind,
               record.state,
+              successorId,
               revisions === undefined ? 1 : record.identityRevision,
             ],
           );
           if (revisions === undefined) {
             await client.query(
               `INSERT INTO business.context_identity_revision
-               (workspace_id,context_id,revision,name,purpose,scope,kind,state)
-               VALUES($1,$2,1,$3,$4,$5,$6,$7)`,
+               (workspace_id,context_id,revision,name,purpose,scope,kind,state,superseded_by_id)
+               VALUES($1,$2,1,$3,$4,$5,$6,$7,$8)`,
               [
                 workspaceId,
                 targetId,
@@ -2365,6 +2543,7 @@ export class DataTransferService {
                 record.scope,
                 record.kind,
                 record.state,
+                successorId,
               ],
             );
           } else {
@@ -2385,7 +2564,9 @@ export class DataTransferService {
                   revision.scope,
                   revision.kind,
                   revision.state,
-                  revision.supersededById,
+                  revision.supersededById
+                    ? targetIds.get(revision.supersededById.toLowerCase())
+                    : null,
                   revision.recordedAt,
                 ],
               );
@@ -2413,7 +2594,7 @@ export class DataTransferService {
             state,
             targetId,
             state === "FAILED"
-              ? preview.state === "MISSING_REFERENCE"
+              ? preview.state === "MISSING_REFERENCE" || missingSuccessor
                 ? "MISSING_REFERENCE"
                 : "CONTENT_CONFLICT"
               : null,
@@ -2450,6 +2631,7 @@ export class DataTransferService {
     contexts: TransferManifestV3["contexts"] = [],
     transitions?: TransferManifestV4["taskTransitions"],
     units: PortableUnit[] = [],
+    contextRevisions: TransferManifestV8["contextIdentityRevisions"] = [],
   ): Promise<void> {
     await this.commands.execute({
       actorId,
@@ -2510,6 +2692,8 @@ export class DataTransferService {
           contexts,
           transitions,
           units,
+          undefined,
+          contextRevisions,
         );
         const context = await this.taskContextMapping(
           client,
@@ -2517,6 +2701,7 @@ export class DataTransferService {
           runId,
           record.contextId,
           contexts,
+          contextRevisions,
         );
         const unit = await this.taskUnitMapping(
           client,
