@@ -33,7 +33,7 @@ describe("BE-21 portable capture manifest", () => {
     const bundle = createCaptureBundle(workspaceId, [record]);
     const files = unpackTransferArchive(bundle);
     const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
-    manifest.version = 9;
+    manifest.version = 10;
     expect(() =>
       readCaptureBundle(
         packTransferArchive([
@@ -745,6 +745,59 @@ describe("BE-21 portable capture manifest", () => {
     expect(readAltered).toThrow("INVALID_BUNDLE");
     manifest.contextIdentityRevisions[0].revision = 1;
     manifest.contexts[0].name = "저장되지 않은 현재 이름";
+    expect(readAltered).toThrow("INVALID_BUNDLE");
+  });
+
+  it("keeps current memberships in version 9 and rejects duplicate active pairs or primary roles", () => {
+    const unitId = randomUUID();
+    const contextId = randomUUID();
+    const membership = {
+      id: randomUUID(),
+      originWorkspaceId: workspaceId,
+      originId: randomUUID(),
+      unitId,
+      unitRevision: 1,
+      contextId,
+      role: "PRIMARY" as const,
+      startedAt: "2026-09-25T00:00:00.000Z",
+    };
+    const bundle = createCaptureHistoryBundle(
+      workspaceId,
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [membership],
+    );
+    const parsed = readCaptureBundle(bundle).manifest;
+    expect(parsed.version).toBe(9);
+    if (parsed.version !== 9) throw new Error("expected v9");
+    expect(parsed.currentMemberships).toEqual([membership]);
+    const files = unpackTransferArchive(bundle);
+    const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
+    const readAltered = () =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+        ]),
+      );
+    manifest.currentMemberships.push({
+      ...membership,
+      id: randomUUID(),
+      originId: randomUUID(),
+      contextId: randomUUID(),
+    });
+    expect(readAltered).toThrow("INVALID_BUNDLE");
+    manifest.currentMemberships[1].role = "SECONDARY";
+    manifest.currentMemberships[1].contextId = contextId;
     expect(readAltered).toThrow("INVALID_BUNDLE");
   });
 });

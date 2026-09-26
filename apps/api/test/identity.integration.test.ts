@@ -3970,8 +3970,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const bundle = downloaded.rawPayload;
     expect(bundle.subarray(0, 2).equals(Buffer.from([0x1f, 0x8b]))).toBe(true);
     const firstManifest = readCaptureBundle(bundle).manifest;
-    expect(firstManifest.version).toBe(8);
-    if (firstManifest.version !== 8) throw new Error("expected v8");
+    expect(firstManifest.version).toBe(9);
+    if (firstManifest.version !== 9) throw new Error("expected v9");
     expect(
       firstManifest.contextIdentityRevisions.some(
         (revision) => revision.contextId === contextId,
@@ -4089,7 +4089,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       headers: transferHeaders,
     });
     expect(readCaptureBundle(reexportBytes.rawPayload).manifest.version).toBe(
-      8,
+      9,
     );
     const currentSupersededContextId = randomUUID();
     const currentSupersededClient = await admin.connect();
@@ -4125,7 +4125,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       currentSupersededExport.body,
     ).toBe(201);
     expect(currentSupersededExport.json<{ scope: string }>().scope).toBe(
-      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_HISTORY",
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS",
     );
     const currentSupersededDownload = await app.inject({
       method: "GET",
@@ -4136,8 +4136,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const currentSupersededManifest = readCaptureBundle(
       currentSupersededDownload.rawPayload,
     ).manifest;
-    expect(currentSupersededManifest.version).toBe(8);
-    if (currentSupersededManifest.version !== 8) throw new Error("expected v8");
+    expect(currentSupersededManifest.version).toBe(9);
+    if (currentSupersededManifest.version !== 9) throw new Error("expected v9");
     expect(
       currentSupersededManifest.contexts.find(
         (context) => context.id === currentSupersededContextId,
@@ -4273,7 +4273,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       201,
     );
     expect(restoredHistoryExport.json<{ scope: string }>().scope).toBe(
-      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_HISTORY",
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS",
     );
     const restoredHistoryDownload = await app.inject({
       method: "GET",
@@ -4284,8 +4284,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const restoredManifest = readCaptureBundle(
       restoredHistoryDownload.rawPayload,
     ).manifest;
-    expect(restoredManifest.version).toBe(8);
-    if (restoredManifest.version !== 8) throw new Error("expected v8");
+    expect(restoredManifest.version).toBe(9);
+    if (restoredManifest.version !== 9) throw new Error("expected v9");
     expect(
       restoredManifest.contextIdentityRevisions.find(
         (revision) =>
@@ -5331,6 +5331,331 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
        SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
        WHERE id=$1`,
       [unresolvedDuplicateRunId],
+    );
+    const membershipSource = randomUUID();
+    const membershipCaptureId = randomUUID();
+    const membershipUnitId = randomUUID();
+    const membershipContextIds = [randomUUID(), randomUUID()];
+    const membershipTime = "2026-09-24T00:00:00.000Z";
+    const membershipContexts = membershipContextIds.map((contextId, index) => ({
+      id: contextId,
+      originWorkspaceId: membershipSource,
+      originId: contextId,
+      name: index === 0 ? "주 맥락" : "보조 맥락",
+      purpose: "목적",
+      scope: "범위",
+      kind: "TOPIC" as const,
+      state: "ACTIVE" as const,
+      supersededById: null,
+      identityRevision: 1,
+      membershipRevision: 1,
+    }));
+    const membershipHistories = membershipContexts.map((context) => ({
+      contextId: context.id,
+      revision: 1,
+      name: context.name,
+      purpose: context.purpose,
+      scope: context.scope,
+      kind: context.kind,
+      state: context.state,
+      supersededById: null,
+      recordedAt: membershipTime,
+    }));
+    const membershipUnit = {
+      id: membershipUnitId,
+      originWorkspaceId: membershipSource,
+      originId: membershipUnitId,
+      captureId: membershipCaptureId,
+      captureRevision: 1,
+      originKey: "fixture:current-memberships",
+      state: "ACTIVE" as const,
+      currentRevision: 1,
+      createdAt: membershipTime,
+      supersededAt: null,
+      revisions: [
+        {
+          revision: 1,
+          sourceStart: 0,
+          sourceEnd: 6,
+          contentKind: "quote" as const,
+          contentText: "source",
+          recordedAt: membershipTime,
+        },
+      ],
+    };
+    const membershipRecords: NonNullable<
+      Parameters<typeof createCaptureHistoryBundle>[10]
+    > = membershipContextIds.map((contextId, index) => {
+      const id = randomUUID();
+      return {
+        id,
+        originWorkspaceId: membershipSource,
+        originId: id,
+        unitId: membershipUnitId,
+        unitRevision: 1,
+        contextId,
+        role: index === 0 ? "PRIMARY" : "SECONDARY",
+        startedAt: membershipTime,
+      };
+    });
+    const missingMembershipId = randomUUID();
+    const createMembershipBundle = (
+      records: typeof membershipRecords,
+      contexts = membershipContexts,
+    ) =>
+      createCaptureHistoryBundle(
+        membershipSource,
+        [
+          {
+            id: membershipCaptureId,
+            revision: 1,
+            title: "소속 이식 원문",
+            rawBody: "source",
+            recordedAt: membershipTime,
+            version: 1,
+            unitSetVersion: 1,
+            state: "ACTIVE",
+            originKey: "fixture:current-memberships",
+          },
+        ],
+        [],
+        [],
+        contexts,
+        [],
+        [],
+        [],
+        [membershipUnit],
+        membershipHistories,
+        records,
+      );
+    const membershipBundle = createMembershipBundle([
+      membershipRecords[0]!,
+      {
+        id: missingMembershipId,
+        originWorkspaceId: membershipSource,
+        originId: missingMembershipId,
+        unitId: membershipUnitId,
+        unitRevision: 1,
+        contextId: randomUUID(),
+        role: "BACKGROUND",
+        startedAt: membershipTime,
+      },
+    ]);
+    const membershipStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: membershipBundle,
+    });
+    expect(membershipStage.statusCode, membershipStage.body).toBe(201);
+    expect(membershipStage.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS",
+    );
+    const membershipRunId = membershipStage.json<{ id: string }>().id;
+    const membershipPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${membershipRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(membershipPreview.statusCode).toBe(200);
+    expect(
+      membershipPreview
+        .json<{ rows: { recordKind: string; state: string }[] }>()
+        .rows.filter((row) => row.recordKind === "context_membership")
+        .map((row) => row.state),
+    ).toEqual(["NEW", "MISSING_REFERENCE"]);
+    const membershipApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${membershipRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: membershipPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(membershipApplied.statusCode, membershipApplied.body).toBe(201);
+    expect(membershipApplied.json()).toMatchObject({
+      state: "PARTIAL",
+      counts: { IMPORTED: 5, FAILED: 1 },
+    });
+    const initialMembership = await admin.query<{
+      unit_id: string;
+      context_id: string;
+    }>(
+      `SELECT unit_id,context_id FROM business.context_membership
+       WHERE workspace_id=$1 AND role='PRIMARY' AND ended_at IS NULL
+         AND id IN (SELECT target_id FROM business.transfer_origin
+                    WHERE workspace_id=$1 AND record_kind='context_membership'
+                      AND source_workspace_id=$2)`,
+      [operator.workspaceId, membershipSource],
+    );
+    expect(initialMembership.rows).toHaveLength(1);
+    const importedUnitId = initialMembership.rows[0]!.unit_id;
+    const primaryContextId = initialMembership.rows[0]!.context_id;
+    const secondaryContextOrigin = await admin.query<{ target_id: string }>(
+      `SELECT target_id FROM business.transfer_origin
+       WHERE workspace_id=$1 AND record_kind='context'
+         AND source_workspace_id=$2 AND source_id=$3`,
+      [operator.workspaceId, membershipSource, membershipContextIds[1]],
+    );
+    const secondaryContextId = secondaryContextOrigin.rows[0]!.target_id;
+    const membershipVersionsBefore = await admin.query<{
+      membership_version: number;
+    }>(
+      `SELECT membership_version FROM business.thought_unit
+       WHERE workspace_id=$1 AND id=$2`,
+      [operator.workspaceId, importedUnitId],
+    );
+    const contextVersionsBefore = await admin.query<{
+      id: string;
+      membership_revision: number;
+    }>(
+      `SELECT id,membership_revision FROM business.context
+       WHERE workspace_id=$1 AND id=ANY($2::uuid[])`,
+      [operator.workspaceId, [primaryContextId, secondaryContextId]],
+    );
+    const outboxBefore = await admin.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM business.command_outbox
+       WHERE workspace_id=$1 AND event_type='context.membership.changed'`,
+      [operator.workspaceId],
+    );
+    const importedMemberships = await admin.query<{
+      source_id: string;
+      unit_id: string;
+      unit_revision: number;
+      context_id: string;
+      role: string;
+    }>(
+      `SELECT o.source_id,m.unit_id,m.unit_revision,m.context_id,m.role
+       FROM business.transfer_origin o JOIN business.context_membership m
+         ON m.workspace_id=o.workspace_id AND m.id=o.target_id
+       WHERE o.workspace_id=$1 AND o.record_kind='context_membership'
+         AND o.source_workspace_id=$2 ORDER BY o.source_id`,
+      [operator.workspaceId, membershipSource],
+    );
+    expect(importedMemberships.rows).toHaveLength(1);
+    expect(
+      new Set(importedMemberships.rows.map((row) => row.unit_id)).size,
+    ).toBe(1);
+    expect(importedMemberships.rows.map((row) => row.role)).toEqual([
+      "PRIMARY",
+    ]);
+    expect(
+      importedMemberships.rows.every(
+        (row) =>
+          row.unit_id !== membershipUnitId &&
+          row.unit_revision === 1 &&
+          !membershipContextIds.some((id) => id === row.context_id),
+      ),
+    ).toBe(true);
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [membershipRunId],
+    );
+    const membershipReplayBundle = createMembershipBundle(
+      [...membershipRecords].reverse(),
+      [...membershipContexts].reverse(),
+    );
+    const membershipReplayStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: membershipReplayBundle,
+    });
+    expect(membershipReplayStage.statusCode, membershipReplayStage.body).toBe(
+      201,
+    );
+    const membershipReplayRunId = membershipReplayStage.json<{ id: string }>()
+      .id;
+    const membershipReplayPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${membershipReplayRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(membershipReplayPreview.statusCode).toBe(200);
+    expect(
+      membershipReplayPreview
+        .json<{ rows: { recordKind: string; state: string }[] }>()
+        .rows.filter((row) => row.recordKind === "context_membership")
+        .map((row) => row.state),
+    ).toEqual(["NEW", "DUPLICATE"]);
+    const membershipReplayApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${membershipReplayRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: membershipReplayPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(membershipReplayApplied.statusCode).toBe(201);
+    expect(membershipReplayApplied.json()).toMatchObject({
+      state: "APPLIED",
+      counts: { SKIPPED: 5, IMPORTED: 1 },
+    });
+    const incrementalMemberships = await admin.query<{ role: string }>(
+      `SELECT m.role FROM business.context_membership m
+       WHERE m.workspace_id=$1 AND m.unit_id=$2 AND m.ended_at IS NULL
+       ORDER BY m.role`,
+      [operator.workspaceId, importedUnitId],
+    );
+    expect(incrementalMemberships.rows.map((row) => row.role)).toEqual([
+      "PRIMARY",
+      "SECONDARY",
+    ]);
+    const membershipVersionsAfter = await admin.query<{
+      membership_version: number;
+    }>(
+      `SELECT membership_version FROM business.thought_unit
+       WHERE workspace_id=$1 AND id=$2`,
+      [operator.workspaceId, importedUnitId],
+    );
+    expect(membershipVersionsAfter.rows[0]!.membership_version).toBe(
+      membershipVersionsBefore.rows[0]!.membership_version + 1,
+    );
+    const contextVersionsAfter = await admin.query<{
+      id: string;
+      membership_revision: number;
+    }>(
+      `SELECT id,membership_revision FROM business.context
+       WHERE workspace_id=$1 AND id=ANY($2::uuid[])`,
+      [operator.workspaceId, [primaryContextId, secondaryContextId]],
+    );
+    const priorContextVersions = new Map(
+      contextVersionsBefore.rows.map((row) => [
+        row.id,
+        row.membership_revision,
+      ]),
+    );
+    expect(
+      contextVersionsAfter.rows.find((row) => row.id === primaryContextId)
+        ?.membership_revision,
+    ).toBe(priorContextVersions.get(primaryContextId));
+    expect(
+      contextVersionsAfter.rows.find((row) => row.id === secondaryContextId)
+        ?.membership_revision,
+    ).toBe(priorContextVersions.get(secondaryContextId)! + 1);
+    const outboxAfter = await admin.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM business.command_outbox
+       WHERE workspace_id=$1 AND event_type='context.membership.changed'`,
+      [operator.workspaceId],
+    );
+    expect(Number(outboxAfter.rows[0]!.count)).toBe(
+      Number(outboxBefore.rows[0]!.count) + 1,
+    );
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [membershipReplayRunId],
     );
     const historySource = randomUUID();
     const historyTaskId = randomUUID();
