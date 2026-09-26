@@ -170,6 +170,23 @@ export const TransferManifestV7Schema = TransferManifestV6Schema.omit({
     .max(255),
   units: z.array(portableUnit).max(16384),
 });
+const portableContextIdentityRevision = z.strictObject({
+  contextId: z.uuid(),
+  revision: z.int().positive(),
+  name: portableContext.shape.name,
+  purpose: portableContext.shape.purpose,
+  scope: portableContext.shape.scope,
+  kind: portableContext.shape.kind,
+  state: portableContext.shape.state,
+  supersededById: z.uuid().nullable(),
+  recordedAt: z.iso.datetime({ offset: true }),
+});
+export const TransferManifestV8Schema = TransferManifestV7Schema.omit({
+  version: true,
+}).extend({
+  version: z.literal(8),
+  contextIdentityRevisions: z.array(portableContextIdentityRevision).max(16384),
+});
 export const TransferManifestSchema = z.discriminatedUnion("version", [
   TransferManifestV1Schema,
   TransferManifestV2Schema,
@@ -178,6 +195,7 @@ export const TransferManifestSchema = z.discriminatedUnion("version", [
   TransferManifestV5Schema,
   TransferManifestV6Schema,
   TransferManifestV7Schema,
+  TransferManifestV8Schema,
 ]);
 export type TransferManifestV2 = z.infer<typeof TransferManifestV2Schema>;
 export type TransferManifestV3 = z.infer<typeof TransferManifestV3Schema>;
@@ -185,6 +203,7 @@ export type TransferManifestV4 = z.infer<typeof TransferManifestV4Schema>;
 export type TransferManifestV5 = z.infer<typeof TransferManifestV5Schema>;
 export type TransferManifestV6 = z.infer<typeof TransferManifestV6Schema>;
 export type TransferManifestV7 = z.infer<typeof TransferManifestV7Schema>;
+export type TransferManifestV8 = z.infer<typeof TransferManifestV8Schema>;
 
 export const TransferRunSchema = z.strictObject({
   id: z.uuid(),
@@ -196,6 +215,7 @@ export const TransferRunSchema = z.strictObject({
     "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS",
     "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY",
     "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
+    "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_HISTORY",
   ]),
   kind: z.enum(["EXPORT", "IMPORT"]),
   state: z.enum(["READY", "STAGED", "APPLIED", "PARTIAL"]),
@@ -261,7 +281,7 @@ export const dataTransferOpenApiPaths = {
       responses: {
         "201": {
           description:
-            "Capture and Unit revision history, Context, Task and Event current-state plus Task transition/result export run; expires in 24 hours",
+            "Capture and Unit revision history, Context identity history when complete (otherwise version 7 current-state), Task and Event current-state plus Task transition/result export run; expires in 24 hours",
         },
         "403": error,
         "503": error,

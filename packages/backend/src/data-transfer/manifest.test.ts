@@ -33,7 +33,7 @@ describe("BE-21 portable capture manifest", () => {
     const bundle = createCaptureBundle(workspaceId, [record]);
     const files = unpackTransferArchive(bundle);
     const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
-    manifest.version = 8;
+    manifest.version = 9;
     expect(() =>
       readCaptureBundle(
         packTransferArchive([
@@ -673,5 +673,78 @@ describe("BE-21 portable capture manifest", () => {
         ]),
       ),
     ).toThrow("INVALID_BUNDLE");
+  });
+
+  it("preserves version 8 Context identity history and rejects gaps or a stale current identity", () => {
+    const contextId = randomUUID();
+    const context = {
+      id: contextId,
+      originWorkspaceId: workspaceId,
+      originId: contextId,
+      name: "변경된 이름",
+      purpose: "목적",
+      scope: "범위",
+      kind: "TOPIC" as const,
+      state: "ACTIVE" as const,
+      supersededById: null,
+      identityRevision: 2,
+      membershipRevision: 1,
+    };
+    const history = [
+      {
+        contextId,
+        revision: 1,
+        name: "처음 이름",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "ACTIVE" as const,
+        supersededById: null,
+        recordedAt: "2026-09-24T00:00:00.000Z",
+      },
+      {
+        contextId,
+        revision: 2,
+        name: "변경된 이름",
+        purpose: "목적",
+        scope: "범위",
+        kind: "TOPIC" as const,
+        state: "ACTIVE" as const,
+        supersededById: null,
+        recordedAt: "2026-09-25T00:00:00.000Z",
+      },
+    ];
+    const bundle = createCaptureHistoryBundle(
+      workspaceId,
+      [],
+      [],
+      [],
+      [context],
+      [],
+      [],
+      [],
+      [],
+      history,
+    );
+    const parsed = readCaptureBundle(bundle).manifest;
+    expect(parsed.version).toBe(8);
+    if (parsed.version !== 8) throw new Error("expected v8");
+    expect(parsed.contextIdentityRevisions).toEqual(history);
+    const files = unpackTransferArchive(bundle);
+    const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
+    const readAltered = () =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+        ]),
+      );
+    manifest.contextIdentityRevisions[0].revision = 2;
+    expect(readAltered).toThrow("INVALID_BUNDLE");
+    manifest.contextIdentityRevisions[0].revision = 1;
+    manifest.contexts[0].name = "저장되지 않은 현재 이름";
+    expect(readAltered).toThrow("INVALID_BUNDLE");
   });
 });

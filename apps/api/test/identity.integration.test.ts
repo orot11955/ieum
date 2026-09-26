@@ -2221,7 +2221,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     expect(reauthRequired.statusCode).toBe(403);
     expect(reauthRequired.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
     await admin.query(
-      "UPDATE auth.session SET created_at=now() WHERE user_id=$1",
+      "UPDATE auth.session SET created_at=now()-interval '10 seconds' WHERE user_id=$1",
       [operator.userId],
     );
     const usedDelete = await app.inject({
@@ -3931,7 +3931,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(transferReauth.statusCode).toBe(403);
     await admin.query(
-      "UPDATE auth.session SET created_at=now() WHERE user_id=$1",
+      "UPDATE auth.session SET created_at=now()-interval '10 seconds' WHERE user_id=$1",
       [operator.userId],
     );
     const downloaded = await app.inject({
@@ -3969,6 +3969,14 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     ).toBe(404);
     const bundle = downloaded.rawPayload;
     expect(bundle.subarray(0, 2).equals(Buffer.from([0x1f, 0x8b]))).toBe(true);
+    const firstManifest = readCaptureBundle(bundle).manifest;
+    expect(firstManifest.version).toBe(8);
+    if (firstManifest.version !== 8) throw new Error("expected v8");
+    expect(
+      firstManifest.contextIdentityRevisions.some(
+        (revision) => revision.contextId === contextId,
+      ),
+    ).toBe(true);
     const staged = await app.inject({
       method: "POST",
       url: `${transferBase}/imports`,
@@ -4081,8 +4089,139 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       headers: transferHeaders,
     });
     expect(readCaptureBundle(reexportBytes.rawPayload).manifest.version).toBe(
-      7,
+      8,
     );
+    const longHistoryContextId = randomUUID();
+    const historyFixtureClient = await admin.connect();
+    try {
+      await historyFixtureClient.query("BEGIN");
+      await historyFixtureClient.query(
+        `INSERT INTO business.context
+         (id,workspace_id,name,purpose,scope,kind,state,identity_revision)
+         VALUES($1,$2,'많은 개정','목적','범위','TOPIC','ACTIVE',256)`,
+        [longHistoryContextId, operator.workspaceId],
+      );
+      await historyFixtureClient.query(
+        `INSERT INTO business.context_identity_revision
+         (workspace_id,context_id,revision,name,purpose,scope,kind,state,recorded_at)
+         SELECT $1,$2,revision,
+                CASE WHEN revision=256 THEN '많은 개정' ELSE '과거 개정' END,
+                '목적','범위','TOPIC','ACTIVE',
+                now()-interval '1 day'+revision*interval '1 second'
+         FROM generate_series(1,256) AS revision`,
+        [operator.workspaceId, longHistoryContextId],
+      );
+      await historyFixtureClient.query("COMMIT");
+    } catch (error) {
+      await historyFixtureClient.query("ROLLBACK");
+      throw error;
+    } finally {
+      historyFixtureClient.release();
+    }
+    const longHistoryExport = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(longHistoryExport.statusCode, longHistoryExport.body).toBe(201);
+    expect(longHistoryExport.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
+    );
+    const longHistoryExportId = longHistoryExport.json<{ id: string }>().id;
+    const longHistoryDownload = await app.inject({
+      method: "GET",
+      url: `${transferBase}/exports/${longHistoryExportId}/download`,
+      headers: transferHeaders,
+    });
+    expect(longHistoryDownload.statusCode).toBe(200);
+    expect(
+      readCaptureBundle(longHistoryDownload.rawPayload).manifest.version,
+    ).toBe(7);
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [longHistoryExportId],
+    );
+    const historyCleanupClient = await admin.connect();
+    try {
+      await historyCleanupClient.query("BEGIN");
+      await historyCleanupClient.query(
+        "DELETE FROM business.context_identity_revision WHERE workspace_id=$1 AND context_id=$2",
+        [operator.workspaceId, longHistoryContextId],
+      );
+      await historyCleanupClient.query(
+        "DELETE FROM business.context WHERE workspace_id=$1 AND id=$2",
+        [operator.workspaceId, longHistoryContextId],
+      );
+      await historyCleanupClient.query("COMMIT");
+    } catch (error) {
+      await historyCleanupClient.query("ROLLBACK");
+      throw error;
+    } finally {
+      historyCleanupClient.release();
+    }
+    const restoredContextId = randomUUID();
+    const restorationClient = await admin.connect();
+    try {
+      await restorationClient.query("BEGIN");
+      await restorationClient.query(
+        `INSERT INTO business.context
+         (id,workspace_id,name,purpose,scope,kind,state,identity_revision)
+         VALUES($1,$2,'다시 활성','목적','범위','TOPIC','ACTIVE',2)`,
+        [restoredContextId, operator.workspaceId],
+      );
+      await restorationClient.query(
+        `INSERT INTO business.context_identity_revision
+         (workspace_id,context_id,revision,name,purpose,scope,kind,state,
+          superseded_by_id,recorded_at)
+         VALUES($1,$2,1,'과거','목적','범위','TOPIC','SUPERSEDED',$3,
+                now()-interval '1 day'),
+               ($1,$2,2,'다시 활성','목적','범위','TOPIC','ACTIVE',NULL,now())`,
+        [operator.workspaceId, restoredContextId, contextId],
+      );
+      await restorationClient.query("COMMIT");
+    } catch (error) {
+      await restorationClient.query("ROLLBACK");
+      throw error;
+    } finally {
+      restorationClient.release();
+    }
+    const restoredHistoryExport = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(restoredHistoryExport.statusCode, restoredHistoryExport.body).toBe(
+      201,
+    );
+    expect(restoredHistoryExport.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
+    );
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id=$1`,
+      [restoredHistoryExport.json<{ id: string }>().id],
+    );
+    const restoredCleanupClient = await admin.connect();
+    try {
+      await restoredCleanupClient.query("BEGIN");
+      await restoredCleanupClient.query(
+        "DELETE FROM business.context_identity_revision WHERE workspace_id=$1 AND context_id=$2",
+        [operator.workspaceId, restoredContextId],
+      );
+      await restoredCleanupClient.query(
+        "DELETE FROM business.context WHERE workspace_id=$1 AND id=$2",
+        [operator.workspaceId, restoredContextId],
+      );
+      await restoredCleanupClient.query("COMMIT");
+    } catch (error) {
+      await restoredCleanupClient.query("ROLLBACK");
+      throw error;
+    } finally {
+      restoredCleanupClient.release();
+    }
     const restaged = await app.inject({
       method: "POST",
       url: `${transferBase}/imports`,
@@ -4351,6 +4490,196 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         (context) => context.id === linkedTargets.rows[0]?.context_id,
       )?.identityRevision,
     ).toBe(3);
+    const contextHistorySource = randomUUID();
+    const contextHistoryId = randomUUID();
+    const portableContext = {
+      id: contextHistoryId,
+      originWorkspaceId: contextHistorySource,
+      originId: contextHistoryId,
+      name: "개정 이름",
+      purpose: "목적",
+      scope: "범위",
+      kind: "PROJECT" as const,
+      state: "ACTIVE" as const,
+      supersededById: null,
+      identityRevision: 2,
+      membershipRevision: 1,
+    };
+    const portableContextHistory = [
+      {
+        contextId: contextHistoryId,
+        revision: 1,
+        name: "원래 이름",
+        purpose: "목적",
+        scope: "범위",
+        kind: "PROJECT" as const,
+        state: "ACTIVE" as const,
+        supersededById: null,
+        recordedAt: "2026-09-24T00:00:00.000Z",
+      },
+      {
+        contextId: contextHistoryId,
+        revision: 2,
+        name: "개정 이름",
+        purpose: "목적",
+        scope: "범위",
+        kind: "PROJECT" as const,
+        state: "ACTIVE" as const,
+        supersededById: null,
+        recordedAt: "2026-09-25T00:00:00.000Z",
+      },
+    ];
+    const portableContextBundle = createCaptureHistoryBundle(
+      contextHistorySource,
+      [],
+      [],
+      [],
+      [portableContext],
+      [],
+      [],
+      [],
+      [],
+      portableContextHistory,
+    );
+    const contextHistoryStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: portableContextBundle,
+    });
+    expect(contextHistoryStage.statusCode, contextHistoryStage.body).toBe(201);
+    expect(contextHistoryStage.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_HISTORY",
+    );
+    const contextHistoryRun = contextHistoryStage.json<{ id: string }>().id;
+    const contextHistoryPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${contextHistoryRun}/preview`,
+      headers: transferHeaders,
+    });
+    expect(contextHistoryPreview.statusCode).toBe(200);
+    expect(
+      contextHistoryPreview.json<{ rows: { state: string }[] }>().rows,
+    ).toMatchObject([{ state: "NEW" }]);
+    const contextHistoryApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${contextHistoryRun}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: contextHistoryPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(contextHistoryApplied.statusCode, contextHistoryApplied.body).toBe(
+      201,
+    );
+    expect(contextHistoryApplied.json()).toMatchObject({
+      state: "APPLIED",
+      counts: { IMPORTED: 1 },
+    });
+    const importedContextHistory = await admin.query<{
+      id: string;
+      identity_revision: number;
+      name: string;
+      revision: number;
+    }>(
+      `SELECT c.id,c.identity_revision,r.name,r.revision
+       FROM business.transfer_origin o
+       JOIN business.context c ON c.workspace_id=o.workspace_id AND c.id=o.target_id
+       JOIN business.context_identity_revision r
+         ON r.workspace_id=c.workspace_id AND r.context_id=c.id
+       WHERE o.workspace_id=$1 AND o.record_kind='context' AND o.source_id=$2
+       ORDER BY r.revision`,
+      [operator.workspaceId, contextHistoryId],
+    );
+    expect(importedContextHistory.rows.map((row) => row.name)).toEqual([
+      "원래 이름",
+      "개정 이름",
+    ]);
+    expect(importedContextHistory.rows.map((row) => row.revision)).toEqual([
+      1, 2,
+    ]);
+    expect(importedContextHistory.rows[0]?.identity_revision).toBe(2);
+    const reversedContextHistory = createCaptureHistoryBundle(
+      contextHistorySource,
+      [],
+      [],
+      [],
+      [portableContext],
+      [],
+      [],
+      [],
+      [],
+      [...portableContextHistory].reverse(),
+    );
+    const reversedContextStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: reversedContextHistory,
+    });
+    expect(reversedContextStage.statusCode).toBe(201);
+    const reversedContextPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${reversedContextStage.json<{ id: string }>().id}/preview`,
+      headers: transferHeaders,
+    });
+    expect(reversedContextPreview.statusCode).toBe(200);
+    expect(
+      reversedContextPreview.json<{ rows: { state: string }[] }>().rows,
+    ).toMatchObject([{ state: "DUPLICATE" }]);
+    const changedContextHistory = createCaptureHistoryBundle(
+      contextHistorySource,
+      [],
+      [],
+      [],
+      [portableContext],
+      [],
+      [],
+      [],
+      [],
+      [
+        { ...portableContextHistory[0]!, name: "바뀐 과거" },
+        portableContextHistory[1]!,
+      ],
+    );
+    const changedContextStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: changedContextHistory,
+    });
+    expect(changedContextStage.statusCode).toBe(201);
+    const changedContextPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${changedContextStage.json<{ id: string }>().id}/preview`,
+      headers: transferHeaders,
+    });
+    expect(changedContextPreview.statusCode).toBe(200);
+    expect(
+      changedContextPreview.json<{ rows: { state: string }[] }>().rows,
+    ).toMatchObject([{ state: "CONFLICT" }]);
+    await admin.query(
+      `UPDATE business.transfer_run
+       SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+       WHERE id = ANY($1::uuid[])`,
+      [
+        [
+          contextHistoryRun,
+          reversedContextStage.json<{ id: string }>().id,
+          changedContextStage.json<{ id: string }>().id,
+        ],
+      ],
+    );
     const historySource = randomUUID();
     const historyTaskId = randomUUID();
     const historyBundle = createTaskHistoryBundle(
