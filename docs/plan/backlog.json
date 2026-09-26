@@ -632,7 +632,7 @@
         "BE-18",
         "BE-06"
       ],
-      "status": "PLANNED",
+      "status": "IN_PROGRESS",
       "scope": "버전 있는 JSON/Markdown export와 manifest/asset hash를 구현한다. import는 validate→dry-run→사용자 확인→적용 순서로 진행하며 충돌/중복/참조 누락을 보고한다. 명시적 같은 사용자의 로컬 데이터만 취급한다.",
       "contract": "모듈: data-transfer. import run/row 상태와 제한된 staging; export 파일 만료·권한 재검사. 개인 Export는 서버 auth DB 전체 Backup과 다르다.",
       "tests": "경로 탈출·과대 파일·지원하지 않는 schema, 일부 오류, 동일 bundle 두 번 import, source FK 실패, 작업 중 account 정지, export 다운로드 만료.",

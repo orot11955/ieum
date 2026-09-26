@@ -343,7 +343,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-21 · 개인 Import/Export·dry-run·중복 처리
 
-**구간:** P8 · **상태:** PLANNED · **선행:** BE-07, BE-11, BE-18, BE-06
+**구간:** P8 · **상태:** IN_PROGRESS · **선행:** BE-07, BE-11, BE-18, BE-06
 
 **구현 범위:** 버전 있는 JSON/Markdown export와 manifest/asset hash를 구현한다. import는 validate→dry-run→사용자 확인→적용 순서로 진행하며 충돌/중복/참조 누락을 보고한다. 명시적 같은 사용자의 로컬 데이터만 취급한다.
 

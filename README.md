@@ -2,11 +2,11 @@
 
 **생각·경험·외부 자료를 원본과 출처로 보존하고, 일정·할일·위키를 관리하며, 축적한 자료를 문서로 정제해 승인한 공개본을 API로 제공하는 개인 내부 관리 제품.** 외부 블로그 독자 화면은 별도다.
 
-## 현재 상태 · 2026-09-25 KST
+## 현재 상태 · 2026-09-26 KST
 
-**main 단일 브랜치 · BASE-01–03, CORE-01–15, BE-01–10·12–15, FE-01–02 VERIFIED · CORE-16 BLOCKED.** Core의 원본·snapshot·관찰 판단, 파일 Lab 실행·재생, 합성 B0/B1/B2/B3 비교, 근거 묶음, 추출·구조 변경 미리보기·문서 claim 검증 계약을 구현했다. Nest/Fastify API와 업무 DB, Paper/Dark UI 및 합성 편집기·폼 spike를 Linux CI에서 검증했다. 실제 사용자 품질, 전체 업무 웹, 운영 DB·배포는 아직 미검증이다.
+**main 단일 브랜치 · BASE-01–03, CORE-01–15, BE-01–20, FE-01–02 VERIFIED · BE-21 진행 중 · CORE-16 BLOCKED.** Core의 원본·snapshot·관찰 판단과 Lab 계약, Nest/Fastify 관리·Delivery API, 업무 DB, Paper/Dark 공통 UI 및 합성 편집기·폼 spike를 검증했다. 개인 데이터 이식은 일부 도메인만 지원한다. 실제 사용자 품질, 전체 업무 웹, 운영 DB·배포는 아직 미검증이다.
 
-현재 있는 것은 Paper/Dark 디자인 생성·검사 도구, 공통 React UI/테마 소스 표본, core/lab 빌드와 Core 원문·근거 검증/시점 snapshot/lexical·semantic·hybrid 후보 검색·관찰 판단 기준선, 파일 run/replay/inspect/compare/evaluate/pack/semantic/compare-semantic/compare-hybrid CLI와 합성 데이터, 관리/Delivery 계약 예제와 생성 client 타입, Nest/Fastify liveness API와 worker self-check, 제품·도메인·화면/ERD 계약과 75개 작업 카드다. 공통 UI 소스나 lab smoke가 있다는 이유로 제품 React 앱이나 완성된 판단 기능이 실행된다고 설명하지 않는다.
+현재는 Core/Lab의 합성 검증 경로, 인증과 업무 DB를 사용하는 관리 API·worker, 승인된 공개본의 Delivery API, Paper/Dark 공통 UI·편집기/폼 표본, 관리/Delivery 계약과 75개 작업 카드가 있다. 웹은 공통 UI 갤러리 단계이며 실제 업무 화면 전체는 아직 없다. Lab의 합성 결과를 실제 판단 품질로 설명하지 않는다.
 
 ## 구현의 시작점
 
@@ -44,7 +44,7 @@
 | [BE-10 증거](docs/evidence/be-10.md) | 일정의 시간대·종일·DST·취소의 실제 PostgreSQL·HTTP 검증 |
 | [BE-06 증거](docs/evidence/be-06.md) | pg-boss outbox relay·worker·권한 격리의 PostgreSQL·Linux CI 검증 |
 
-CORE-01–15, BE-01–15, FE-01–02가 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 카드는 BE-16이다.
+CORE-01–15, BE-01–20, FE-01–02가 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 작업은 BE-21의 남은 개인 데이터 관계·문서·첨부 이식이다.
 
 BE-11 공통 문서 draft/revision 엔진은 [구현 증거](docs/evidence/be-11.md)의 격리 PostgreSQL·Linux CI를 통과했다.
 
