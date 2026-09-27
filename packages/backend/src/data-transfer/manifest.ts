@@ -8,6 +8,7 @@ import {
   TransferManifestV7Schema,
   TransferManifestV8Schema,
   TransferManifestV9Schema,
+  TransferManifestV10Schema,
   type TransferManifest,
   type TransferManifestV2,
   type TransferManifestV3,
@@ -17,7 +18,9 @@ import {
   type TransferManifestV7,
   type TransferManifestV8,
   type TransferManifestV9,
+  type TransferManifestV10,
 } from "@ieum/contracts/data-transfer";
+import { validPortableRelations } from "./relations.js";
 import {
   packTransferArchive,
   transferHash,
@@ -240,6 +243,10 @@ export function createCaptureHistoryBundle(
   units?: TransferManifestV7["units"],
   contextIdentityRevisions?: TransferManifestV8["contextIdentityRevisions"],
   currentMemberships?: TransferManifestV9["currentMemberships"],
+  currentRelations?: Pick<
+    TransferManifestV10,
+    "currentContextRelations" | "currentThoughtRelations"
+  >,
 ): Buffer {
   const currentFiles = records.map((record) => ({
     path: `captures/${record.id}.md`,
@@ -285,25 +292,33 @@ export function createCaptureHistoryBundle(
     taskTransitions,
     taskResults,
     ...(currentMemberships === undefined ? {} : { currentMemberships }),
+    ...currentRelations,
   };
   const manifest =
-    currentMemberships !== undefined
-      ? TransferManifestV9Schema.parse({
+    currentRelations !== undefined
+      ? TransferManifestV10Schema.parse({
           ...fields,
-          version: 9,
+          version: 10,
           units,
           contextIdentityRevisions,
         })
-      : contextIdentityRevisions !== undefined
-        ? TransferManifestV8Schema.parse({
+      : currentMemberships !== undefined
+        ? TransferManifestV9Schema.parse({
             ...fields,
-            version: 8,
+            version: 9,
             units,
             contextIdentityRevisions,
           })
-        : units === undefined
-          ? TransferManifestV6Schema.parse({ ...fields, version: 6 })
-          : TransferManifestV7Schema.parse({ ...fields, version: 7, units });
+        : contextIdentityRevisions !== undefined
+          ? TransferManifestV8Schema.parse({
+              ...fields,
+              version: 8,
+              units,
+              contextIdentityRevisions,
+            })
+          : units === undefined
+            ? TransferManifestV6Schema.parse({ ...fields, version: 6 })
+            : TransferManifestV7Schema.parse({ ...fields, version: 7, units });
   return packTransferArchive([
     { path: "manifest.json", bytes: Buffer.from(JSON.stringify(manifest)) },
     ...currentFiles,
@@ -321,7 +336,8 @@ export function readCaptureBundle(packed: Buffer): {
     | TransferManifestV6
     | TransferManifestV7
     | TransferManifestV8
-    | TransferManifestV9;
+    | TransferManifestV9
+    | TransferManifestV10;
   captures: (TransferManifest["captures"][number] & { rawBody: string })[];
   captureRevisions: (Omit<
     TransferManifestV6["captureRevisions"][number],
@@ -355,7 +371,8 @@ export function readCaptureBundle(packed: Buffer): {
     input.version !== 6 &&
     input.version !== 7 &&
     input.version !== 8 &&
-    input.version !== 9
+    input.version !== 9 &&
+    input.version !== 10
   )
     throw new TransferManifestError("UNSUPPORTED_SCHEMA");
   const parsed = TransferManifestSchema.safeParse(input);
@@ -457,7 +474,8 @@ export function readCaptureBundle(packed: Buffer): {
     manifest.version === 6 ||
     manifest.version === 7 ||
     manifest.version === 8 ||
-    manifest.version === 9
+    manifest.version === 9 ||
+    manifest.version === 10
   ) {
     if (
       new Set(manifest.contexts.map((context) => context.id.toLowerCase()))
@@ -475,7 +493,11 @@ export function readCaptureBundle(packed: Buffer): {
         throw new TransferManifestError("INVALID_BUNDLE");
     }
   }
-  if (manifest.version === 8 || manifest.version === 9) {
+  if (
+    manifest.version === 8 ||
+    manifest.version === 9 ||
+    manifest.version === 10
+  ) {
     const contexts = new Map(
       manifest.contexts.map((context) => [context.id.toLowerCase(), context]),
     );
@@ -525,7 +547,9 @@ export function readCaptureBundle(packed: Buffer): {
         throw new TransferManifestError("INVALID_BUNDLE");
     }
   }
-  if (manifest.version === 9) {
+  if (manifest.version === 10 && !validPortableRelations(manifest))
+    throw new TransferManifestError("INVALID_BUNDLE");
+  if (manifest.version === 9 || manifest.version === 10) {
     const ids = new Set<string>();
     const origins = new Set<string>();
     const pairs = new Set<string>();
@@ -554,7 +578,8 @@ export function readCaptureBundle(packed: Buffer): {
     manifest.version === 6 ||
     manifest.version === 7 ||
     manifest.version === 8 ||
-    manifest.version === 9
+    manifest.version === 9 ||
+    manifest.version === 10
   ) {
     const tasks = new Map(
       manifest.tasks.map((task) => [task.id.toLowerCase(), task]),
@@ -598,7 +623,8 @@ export function readCaptureBundle(packed: Buffer): {
     manifest.version === 6 ||
     manifest.version === 7 ||
     manifest.version === 8 ||
-    manifest.version === 9
+    manifest.version === 9 ||
+    manifest.version === 10
   ) {
     const tasks = new Map(
       manifest.tasks.map((task) => [task.id.toLowerCase(), task]),
@@ -664,7 +690,8 @@ export function readCaptureBundle(packed: Buffer): {
     manifest.version === 6 ||
     manifest.version === 7 ||
     manifest.version === 8 ||
-    manifest.version === 9
+    manifest.version === 9 ||
+    manifest.version === 10
   ) {
     if (manifest.captures.length + manifest.captureRevisions.length > 255)
       throw new TransferManifestError("INVALID_BUNDLE");
@@ -719,7 +746,8 @@ export function readCaptureBundle(packed: Buffer): {
   if (
     manifest.version === 7 ||
     manifest.version === 8 ||
-    manifest.version === 9
+    manifest.version === 9 ||
+    manifest.version === 10
   ) {
     const bodies = new Map<string, string>();
     for (const capture of manifest.captures) {

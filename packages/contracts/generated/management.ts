@@ -5948,7 +5948,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Capture and Unit revision history, Context identity history and current Unit-Context memberships when complete (otherwise an explicitly narrower version), Task and Event current-state plus Task transition/result export run; expires in 24 hours */
+            /** @description Capture and Unit revision history, Context identity history, current memberships and relations when complete (otherwise an explicitly narrower version), Task and Event current-state plus Task transition/result export run; expires in 24 hours */
             201: {
                 headers: {
                     [name: string]: unknown;

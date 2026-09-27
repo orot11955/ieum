@@ -33,7 +33,7 @@ describe("BE-21 portable capture manifest", () => {
     const bundle = createCaptureBundle(workspaceId, [record]);
     const files = unpackTransferArchive(bundle);
     const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
-    manifest.version = 10;
+    manifest.version = 11;
     expect(() =>
       readCaptureBundle(
         packTransferArchive([
@@ -798,6 +798,89 @@ describe("BE-21 portable capture manifest", () => {
     expect(readAltered).toThrow("INVALID_BUNDLE");
     manifest.currentMemberships[1].role = "SECONDARY";
     manifest.currentMemberships[1].contextId = contextId;
+    expect(readAltered).toThrow("INVALID_BUNDLE");
+  });
+
+  it("keeps current relations in version 10 and rejects duplicate pairs and parent cycles", () => {
+    const [a, b, c] = [randomUUID(), randomUUID(), randomUUID()];
+    const relation = {
+      id: randomUUID(),
+      originWorkspaceId: workspaceId,
+      originId: randomUUID(),
+      fromContextId: a!,
+      toContextId: b!,
+      type: "PARENT_OF" as const,
+      startedAt: "2026-09-25T00:00:00.000Z",
+    };
+    const thought = {
+      id: randomUUID(),
+      originWorkspaceId: workspaceId,
+      originId: randomUUID(),
+      fromUnitId: a!,
+      fromRevision: 1,
+      toUnitId: b!,
+      toRevision: 1,
+      type: "CONTRADICTS" as const,
+      startedAt: relation.startedAt,
+    };
+    const bundle = createCaptureHistoryBundle(
+      workspaceId,
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      {
+        currentContextRelations: [relation],
+        currentThoughtRelations: [thought],
+      },
+    );
+    const parsed = readCaptureBundle(bundle).manifest;
+    expect(parsed.version).toBe(10);
+    if (parsed.version !== 10) throw new Error("expected v10");
+    expect(parsed.currentContextRelations).toEqual([relation]);
+    expect(parsed.currentThoughtRelations).toEqual([thought]);
+    const files = unpackTransferArchive(bundle);
+    const manifest = JSON.parse(files.get("manifest.json")!.toString("utf8"));
+    const readAltered = () =>
+      readCaptureBundle(
+        packTransferArchive([
+          {
+            path: "manifest.json",
+            bytes: Buffer.from(JSON.stringify(manifest)),
+          },
+        ]),
+      );
+    manifest.currentContextRelations.push({
+      ...relation,
+      id: randomUUID(),
+      originId: randomUUID(),
+    });
+    expect(readAltered).toThrow("INVALID_BUNDLE");
+    manifest.currentContextRelations[1].fromContextId = b;
+    manifest.currentContextRelations[1].toContextId = c;
+    manifest.currentContextRelations.push({
+      ...relation,
+      id: randomUUID(),
+      originId: randomUUID(),
+      fromContextId: c,
+      toContextId: a,
+    });
+    expect(readAltered).toThrow("INVALID_BUNDLE");
+    manifest.currentContextRelations.pop();
+    manifest.currentContextRelations.pop();
+    manifest.currentThoughtRelations.push({
+      ...thought,
+      id: randomUUID(),
+      originId: randomUUID(),
+      fromUnitId: b,
+      toUnitId: a,
+    });
     expect(readAltered).toThrow("INVALID_BUNDLE");
   });
 });

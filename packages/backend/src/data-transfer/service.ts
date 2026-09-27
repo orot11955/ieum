@@ -8,6 +8,7 @@ import type {
   TransferManifestV7,
   TransferManifestV8,
   TransferManifestV9,
+  TransferManifestV10,
 } from "@ieum/contracts/data-transfer";
 import type { PoolClient } from "pg";
 import { CommandCoordinator } from "../command-coordinator.js";
@@ -18,6 +19,17 @@ import {
 import { IdentityService } from "../identity-service.js";
 import { transferHash } from "./archive.js";
 import { createCaptureHistoryBundle, readCaptureBundle } from "./manifest.js";
+import {
+  readCurrentRelations,
+  readContextEdges,
+  validPortableRelations,
+  previewContextRelation,
+  previewThoughtRelation,
+  contextEndpoints,
+  thoughtEndpoints,
+  type PortableContextRelation,
+  type PortableThoughtRelation,
+} from "./relations.js";
 import type { TransferStoragePort } from "./storage.js";
 
 const UUID =
@@ -61,7 +73,9 @@ export interface TransferPreviewRow {
     | "event"
     | "context"
     | "task_result"
-    | "context_membership";
+    | "context_membership"
+    | "context_relation"
+    | "thought_relation";
   sourceId: string;
   sourceRevision: number;
   state:
@@ -101,7 +115,8 @@ type TransferScope =
   | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY"
   | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY"
   | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_HISTORY"
-  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS";
+  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS"
+  | "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS_RELATIONS";
 function publicRun(run: Run, scope: TransferScope) {
   return {
     id: run.id,
@@ -254,23 +269,25 @@ async function sameContextHistory(
 }
 
 function bundleScope(version: number): TransferScope {
-  return version === 9
-    ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS"
-    : version === 8
-      ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_HISTORY"
-      : version === 7
-        ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY"
-        : version === 6
-          ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY"
-          : version === 5
-            ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS"
-            : version === 4
-              ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY"
-              : version === 3
-                ? "CAPTURES_TASKS_EVENTS_CONTEXTS"
-                : version === 2
-                  ? "CAPTURES_TASKS_EVENTS"
-                  : "CAPTURES_ONLY";
+  return version === 10
+    ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS_RELATIONS"
+    : version === 9
+      ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS"
+      : version === 8
+        ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_HISTORY"
+        : version === 7
+          ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY"
+          : version === 6
+            ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_CAPTURE_HISTORY"
+            : version === 5
+              ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS"
+              : version === 4
+                ? "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY"
+                : version === 3
+                  ? "CAPTURES_TASKS_EVENTS_CONTEXTS"
+                  : version === 2
+                    ? "CAPTURES_TASKS_EVENTS"
+                    : "CAPTURES_ONLY";
 }
 
 type CaptureHistoryRecord = TransferManifestV6["captures"][number] & {
@@ -887,6 +904,22 @@ export class DataTransferService {
           currentMemberships.rows.every(
             (row) => unitIds.has(row.unit_id) && contextIds.has(row.context_id),
           );
+        const currentRelations = await readCurrentRelations(
+          client,
+          workspaceId,
+        );
+        const currentRelationsComplete =
+          currentMembershipComplete &&
+          currentRelations.currentContextRelations.length <= 2048 &&
+          currentRelations.currentThoughtRelations.length <= 2048 &&
+          currentRelations.currentContextRelations.every(
+            (r) =>
+              contextIds.has(r.fromContextId) && contextIds.has(r.toContextId),
+          ) &&
+          currentRelations.currentThoughtRelations.every(
+            (r) => unitIds.has(r.fromUnitId) && unitIds.has(r.toUnitId),
+          ) &&
+          validPortableRelations(currentRelations);
         const revisionsByUnit = new Map<
           string,
           TransferManifestV7["units"][number]["revisions"]
@@ -966,6 +999,8 @@ export class DataTransferService {
           })),
           contextHistoryComplete,
           currentMembershipComplete,
+          currentRelationsComplete,
+          currentRelations,
           currentMemberships: currentMemberships.rows.map((row) => ({
             id: row.id,
             originWorkspaceId: row.origin_workspace_id ?? workspaceId,
@@ -1040,6 +1075,9 @@ export class DataTransferService {
         snapshot.currentMembershipComplete
           ? snapshot.currentMemberships
           : undefined,
+        snapshot.currentRelationsComplete
+          ? snapshot.currentRelations
+          : undefined,
       );
       readCaptureBundle(bytes);
     } catch {
@@ -1074,11 +1112,13 @@ export class DataTransferService {
           return publicRun(
             result.rows[0]!,
             bundleScope(
-              snapshot.currentMembershipComplete
-                ? 9
-                : snapshot.contextHistoryComplete
-                  ? 8
-                  : 7,
+              snapshot.currentRelationsComplete
+                ? 10
+                : snapshot.currentMembershipComplete
+                  ? 9
+                  : snapshot.contextHistoryComplete
+                    ? 8
+                    : 7,
             ),
           );
         },
@@ -1177,7 +1217,8 @@ export class DataTransferService {
           if (
             manifest.version === 7 ||
             manifest.version === 8 ||
-            manifest.version === 9
+            manifest.version === 9 ||
+            manifest.version === 10
           )
             for (const unit of manifest.units)
               await client.query(
@@ -1207,7 +1248,8 @@ export class DataTransferService {
             manifest.version === 6 ||
             manifest.version === 7 ||
             manifest.version === 8 ||
-            manifest.version === 9
+            manifest.version === 9 ||
+            manifest.version === 10
           ) {
             for (const context of manifest.contexts)
               await client.query(
@@ -1222,7 +1264,8 @@ export class DataTransferService {
             manifest.version === 6 ||
             manifest.version === 7 ||
             manifest.version === 8 ||
-            manifest.version === 9
+            manifest.version === 9 ||
+            manifest.version === 10
           ) {
             for (const result of manifest.taskResults)
               await client.query(
@@ -1232,7 +1275,7 @@ export class DataTransferService {
                 [workspaceId, id, result.id, result.completionVersion],
               );
           }
-          if (manifest.version === 9)
+          if (manifest.version === 9 || manifest.version === 10)
             for (const membership of manifest.currentMemberships)
               await client.query(
                 `INSERT INTO business.transfer_row
@@ -1240,6 +1283,18 @@ export class DataTransferService {
                  VALUES($1,$2,'context_membership',$3,1)`,
                 [workspaceId, id, membership.id],
               );
+          if (manifest.version === 10)
+            for (const [kind, records] of [
+              ["context_relation", manifest.currentContextRelations],
+              ["thought_relation", manifest.currentThoughtRelations],
+            ] as const)
+              for (const record of records)
+                await client.query(
+                  `INSERT INTO business.transfer_row
+                  (workspace_id,run_id,record_kind,source_id,source_revision)
+                  VALUES($1,$2,$3,$4,1)`,
+                  [workspaceId, id, kind, record.id],
+                );
           return {
             run: publicRun(result.rows[0]!, bundleScope(manifest.version)),
             reused: false,
@@ -1318,7 +1373,8 @@ export class DataTransferService {
           const captureUnits =
             bundle.manifest.version === 7 ||
             bundle.manifest.version === 8 ||
-            bundle.manifest.version === 9
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
               ? bundle.manifest.units.filter(
                   (unit) =>
                     unit.captureId.toLowerCase() === record.id.toLowerCase(),
@@ -1327,7 +1383,8 @@ export class DataTransferService {
           const v7Capture =
             bundle.manifest.version === 7 ||
             bundle.manifest.version === 8 ||
-            bundle.manifest.version === 9
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
               ? bundle.manifest.captures.find(
                   (capture) =>
                     capture.id.toLowerCase() === record.id.toLowerCase(),
@@ -1389,7 +1446,8 @@ export class DataTransferService {
         if (
           bundle.manifest.version === 7 ||
           bundle.manifest.version === 8 ||
-          bundle.manifest.version === 9
+          bundle.manifest.version === 9 ||
+          bundle.manifest.version === 10
         ) {
           const mapped = await unitOriginTargets(
             client,
@@ -1442,7 +1500,8 @@ export class DataTransferService {
           bundle.manifest.version === 6 ||
           bundle.manifest.version === 7 ||
           bundle.manifest.version === 8 ||
-          bundle.manifest.version === 9
+          bundle.manifest.version === 9 ||
+          bundle.manifest.version === 10
         ) {
           for (const record of bundle.manifest.contexts)
             rows.push(
@@ -1451,7 +1510,9 @@ export class DataTransferService {
                 workspaceId,
                 id,
                 record,
-                bundle.manifest.version === 8 || bundle.manifest.version === 9
+                bundle.manifest.version === 8 ||
+                  bundle.manifest.version === 9 ||
+                  bundle.manifest.version === 10
                   ? bundle.manifest.contextIdentityRevisions.filter(
                       (revision) =>
                         revision.contextId.toLowerCase() ===
@@ -1459,13 +1520,15 @@ export class DataTransferService {
                     )
                   : undefined,
                 bundle.manifest.contexts,
-                bundle.manifest.version === 8 || bundle.manifest.version === 9
+                bundle.manifest.version === 8 ||
+                  bundle.manifest.version === 9 ||
+                  bundle.manifest.version === 10
                   ? bundle.manifest.contextIdentityRevisions
                   : [],
               ),
             );
         }
-        if (bundle.manifest.version === 9)
+        if (bundle.manifest.version === 9 || bundle.manifest.version === 10)
           for (const membership of bundle.manifest.currentMemberships)
             rows.push(
               await this.previewMembership(
@@ -1477,6 +1540,33 @@ export class DataTransferService {
                 rows,
               ),
             );
+        if (bundle.manifest.version === 10) {
+          const edges = await readContextEdges(client, workspaceId);
+          for (const record of bundle.manifest.currentContextRelations)
+            rows.push(
+              await previewContextRelation(
+                client,
+                workspaceId,
+                id,
+                record,
+                rows,
+                edges,
+              ),
+            );
+          const plannedPairs = new Set<string>();
+          for (const record of bundle.manifest.currentThoughtRelations)
+            rows.push(
+              await previewThoughtRelation(
+                client,
+                workspaceId,
+                id,
+                record,
+                bundle.manifest.units,
+                rows,
+                plannedPairs,
+              ),
+            );
+        }
         if (bundle.manifest.version !== 1) {
           for (const record of bundle.manifest.tasks)
             rows.push(
@@ -1491,7 +1581,8 @@ export class DataTransferService {
                   bundle.manifest.version === 6 ||
                   bundle.manifest.version === 7 ||
                   bundle.manifest.version === 8 ||
-                  bundle.manifest.version === 9
+                  bundle.manifest.version === 9 ||
+                  bundle.manifest.version === 10
                   ? bundle.manifest.contexts
                   : [],
                 bundle.manifest.version === 4 ||
@@ -1499,7 +1590,8 @@ export class DataTransferService {
                   bundle.manifest.version === 6 ||
                   bundle.manifest.version === 7 ||
                   bundle.manifest.version === 8 ||
-                  bundle.manifest.version === 9
+                  bundle.manifest.version === 9 ||
+                  bundle.manifest.version === 10
                   ? bundle.manifest.taskTransitions.filter(
                       (transition) =>
                         transition.taskId.toLowerCase() ===
@@ -1508,11 +1600,14 @@ export class DataTransferService {
                   : undefined,
                 bundle.manifest.version === 7 ||
                   bundle.manifest.version === 8 ||
-                  bundle.manifest.version === 9
+                  bundle.manifest.version === 9 ||
+                  bundle.manifest.version === 10
                   ? bundle.manifest.units
                   : [],
                 rows,
-                bundle.manifest.version === 8 || bundle.manifest.version === 9
+                bundle.manifest.version === 8 ||
+                  bundle.manifest.version === 9 ||
+                  bundle.manifest.version === 10
                   ? bundle.manifest.contextIdentityRevisions
                   : [],
               ),
@@ -1525,7 +1620,8 @@ export class DataTransferService {
           bundle.manifest.version === 6 ||
           bundle.manifest.version === 7 ||
           bundle.manifest.version === 8 ||
-          bundle.manifest.version === 9
+          bundle.manifest.version === 9 ||
+          bundle.manifest.version === 10
         ) {
           const seenOrigins = new Set<string>();
           for (const record of bundle.manifest.taskResults) {
@@ -2278,7 +2374,8 @@ export class DataTransferService {
           const v7Capture =
             bundle.manifest.version === 7 ||
             bundle.manifest.version === 8 ||
-            bundle.manifest.version === 9
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
               ? bundle.manifest.captures.find(
                   (capture) =>
                     capture.id.toLowerCase() === record.id.toLowerCase(),
@@ -2287,7 +2384,8 @@ export class DataTransferService {
           const captureUnits =
             bundle.manifest.version === 7 ||
             bundle.manifest.version === 8 ||
-            bundle.manifest.version === 9
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
               ? bundle.manifest.units.filter(
                   (unit) =>
                     unit.captureId.toLowerCase() === record.id.toLowerCase(),
@@ -2362,7 +2460,8 @@ export class DataTransferService {
                 : bundle.manifest.version === 6 ||
                     bundle.manifest.version === 7 ||
                     bundle.manifest.version === 8 ||
-                    bundle.manifest.version === 9
+                    bundle.manifest.version === 9 ||
+                    bundle.manifest.version === 10
                   ? (
                       await insertCaptureHistoryInTransaction(client, {
                         workspaceId,
@@ -2518,7 +2617,8 @@ export class DataTransferService {
                   ? bundle.manifest.version === 6 ||
                     bundle.manifest.version === 7 ||
                     bundle.manifest.version === 8 ||
-                    bundle.manifest.version === 9
+                    bundle.manifest.version === 9 ||
+                    bundle.manifest.version === 10
                     ? record.revision
                     : 1
                   : null,
@@ -2538,11 +2638,14 @@ export class DataTransferService {
       bundle.manifest.version === 6 ||
       bundle.manifest.version === 7 ||
       bundle.manifest.version === 8 ||
-      bundle.manifest.version === 9
+      bundle.manifest.version === 9 ||
+      bundle.manifest.version === 10
     ) {
       for (const record of contextsAfterTargets(
         bundle.manifest.contexts,
-        bundle.manifest.version === 8 || bundle.manifest.version === 9
+        bundle.manifest.version === 8 ||
+          bundle.manifest.version === 9 ||
+          bundle.manifest.version === 10
           ? bundle.manifest.contextIdentityRevisions
           : [],
       ))
@@ -2551,19 +2654,23 @@ export class DataTransferService {
           workspaceId,
           id,
           record,
-          bundle.manifest.version === 8 || bundle.manifest.version === 9
+          bundle.manifest.version === 8 ||
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
             ? bundle.manifest.contextIdentityRevisions.filter(
                 (revision) =>
                   revision.contextId.toLowerCase() === record.id.toLowerCase(),
               )
             : undefined,
           bundle.manifest.contexts,
-          bundle.manifest.version === 8 || bundle.manifest.version === 9
+          bundle.manifest.version === 8 ||
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
             ? bundle.manifest.contextIdentityRevisions
             : [],
         );
     }
-    if (bundle.manifest.version === 9)
+    if (bundle.manifest.version === 9 || bundle.manifest.version === 10)
       for (const membership of bundle.manifest.currentMemberships)
         await this.applyMembership(
           actorId,
@@ -2572,6 +2679,24 @@ export class DataTransferService {
           membership,
           bundle.manifest.units,
         );
+    if (bundle.manifest.version === 10) {
+      for (const record of bundle.manifest.currentContextRelations)
+        await this.applyRelation(
+          actorId,
+          workspaceId,
+          id,
+          { kind: "context_relation", record },
+          bundle.manifest.units,
+        );
+      for (const record of bundle.manifest.currentThoughtRelations)
+        await this.applyRelation(
+          actorId,
+          workspaceId,
+          id,
+          { kind: "thought_relation", record },
+          bundle.manifest.units,
+        );
+    }
     if (bundle.manifest.version !== 1) {
       for (const record of bundle.manifest.tasks)
         await this.applyTask(
@@ -2585,7 +2710,8 @@ export class DataTransferService {
             bundle.manifest.version === 6 ||
             bundle.manifest.version === 7 ||
             bundle.manifest.version === 8 ||
-            bundle.manifest.version === 9
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
             ? bundle.manifest.contexts
             : [],
           bundle.manifest.version === 4 ||
@@ -2593,7 +2719,8 @@ export class DataTransferService {
             bundle.manifest.version === 6 ||
             bundle.manifest.version === 7 ||
             bundle.manifest.version === 8 ||
-            bundle.manifest.version === 9
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
             ? bundle.manifest.taskTransitions.filter(
                 (transition) =>
                   transition.taskId.toLowerCase() === record.id.toLowerCase(),
@@ -2601,10 +2728,13 @@ export class DataTransferService {
             : undefined,
           bundle.manifest.version === 7 ||
             bundle.manifest.version === 8 ||
-            bundle.manifest.version === 9
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
             ? bundle.manifest.units
             : [],
-          bundle.manifest.version === 8 || bundle.manifest.version === 9
+          bundle.manifest.version === 8 ||
+            bundle.manifest.version === 9 ||
+            bundle.manifest.version === 10
             ? bundle.manifest.contextIdentityRevisions
             : [],
         );
@@ -2616,7 +2746,8 @@ export class DataTransferService {
       bundle.manifest.version === 6 ||
       bundle.manifest.version === 7 ||
       bundle.manifest.version === 8 ||
-      bundle.manifest.version === 9
+      bundle.manifest.version === 9 ||
+      bundle.manifest.version === 10
     ) {
       const seenOrigins = new Set<string>();
       for (const record of bundle.manifest.taskResults) {
@@ -2864,6 +2995,238 @@ export class DataTransferService {
               state === "IMPORTED"
                 ? ["name", "purpose", "scope", "kind", "state"]
                 : ["state"],
+          },
+        };
+      },
+    });
+  }
+
+  private async applyRelation(
+    actorId: string,
+    workspaceId: string,
+    runId: string,
+    input:
+      | { kind: "context_relation"; record: PortableContextRelation }
+      | { kind: "thought_relation"; record: PortableThoughtRelation },
+    units: TransferManifestV10["units"],
+  ): Promise<void> {
+    const { kind, record } = input;
+    await this.commands.execute({
+      actorId,
+      kind: `transfer.${kind}.apply`,
+      idempotencyKey: createHash("sha256")
+        .update(`${runId}:${kind}:${record.id}`)
+        .digest("hex"),
+      payload: { workspaceId, runId, sourceId: record.id },
+      apply: async (client, access) => {
+        if (access.workspaceId !== workspaceId)
+          throw new DataTransferError("TRANSFER_NOT_FOUND");
+        await loadRun(client, workspaceId, actorId, runId, "IMPORT");
+        const locked = await client.query<{
+          state: string;
+          target_id: string | null;
+        }>(
+          `SELECT state,target_id FROM business.transfer_row
+           WHERE workspace_id=$1 AND run_id=$2 AND record_kind=$3 AND source_id=$4 FOR UPDATE`,
+          [workspaceId, runId, kind, record.id],
+        );
+        if (!locked.rows[0]) throw new DataTransferError("TRANSFER_NOT_FOUND");
+        if (locked.rows[0].state !== "PENDING")
+          return {
+            response: {
+              id: locked.rows[0].target_id,
+              state: locked.rows[0].state,
+            },
+            audit: {
+              action: `transfer.${kind}.replay`,
+              targetType: "transfer_row",
+              targetId: record.id,
+              beforeVersion: null,
+              afterVersion: null,
+              changedFieldNames: [],
+            },
+          };
+        await client.query(
+          "SELECT pg_advisory_xact_lock(hashtextextended($1, 2122))",
+          [
+            sourceLock(
+              workspaceId,
+              record.originWorkspaceId,
+              record.originId,
+              kind,
+            ),
+          ],
+        );
+        if (kind === "context_relation")
+          await client.query(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1,5808))",
+            [workspaceId],
+          );
+        const sourceIds =
+          kind === "context_relation"
+            ? [record.fromContextId, record.toContextId]
+            : [record.fromUnitId, record.toUnitId];
+        const parentKind = kind === "context_relation" ? "context" : "unit";
+        const parents = await client.query<{
+          source_id: string;
+          state: "PENDING" | "IMPORTED" | "SKIPPED" | "FAILED";
+          target_id: string | null;
+        }>(
+          `SELECT source_id,state,target_id FROM business.transfer_row
+           WHERE workspace_id=$1 AND run_id=$2 AND record_kind=$3 AND source_id=ANY($4::uuid[])`,
+          [workspaceId, runId, parentKind, sourceIds],
+        );
+        const rows: TransferPreviewRow[] = parents.rows.map((parent) => ({
+          recordKind: parentKind,
+          sourceId: parent.source_id,
+          sourceRevision: 1,
+          state:
+            parent.state === "PENDING" ? "MISSING_REFERENCE" : parent.state,
+          targetId: parent.target_id,
+        }));
+        const targets = sourceIds.map((sourceId) =>
+          parents.rows.find(
+            (parent) =>
+              parent.source_id.toLowerCase() === sourceId.toLowerCase(),
+          ),
+        );
+        if (kind === "context_relation") {
+          const targetIds = targets
+            .map((target) => target?.target_id)
+            .filter((id): id is string => !!id)
+            .sort();
+          if (targetIds.length)
+            await client.query(
+              `SELECT id FROM business.context WHERE workspace_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE`,
+              [workspaceId, targetIds],
+            );
+        }
+        const preview =
+          kind === "context_relation"
+            ? await previewContextRelation(
+                client,
+                workspaceId,
+                runId,
+                record,
+                rows,
+                await readContextEdges(client, workspaceId),
+              )
+            : await previewThoughtRelation(
+                client,
+                workspaceId,
+                runId,
+                record,
+                units,
+                rows,
+                new Set(),
+              );
+        const canImport =
+          preview.state === "NEW" &&
+          targets.every(
+            (target) =>
+              target?.target_id &&
+              ["IMPORTED", "SKIPPED"].includes(target.state),
+          );
+        let state: "IMPORTED" | "SKIPPED" | "FAILED" = canImport
+          ? "IMPORTED"
+          : preview.state === "DUPLICATE"
+            ? "SKIPPED"
+            : "FAILED";
+        let targetId = state === "IMPORTED" ? randomUUID() : preview.targetId;
+        if (state === "IMPORTED") {
+          if (kind === "context_relation") {
+            const [from, to] = contextEndpoints(
+              targets[0]!.target_id!,
+              targets[1]!.target_id!,
+              record.type,
+            );
+            const inserted = await client.query<{ id: string }>(
+              `INSERT INTO business.context_relation
+               (id,workspace_id,from_context_id,to_context_id,type,approved_by_id,started_at)
+               VALUES($1,$2,$3,$4,$5,$6,$7)
+               ON CONFLICT (workspace_id,from_context_id,to_context_id,type)
+                 WHERE ended_at IS NULL DO NOTHING RETURNING id`,
+              [
+                targetId,
+                workspaceId,
+                from,
+                to,
+                record.type,
+                actorId,
+                record.startedAt,
+              ],
+            );
+            if (!inserted.rows[0]) state = "FAILED";
+          } else {
+            const [from, fr, to, tr] = thoughtEndpoints(
+              targets[0]!.target_id!,
+              record.fromRevision,
+              targets[1]!.target_id!,
+              record.toRevision,
+              record.type,
+            );
+            const inserted = await client.query<{ id: string }>(
+              `INSERT INTO business.thought_relation
+               (id,workspace_id,from_unit_id,from_revision,to_unit_id,to_revision,type,approved_by_id,started_at)
+               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+               ON CONFLICT (workspace_id,from_unit_id,from_revision,to_unit_id,to_revision,type)
+                 WHERE ended_at IS NULL DO NOTHING RETURNING id`,
+              [
+                targetId,
+                workspaceId,
+                from,
+                fr,
+                to,
+                tr,
+                record.type,
+                actorId,
+                record.startedAt,
+              ],
+            );
+            if (!inserted.rows[0]) state = "FAILED";
+          }
+          if (state === "IMPORTED")
+            await client.query(
+              `INSERT INTO business.transfer_origin
+               (workspace_id,record_kind,source_workspace_id,source_id,source_revision,target_id)
+               VALUES($1,$2,$3,$4,1,$5)`,
+              [
+                workspaceId,
+                kind,
+                record.originWorkspaceId,
+                record.originId,
+                targetId,
+              ],
+            );
+          else targetId = null;
+        }
+        await client.query(
+          `UPDATE business.transfer_row SET state=$5,target_id=$6,reason_code=$7
+           WHERE workspace_id=$1 AND run_id=$2 AND record_kind=$3 AND source_id=$4`,
+          [
+            workspaceId,
+            runId,
+            kind,
+            record.id,
+            state,
+            targetId,
+            state === "FAILED"
+              ? preview.state === "MISSING_REFERENCE"
+                ? "MISSING_REFERENCE"
+                : "CONTENT_CONFLICT"
+              : null,
+          ],
+        );
+        return {
+          response: { id: targetId, state },
+          audit: {
+            action: `transfer.${kind}.apply`,
+            targetType: state === "IMPORTED" ? kind : "transfer_row",
+            targetId: state === "IMPORTED" ? targetId! : record.id,
+            beforeVersion: null,
+            afterVersion: state === "IMPORTED" ? 1 : null,
+            changedFieldNames:
+              state === "IMPORTED" ? ["endpoints", "type"] : ["state"],
           },
         };
       },

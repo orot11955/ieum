@@ -131,6 +131,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
   let app: Awaited<ReturnType<typeof createApiApp>>;
   let deliveryApp: Awaited<ReturnType<typeof createDeliveryApp>>;
   let identity: IdentityService;
+  let transferService: DataTransferService;
   let assetRoot: string;
   let transferWriteCalls = 0;
 
@@ -207,6 +208,11 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       read: (key: string) => transferStorage.read(key),
       remove: (key: string) => transferStorage.remove(key),
     };
+    transferService = new DataTransferService(
+      identity,
+      commands,
+      countedTransferStorage,
+    );
     deliveryPool = new Pool({
       connectionString: roleUrl(base, "ieum_be20_delivery"),
       max: 2,
@@ -271,11 +277,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         documentAssets: new DocumentAssetService(identity, commands),
         publications: new PublicationService(identity, commands),
         deliveryCredentials: new DeliveryCredentialService(identity),
-        dataTransfer: new DataTransferService(
-          identity,
-          commands,
-          countedTransferStorage,
-        ),
+        dataTransfer: transferService,
         authPort: createAuthPort(auth.auth),
         sessions: administration.sessions,
         origin,
@@ -3970,8 +3972,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const bundle = downloaded.rawPayload;
     expect(bundle.subarray(0, 2).equals(Buffer.from([0x1f, 0x8b]))).toBe(true);
     const firstManifest = readCaptureBundle(bundle).manifest;
-    expect(firstManifest.version).toBe(9);
-    if (firstManifest.version !== 9) throw new Error("expected v9");
+    expect(firstManifest.version).toBe(10);
+    if (firstManifest.version !== 10) throw new Error("expected v10");
     expect(
       firstManifest.contextIdentityRevisions.some(
         (revision) => revision.contextId === contextId,
@@ -4089,7 +4091,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       headers: transferHeaders,
     });
     expect(readCaptureBundle(reexportBytes.rawPayload).manifest.version).toBe(
-      9,
+      10,
     );
     const currentSupersededContextId = randomUUID();
     const currentSupersededClient = await admin.connect();
@@ -4125,7 +4127,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       currentSupersededExport.body,
     ).toBe(201);
     expect(currentSupersededExport.json<{ scope: string }>().scope).toBe(
-      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS",
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS_RELATIONS",
     );
     const currentSupersededDownload = await app.inject({
       method: "GET",
@@ -4136,8 +4138,9 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const currentSupersededManifest = readCaptureBundle(
       currentSupersededDownload.rawPayload,
     ).manifest;
-    expect(currentSupersededManifest.version).toBe(9);
-    if (currentSupersededManifest.version !== 9) throw new Error("expected v9");
+    expect(currentSupersededManifest.version).toBe(10);
+    if (currentSupersededManifest.version !== 10)
+      throw new Error("expected v10");
     expect(
       currentSupersededManifest.contexts.find(
         (context) => context.id === currentSupersededContextId,
@@ -4273,7 +4276,7 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       201,
     );
     expect(restoredHistoryExport.json<{ scope: string }>().scope).toBe(
-      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS",
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS_RELATIONS",
     );
     const restoredHistoryDownload = await app.inject({
       method: "GET",
@@ -4284,8 +4287,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     const restoredManifest = readCaptureBundle(
       restoredHistoryDownload.rawPayload,
     ).manifest;
-    expect(restoredManifest.version).toBe(9);
-    if (restoredManifest.version !== 9) throw new Error("expected v9");
+    expect(restoredManifest.version).toBe(10);
+    if (restoredManifest.version !== 10) throw new Error("expected v10");
     expect(
       restoredManifest.contextIdentityRevisions.find(
         (revision) =>
@@ -5712,6 +5715,388 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
        SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
        WHERE id=$1`,
       [conflictingMembershipRunId],
+    );
+    const relationSource = randomUUID();
+    const relationCaptureId = randomUUID();
+    const relationUnitIds = [randomUUID(), randomUUID()];
+    const relationContextIds = [randomUUID(), randomUUID()];
+    const relationTime = "2026-09-25T00:00:00.000Z";
+    const relationContexts = relationContextIds.map((id, index) => ({
+      id,
+      originWorkspaceId: relationSource,
+      originId: id,
+      name: index === 0 ? "부모 맥락" : "자식 맥락",
+      purpose: "목적",
+      scope: "범위",
+      kind: "TOPIC" as const,
+      state: "ACTIVE" as const,
+      supersededById: null,
+      identityRevision: 1,
+      membershipRevision: 1,
+    }));
+    const relationHistories = relationContexts.map((context) => ({
+      contextId: context.id,
+      revision: 1,
+      name: context.name,
+      purpose: context.purpose,
+      scope: context.scope,
+      kind: context.kind,
+      state: context.state,
+      supersededById: null,
+      recordedAt: relationTime,
+    }));
+    const relationUnits = relationUnitIds.map((id, index) => ({
+      id,
+      originWorkspaceId: relationSource,
+      originId: id,
+      captureId: relationCaptureId,
+      captureRevision: 1,
+      originKey: "fixture:relations",
+      state: "ACTIVE" as const,
+      currentRevision: 1,
+      createdAt: relationTime,
+      supersededAt: null,
+      revisions: [
+        {
+          revision: 1,
+          sourceStart: index === 0 ? 0 : 5,
+          sourceEnd: index === 0 ? 5 : 10,
+          contentKind: "quote" as const,
+          contentText: index === 0 ? "alpha" : " beta",
+          recordedAt: relationTime,
+        },
+      ],
+    }));
+    const contextRelationId = randomUUID();
+    const thoughtRelationId = randomUUID();
+    const relationRecords: NonNullable<
+      Parameters<typeof createCaptureHistoryBundle>[11]
+    > = {
+      currentContextRelations: [
+        {
+          id: contextRelationId,
+          originWorkspaceId: relationSource,
+          originId: contextRelationId,
+          fromContextId: relationContextIds[0]!,
+          toContextId: relationContextIds[1]!,
+          type: "PARENT_OF",
+          startedAt: relationTime,
+        },
+      ],
+      currentThoughtRelations: [
+        {
+          id: thoughtRelationId,
+          originWorkspaceId: relationSource,
+          originId: thoughtRelationId,
+          fromUnitId: relationUnitIds[1]!,
+          fromRevision: 1,
+          toUnitId: relationUnitIds[0]!,
+          toRevision: 1,
+          type: "CONTRADICTS",
+          startedAt: relationTime,
+        },
+      ],
+    };
+    const makeRelationBundle = (relations = relationRecords, reverse = false) =>
+      createCaptureHistoryBundle(
+        relationSource,
+        [
+          {
+            id: relationCaptureId,
+            revision: 1,
+            title: "관계 이식 원문",
+            rawBody: "alpha beta",
+            recordedAt: relationTime,
+            version: 1,
+            unitSetVersion: 1,
+            state: "ACTIVE",
+            originKey: "fixture:relations",
+          },
+        ],
+        [],
+        [],
+        reverse ? [...relationContexts].reverse() : relationContexts,
+        [],
+        [],
+        [],
+        reverse ? [...relationUnits].reverse() : relationUnits,
+        reverse ? [...relationHistories].reverse() : relationHistories,
+        [],
+        relations,
+      );
+    const relationStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: makeRelationBundle(),
+    });
+    expect(relationStage.statusCode, relationStage.body).toBe(201);
+    expect(relationStage.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS_RELATIONS",
+    );
+    const relationRunId = relationStage.json<{ id: string }>().id;
+    const relationPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${relationRunId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(relationPreview.statusCode).toBe(200);
+    expect(
+      relationPreview
+        .json<{ rows: { recordKind: string; state: string }[] }>()
+        .rows.filter((row) => row.recordKind.endsWith("_relation"))
+        .map((row) => row.state),
+    ).toEqual(["NEW", "NEW"]);
+    const relationApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${relationRunId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: relationPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(relationApplied.statusCode, relationApplied.body).toBe(201);
+    expect(relationApplied.json()).toMatchObject({
+      state: "APPLIED",
+      counts: { IMPORTED: 7 },
+    });
+    const savedContextRelation = await admin.query<{
+      from_context_id: string;
+      to_context_id: string;
+      approved_by_id: string;
+    }>(
+      `SELECT from_context_id,to_context_id,approved_by_id FROM business.context_relation
+       WHERE workspace_id=$1 AND id=(SELECT target_id FROM business.transfer_origin
+         WHERE workspace_id=$1 AND record_kind='context_relation' AND source_workspace_id=$2 AND source_id=$3)`,
+      [operator.workspaceId, relationSource, contextRelationId],
+    );
+    expect(savedContextRelation.rows).toHaveLength(1);
+    expect(savedContextRelation.rows[0]!.approved_by_id).toBe(operator.userId);
+    expect(savedContextRelation.rows[0]!.from_context_id).not.toBe(
+      relationContextIds[0],
+    );
+    expect(savedContextRelation.rows[0]!.to_context_id).not.toBe(
+      relationContextIds[1],
+    );
+    const savedThoughtRelation = await admin.query<{
+      from_unit_id: string;
+      to_unit_id: string;
+      approved_by_id: string;
+    }>(
+      `SELECT from_unit_id,to_unit_id,approved_by_id FROM business.thought_relation
+       WHERE workspace_id=$1 AND id=(SELECT target_id FROM business.transfer_origin
+         WHERE workspace_id=$1 AND record_kind='thought_relation' AND source_workspace_id=$2 AND source_id=$3)`,
+      [operator.workspaceId, relationSource, thoughtRelationId],
+    );
+    expect(savedThoughtRelation.rows).toHaveLength(1);
+    expect(savedThoughtRelation.rows[0]!.approved_by_id).toBe(operator.userId);
+    expect(
+      savedThoughtRelation.rows[0]!.from_unit_id <
+        savedThoughtRelation.rows[0]!.to_unit_id,
+    ).toBe(true);
+    const invitedActorId = inviteeMe.json<{ user: { id: string } }>().user.id;
+    await admin.query(
+      `UPDATE business.user_access SET state='ACTIVE',authz_version=authz_version+1
+       WHERE user_id=$1`,
+      [invitedActorId],
+    );
+    const freshRelationRun = await transferService.stageImport(
+      invitedActorId,
+      invitedWorkspaceId,
+      makeRelationBundle(),
+    );
+    const freshRelationPreview = await transferService.previewImport(
+      invitedActorId,
+      invitedWorkspaceId,
+      freshRelationRun.id,
+    );
+    expect(
+      freshRelationPreview.rows
+        .filter((row) => row.recordKind.endsWith("_relation"))
+        .map((row) => row.state),
+    ).toEqual(["NEW", "NEW"]);
+    expect(
+      await transferService.applyImport(
+        invitedActorId,
+        invitedWorkspaceId,
+        freshRelationRun.id,
+        freshRelationPreview.previewHash,
+      ),
+    ).toMatchObject({ state: "APPLIED", counts: { IMPORTED: 7 } });
+    const freshRelationExport = await transferService.createExport(
+      invitedActorId,
+      invitedWorkspaceId,
+    );
+    expect(freshRelationExport.scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_CONTEXT_IDENTITY_CURRENT_MEMBERSHIPS_RELATIONS",
+    );
+    const freshRelationManifest = readCaptureBundle(
+      await transferService.downloadExport(
+        invitedActorId,
+        invitedWorkspaceId,
+        freshRelationExport.id,
+      ),
+    ).manifest;
+    expect(freshRelationManifest.version).toBe(10);
+    if (freshRelationManifest.version !== 10) throw new Error("expected v10");
+    expect(
+      freshRelationManifest.currentContextRelations.some(
+        (relation) => relation.originId === contextRelationId,
+      ),
+    ).toBe(true);
+    expect(
+      freshRelationManifest.currentThoughtRelations.some(
+        (relation) => relation.originId === thoughtRelationId,
+      ),
+    ).toBe(true);
+    const relationExport = await app.inject({
+      method: "POST",
+      url: `${transferBase}/exports`,
+      headers: transferHeaders,
+    });
+    expect(relationExport.statusCode, relationExport.body).toBe(201);
+    expect(relationExport.json<{ scope: string }>().scope).toBe(
+      "CAPTURES_TASKS_EVENTS_CONTEXTS_TASK_HISTORY_RESULTS_UNIT_HISTORY",
+    );
+    const relationDownload = await app.inject({
+      method: "GET",
+      url: `${transferBase}/exports/${relationExport.json<{ id: string }>().id}/download`,
+      headers: transferHeaders,
+    });
+    expect(relationDownload.statusCode).toBe(200);
+    const exportedRelations = readCaptureBundle(
+      relationDownload.rawPayload,
+    ).manifest;
+    expect(exportedRelations.version).toBe(7);
+    const relationReplayStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: makeRelationBundle(relationRecords, true),
+    });
+    expect(relationReplayStage.statusCode, relationReplayStage.body).toBe(201);
+    const relationReplayId = relationReplayStage.json<{ id: string }>().id;
+    const relationReplayPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${relationReplayId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(relationReplayPreview.statusCode).toBe(200);
+    expect(
+      relationReplayPreview
+        .json<{ rows: { recordKind: string; state: string }[] }>()
+        .rows.filter((row) => row.recordKind.endsWith("_relation"))
+        .map((row) => row.state),
+    ).toEqual(["DUPLICATE", "DUPLICATE"]);
+    const relationReplayApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${relationReplayId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: relationReplayPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(relationReplayApplied.statusCode).toBe(201);
+    expect(relationReplayApplied.json()).toMatchObject({
+      state: "APPLIED",
+      counts: { SKIPPED: 7 },
+    });
+    const conflictingRelations = {
+      currentContextRelations: [
+        {
+          ...relationRecords.currentContextRelations[0]!,
+          id: randomUUID(),
+          originId: randomUUID(),
+          fromContextId: relationContextIds[1]!,
+          toContextId: relationContextIds[0]!,
+        },
+        {
+          ...relationRecords.currentContextRelations[0]!,
+          id: randomUUID(),
+          originId: randomUUID(),
+          toContextId: randomUUID(),
+        },
+      ],
+      currentThoughtRelations: [
+        {
+          ...relationRecords.currentThoughtRelations[0]!,
+          id: randomUUID(),
+          originId: randomUUID(),
+        },
+        {
+          ...relationRecords.currentThoughtRelations[0]!,
+          id: randomUUID(),
+          originId: randomUUID(),
+          toUnitId: randomUUID(),
+        },
+      ],
+    };
+    const relationConflictStage = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports`,
+      headers: {
+        ...transferHeaders,
+        "content-type": "application/vnd.ieum.bundle+gzip",
+      },
+      payload: makeRelationBundle(conflictingRelations),
+    });
+    expect(relationConflictStage.statusCode, relationConflictStage.body).toBe(
+      201,
+    );
+    const relationConflictId = relationConflictStage.json<{ id: string }>().id;
+    const relationConflictPreview = await app.inject({
+      method: "GET",
+      url: `${transferBase}/imports/${relationConflictId}/preview`,
+      headers: transferHeaders,
+    });
+    expect(relationConflictPreview.statusCode).toBe(200);
+    expect(
+      relationConflictPreview
+        .json<{ rows: { recordKind: string; state: string }[] }>()
+        .rows.filter((row) => row.recordKind.endsWith("_relation"))
+        .map((row) => row.state),
+    ).toEqual([
+      "CONFLICT",
+      "MISSING_REFERENCE",
+      "CONFLICT",
+      "MISSING_REFERENCE",
+    ]);
+    const relationConflictApplied = await app.inject({
+      method: "POST",
+      url: `${transferBase}/imports/${relationConflictId}/apply`,
+      headers: transferHeaders,
+      payload: {
+        previewHash: relationConflictPreview.json<{ previewHash: string }>()
+          .previewHash,
+      },
+    });
+    expect(
+      relationConflictApplied.statusCode,
+      relationConflictApplied.body,
+    ).toBe(201);
+    expect(relationConflictApplied.json()).toMatchObject({
+      state: "PARTIAL",
+      counts: { SKIPPED: 5, FAILED: 4 },
+    });
+    await admin.query(
+      `UPDATE business.transfer_run SET created_at=now()-interval '25 hours',expires_at=now()-interval '1 hour'
+      WHERE id=ANY($1::uuid[])`,
+      [
+        [
+          relationRunId,
+          relationReplayId,
+          relationConflictId,
+          relationExport.json<{ id: string }>().id,
+        ],
+      ],
     );
     const historySource = randomUUID();
     const historyTaskId = randomUUID();
