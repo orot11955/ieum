@@ -7,6 +7,8 @@ import {
 } from "react";
 
 export type ThemePreference = "light" | "dark" | "system";
+/** Paper (light) unless the user chose otherwise; following the device is opt-in. */
+export const DEFAULT_PREFERENCE: ThemePreference = "light";
 export function validPreference(value: unknown): value is ThemePreference {
   return value === "light" || value === "dark" || value === "system";
 }
@@ -23,12 +25,12 @@ const ThemeContext = createContext<{
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>(() => {
-    if (typeof window === "undefined") return "system";
+    if (typeof window === "undefined") return DEFAULT_PREFERENCE;
     try {
       const stored = window.localStorage.getItem("ieum.theme");
-      return validPreference(stored) ? stored : "system";
+      return validPreference(stored) ? stored : DEFAULT_PREFERENCE;
     } catch {
-      return "system";
+      return DEFAULT_PREFERENCE;
     }
   });
   useEffect(() => {
@@ -47,7 +49,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const sync = (event: StorageEvent) => {
       if (event.key !== "ieum.theme") return;
       setPreferenceState(
-        validPreference(event.newValue) ? event.newValue : "system",
+        validPreference(event.newValue) ? event.newValue : DEFAULT_PREFERENCE,
       );
     };
     window.addEventListener("storage", sync);

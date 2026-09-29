@@ -4,15 +4,17 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/dev/gallery");
 });
 
-test("theme is applied before React and follows system, selection and reload", async ({
+test("theme defaults to Paper light, and follows the device only when chosen", async ({
   page,
 }) => {
+  // A dark device does not change the default: Paper is used until the user opts in.
   await page.emulateMedia({ colorScheme: "dark" });
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute(
     "data-ieum-theme",
-    "paper-dark",
+    "paper-light",
   );
+  await expect(page.getByLabel("색상 모드")).toHaveValue("light");
   await page.getByLabel("색상 모드").selectOption("light");
   await expect(page.locator("html")).toHaveAttribute(
     "data-ieum-theme",

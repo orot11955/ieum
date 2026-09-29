@@ -1,10 +1,10 @@
 {
   "version": "1.1.0",
-  "approval": "2026-09-22 user requested dark mode; base 1.0.0 remains frozen; theme extension and shared product recipes reviewed together; 2026-09-29 base 1.1.0 readability and proportion adjustment reviewed with product recipes",
+  "approval": "2026-09-22 user requested dark mode; base 1.0.0 remains frozen; theme extension and shared product recipes reviewed together; 2026-09-29 base 1.1.0 readability and proportion adjustment reviewed with product recipes; 2026-09-29 user: default theme is Paper light, following the device is opt-in",
   "files": {
     "design-system/themes.json": "aaedcfe50a7d853f27ca9fa19bb6058b62d63eeb0e614baba60d6877c39af33f",
     "design-system/app.css": "97cbe7479ca250a646e0959be0db0ce27f55dd05c3ac97b4e91f653d6860d816",
     "scripts/design/themes.mjs": "9ddffdc5ae8312ec0605dc13339210904332727b2d2607d360604cb83462145a",
-    "apps/web/public/theme-init.js": "6234c0b67c8739cc8bbace42523d333ff1acfe543a8be71bd3eba5bff2497ef3"
+    "apps/web/public/theme-init.js": "65d1b7c1a50820c99b869c088273a0dfb95af597f792e2d06a04ffb512574cf1"
   }
 }
