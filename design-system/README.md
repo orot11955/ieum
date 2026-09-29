@@ -6,6 +6,7 @@
 
 ## 파일
 
+- `concept-image.png`: 토큰을 도출한 사용자 제공 원본 컨셉 이미지(크림·검정·형광 초록 스타일가이드). 수치의 정본은 아니며 해석의 출처다.
 - `ieum.tokens.json`: DTCG 2025.10의 제한된 type/alias 집합으로 작성한 원본.
 - `policy.json`: 대비 검사·소스 guard·허용 예외·화면 커버리지.
 - `baseline.lock.json`: 승인된 source 계약의 SHA-256. build가 자동 갱신하지 않는다.
