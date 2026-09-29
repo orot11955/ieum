@@ -16,7 +16,7 @@
 | # | 흐름 | 상태 |
 |---|---|---|
 | M1 | 앱 기반과 로그인 | 구현·CI 검증 완료 ([증거](../evidence/m1.md)) |
-| M2 | 기록함과 원문 | 구현·로컬 검증 완료 ([증거](../evidence/m2.md)) |
+| M2 | 기록함과 원문 | 구현·CI 검증 완료 ([증거](../evidence/m2.md)) |
 | M3 | 맥락 | 다음 |
 | M4 | 할일과 일정 | 대기 |
 | M5 | 위키 | 대기 |
@@ -42,7 +42,7 @@ React/Vite + React Router에 app provider, 인증 bootstrap, shell, error route�
 - [x] 분할 후에도 원문이 그대로 보존된다(이전 unit revision 보존은 BE-07 DB 테스트가 보증, 화면에서 열람은 미구현)
 - [x] 이모지·한글 IME 입력, 긴 본문, 저장 실패와 재시도
 - [x] 다른 사용자 공간의 기록은 404
-- [ ] 원격 Linux CI에서 브라우저 E2E 통과 확인
+- [x] 원격 Linux CI에서 브라우저 E2E 통과 확인
 
 ### M3 · 맥락
 
