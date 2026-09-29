@@ -46,7 +46,7 @@ async function main(): Promise<void> {
       if (!userId) throw new Error("Account unavailable for local recovery");
       const newPassword = await askSecret("New password: ");
       const confirmation = await askSecret("Confirm new password: ");
-      if (newPassword !== confirmation || [...newPassword].length < 15) {
+      if (newPassword !== confirmation || [...newPassword].length < 9) {
         throw new Error("Password confirmation or length is invalid");
       }
       const factorChoice = (

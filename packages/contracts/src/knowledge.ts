@@ -133,6 +133,11 @@ export const ContextDetailSchema = ContextSummarySchema.extend({
       unitId: id,
       unitRevision: version,
       role: MembershipRoleSchema,
+      captureId: id,
+      captureTitle: z.string(),
+      /** First 300 characters of the unit text; `truncated` says whether more exists. */
+      excerpt: z.string(),
+      truncated: z.boolean(),
     }),
   ),
   relations: z.array(

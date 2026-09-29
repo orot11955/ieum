@@ -636,6 +636,25 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(membershipCreated.statusCode).toBe(201);
     expect(membershipCreated.json()).toMatchObject({ membershipVersion: 2 });
+    // The context detail names each linked capture and quotes the unit, capped at 300 characters.
+    const linkedDetail = await app.inject({
+      method: "GET",
+      url: `${contextUrl}/${contextId}`,
+      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
+    });
+    expect(linkedDetail.statusCode).toBe(200);
+    expect(linkedDetail.json()).toMatchObject({
+      memberships: [
+        {
+          unitId,
+          role: "PRIMARY",
+          captureId,
+          captureTitle: "개정 기록",
+          excerpt: "C😀D",
+          truncated: false,
+        },
+      ],
+    });
     const secondContext = await app.inject({
       method: "POST",
       url: contextUrl,

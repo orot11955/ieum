@@ -62,7 +62,7 @@ export const InvitationIssueResponseSchema = z.strictObject({
 export const InvitationAcceptRequestSchema = z.strictObject({
   token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
   name: z.string().min(1).max(200),
-  password: z.string().min(15).max(1024),
+  password: z.string().min(9).max(1024),
 });
 export const InvitationAcceptResponseSchema = z.strictObject({
   workspaceId: z.uuid(),

@@ -46,6 +46,7 @@ function createConfiguredAuth(
     }),
     emailAndPassword: {
       enabled: true,
+      minPasswordLength: 9,
       disableSignUp: !privateRegistration,
       autoSignIn: !privateRegistration,
       revokeSessionsOnPasswordReset: true,

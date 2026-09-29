@@ -1516,6 +1516,11 @@ export interface operations {
                             unitRevision: number;
                             /** @enum {string} */
                             role: "PRIMARY" | "SECONDARY" | "BACKGROUND";
+                            /** Format: uuid */
+                            captureId: string;
+                            captureTitle: string;
+                            excerpt: string;
+                            truncated: boolean;
                         }[];
                         relations: {
                             /** Format: uuid */

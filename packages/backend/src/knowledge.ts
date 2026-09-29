@@ -758,9 +758,20 @@ export class KnowledgeService {
           unit_id: string;
           unit_revision: number;
           role: MembershipRole;
+          capture_id: string;
+          capture_title: string;
+          excerpt: string;
+          truncated: boolean;
         }>(
-          `SELECT m.unit_id,m.unit_revision,m.role FROM business.context_membership m
+          // left() counts code points, so an excerpt never splits a surrogate pair.
+          `SELECT m.unit_id,m.unit_revision,m.role,u.capture_id,c.title AS capture_title,
+                  left(r.content_text,300) AS excerpt,
+                  char_length(r.content_text) > 300 AS truncated
+           FROM business.context_membership m
            JOIN business.thought_unit u ON u.workspace_id=m.workspace_id AND u.id=m.unit_id
+           JOIN business.thought_unit_revision r ON r.workspace_id=m.workspace_id
+             AND r.unit_id=m.unit_id AND r.revision=m.unit_revision
+           JOIN business.capture c ON c.workspace_id=u.workspace_id AND c.id=u.capture_id
            WHERE m.workspace_id=$1 AND m.context_id=$2
              AND (($3::timestamptz IS NULL AND m.ended_at IS NULL AND u.state='ACTIVE')
                OR ($3::timestamptz IS NOT NULL AND m.started_at <= $3 AND (m.ended_at IS NULL OR m.ended_at > $3)))
@@ -798,6 +809,10 @@ export class KnowledgeService {
             unitId: m.unit_id,
             unitRevision: m.unit_revision,
             role: m.role,
+            captureId: m.capture_id,
+            captureTitle: m.capture_title,
+            excerpt: m.excerpt,
+            truncated: m.truncated,
           })),
           relations: relations.rows.map((r) => ({
             id: r.id,

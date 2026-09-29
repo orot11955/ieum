@@ -8,10 +8,7 @@ import { ApiError, request } from "../../shared/api/http";
 const AcceptSchema = z
   .object({
     name: z.string().trim().min(1, "이름을 입력해 주세요.").max(200),
-    password: z
-      .string()
-      .min(15, "비밀번호는 15자 이상이어야 합니다.")
-      .max(1024),
+    password: z.string().min(9, "비밀번호는 9자 이상이어야 합니다.").max(1024),
     confirmation: z.string(),
   })
   .refine((value) => value.password === value.confirmation, {
@@ -68,7 +65,7 @@ export function AcceptInvitationForm({
           label="비밀번호"
           type="password"
           autoComplete="new-password"
-          help="15자 이상. 다른 곳에서 쓰지 않는 문장을 권장합니다."
+          help="9자 이상. 다른 곳에서 쓰지 않는 문장을 권장합니다."
           error={errors.password?.message}
           {...form.register("password")}
         />

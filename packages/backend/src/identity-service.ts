@@ -51,7 +51,7 @@ function validateAccountInput(name: string, password: string): void {
   if (
     !name.trim() ||
     name.length > 200 ||
-    passwordLength < 15 ||
+    passwordLength < 9 ||
     passwordLength > 1024
   ) {
     throw new IdentityError("INVALID_INPUT");
