@@ -34,4 +34,4 @@ ADR 0014의 Core 제거 커밋은 위 명령을 로컬에서 통과했다(`test:
 - context membership 무효화 job은 BE-06 검증 예시로 남아 있다. 이를 읽는 소비자는 없다.
 - `packages/backend/src/data-transfer/service.ts`는 약 4,000줄이다. BE-21을 재개할 때 먼저 나눈다.
 
-과거 75개 카드 계획, 시점별 검토, Core 증거는 커밋 `82be8d8` 이전의 Git 이력에서 확인한다. 파일별 정리 기록은 [cleanup manifest](cleanup-manifest.json)에 있다.
+과거 75개 카드 계획, 시점별 검토, Core 증거는 커밋 `fb41fcc` 이전의 Git 이력에서 확인한다. 파일별 정리 기록은 [cleanup manifest](cleanup-manifest.json)에 있다.
