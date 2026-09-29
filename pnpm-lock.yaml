@@ -94,12 +94,6 @@ importers:
         specifier: 0.31.11
         version: 0.31.11
 
-  apps/lab-cli:
-    dependencies:
-      '@ieum/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-
   apps/web:
     dependencies:
       '@hookform/resolvers':

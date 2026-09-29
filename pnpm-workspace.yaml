@@ -3,7 +3,6 @@ packages:
   - packages/contracts
   - packages/backend
   - packages/ui
-  - apps/lab-cli
   - apps/api
   - apps/web
   - apps/worker
