@@ -2,7 +2,7 @@
 
 - 실행 정본: [계획 2.0](../plan/README.md), [ADR 0014](../adr/0014-remove-core-personal-management-first.md). 상태 요약은 이 문서 하나에만 둔다.
 - 브랜치 정책: main 직접 작업, 새 브랜치/PR/force push 없음
-- 다음 작업: **M3 맥락** (M1은 [로컬·원격 CI 검증 완료](../evidence/m1.md), M2는 [로컬·원격 CI 검증 완료](../evidence/m2.md), 둘 다 사용자 인수 전)
+- 다음 작업: **M4 할일과 일정** (M1·M2는 [원격 CI 검증 완료](../evidence/m2.md), M3는 [로컬 검증 완료](../evidence/m3.md)로 원격 CI 확인 대기, 모두 사용자 인수 전)
 - 사용자 ACCEPTED 기능: 없음
 
 ## 영역별 현재 상태
@@ -12,7 +12,7 @@
 | 인증·계정·세션·MFA·복구 | API·DB 검증 완료. 로그인·2단계·초대·설정 화면은 M1로 연결(복구 화면 없음) | [BE-02](../evidence/be-02.md), [BE-04](../evidence/be-04.md) |
 | 공간 격리·RLS·명령/감사/outbox·worker | 검증 완료 | [BE-03](../evidence/be-03.md), [BE-05](../evidence/be-05.md), [BE-06](../evidence/be-06.md) |
 | 기록(원문 revision·unit 분할) | API·DB 검증 완료. 목록·작성·수정·revision 열람·분할·보관 화면은 M2로 연결 | [BE-07](../evidence/be-07.md) |
-| 맥락(다중 소속·관계) | API·DB 검증 완료. 화면 없음(M3). 구조 제안의 다중 후속은 제거 | [BE-08](../evidence/be-08.md) |
+| 맥락(다중 소속·관계) | API·DB 검증 완료. 목록·상세·수정·보관·다중 연결·관계 화면은 M3로 연결(unit 사이 관계 화면 없음). 구조 제안의 다중 후속은 제거 | [BE-08](../evidence/be-08.md) |
 | 할일·일정 | API·DB 검증 완료. 화면 없음(M4) | [BE-09](../evidence/be-09.md), [BE-10](../evidence/be-10.md) |
 | 위키·문서 draft/revision | API·DB 검증 완료. 화면 없음(M5) | [BE-11](../evidence/be-11.md) |
 | 통합 검색 | 없음(M6) | — |
