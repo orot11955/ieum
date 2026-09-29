@@ -6,8 +6,6 @@ import { CaptureModule } from "./captures/capture.module.js";
 import { KnowledgeModule } from "./knowledge/knowledge.module.js";
 import { TaskModule } from "./tasks/task.module.js";
 import { CalendarModule } from "./calendar/calendar.module.js";
-import { JudgementModule } from "./judgement/judgement.module.js";
-import { ExtractionModule } from "./extraction/extraction.module.js";
 import { DocumentModule } from "./documents/document.module.js";
 import { DataTransferModule } from "./data-transfer/data-transfer.module.js";
 import type { IdentityRuntime } from "./identity/identity.runtime.js";
@@ -29,8 +27,6 @@ export class AppModule {
             KnowledgeModule.register(identity),
             TaskModule.register(identity),
             CalendarModule.register(identity),
-            JudgementModule.register(identity),
-            ExtractionModule.register(identity),
             DocumentModule.register(identity),
             DataTransferModule.register(identity),
           ]

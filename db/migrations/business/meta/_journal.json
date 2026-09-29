@@ -148,6 +148,13 @@
       "when": 1790322199149,
       "tag": "0020_careless_vampiro",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790647668416,
+      "tag": "0021_remove_judgement_structure",
+      "breakpoints": true
     }
   ]
 }

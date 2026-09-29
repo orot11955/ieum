@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { PoolClient } from "pg";
-import { DOCUMENT_CHECKLISTS } from "@ieum/core";
 import {
   EditorEnvelopeSchema,
   canonicalEditorBlock,
@@ -23,6 +22,14 @@ import { IdentityService } from "../identity-service.js";
 import { packRevision } from "./evidence-packs.js";
 import { sourceState } from "./source-resolver.js";
 import type { SourceState } from "./source-resolver.js";
+
+/** Fixed outline items per document purpose (moved from the removed judgement core). */
+const DOCUMENT_CHECKLISTS = Object.freeze({
+  guide: ["preconditions", "steps", "verification_scope"],
+  experiment_note: ["conditions", "attempt", "result", "limitations"],
+  decision_record: ["options", "criteria", "evidence", "remaining_risks"],
+  comparison: ["viewpoints", "criteria", "support", "opposition", "unknowns"],
+} as const);
 
 export class WorkbenchError extends Error {
   constructor(

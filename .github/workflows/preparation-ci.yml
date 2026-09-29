@@ -103,7 +103,7 @@ jobs:
       - name: Install locked workspace dependencies
         run: pnpm install --frozen-lockfile
       - name: Build API runtime workspace prerequisites
-        run: pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build
+        run: pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build
       - name: Apply auth migration to isolated PostgreSQL
         run: pnpm --filter @ieum/api exec drizzle-kit migrate --config drizzle.config.ts
       - name: Verify native auth adapter against PostgreSQL
@@ -112,7 +112,7 @@ jobs:
         run: git diff --exit-code
 
   business-database:
-    name: BE-03/06/12 workspace, identity, jobs and judgement PostgreSQL
+    name: Business PostgreSQL (workspace, identity, jobs, documents)
     needs: preparation
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -128,7 +128,7 @@ jobs:
       - name: Install locked workspace dependencies
         run: pnpm install --frozen-lockfile
       - name: Build API runtime workspace prerequisites
-        run: pnpm --filter @ieum/core build && pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build
+        run: pnpm --filter @ieum/contracts build && pnpm --filter @ieum/backend build
       - name: Verify workspace migrations and RLS on PostgreSQL
         run: pnpm --filter @ieum/backend test:db
       - name: Verify identity HTTP with separate database roles

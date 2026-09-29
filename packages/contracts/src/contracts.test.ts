@@ -1,6 +1,5 @@
 import createClient from "openapi-fetch";
 import { describe, expect, it } from "vitest";
-import { sliceRawSpan } from "@ieum/core";
 import type { paths as ManagementPaths } from "../generated/management.js";
 import type { paths as DeliveryPaths } from "../generated/delivery.js";
 import {
@@ -8,7 +7,6 @@ import {
   CreateCaptureResponseSchema,
   createCapturePath,
   toCapturePersistenceInput,
-  toCoreCaptureSnapshot,
   toCreateCaptureCommand,
 } from "./management.js";
 import { PublicPublicationSchema, publicationPath } from "./delivery.js";
@@ -38,14 +36,6 @@ describe("management contract round trip", () => {
       title: "기록",
       rawBody: "A😀B",
     });
-    expect(
-      sliceRawSpan(
-        toCoreCaptureSnapshot(
-          { id: captureId, revision: 1, rawBody: body.rawBody },
-          { start: 1, end: 3, encoding: "utf16" },
-        ),
-      ),
-    ).toBe("😀");
 
     const client = createClient<ManagementPaths>({
       baseUrl: "https://example.test",

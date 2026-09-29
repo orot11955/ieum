@@ -185,9 +185,6 @@ importers:
       '@ieum/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@ieum/core':
-        specifier: workspace:*
-        version: link:../core
       drizzle-orm:
         specifier: 0.45.3
         version: 0.45.3(@types/pg@8.23.1)(kysely@0.29.6)(pg@8.23.0)
@@ -213,9 +210,6 @@ importers:
 
   packages/contracts:
     dependencies:
-      '@ieum/core':
-        specifier: workspace:*
-        version: link:../core
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -223,8 +217,6 @@ importers:
       openapi-fetch:
         specifier: 0.17.0
         version: 0.17.0
-
-  packages/core: {}
 
   packages/ui:
     devDependencies:

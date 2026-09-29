@@ -780,17 +780,6 @@ export class KnowledgeService {
            ORDER BY started_at DESC,id DESC`,
           [access.workspaceId, id, asOf],
         );
-        const successors = await client.query<{
-          target_context_id: string;
-          mutation_id: string;
-        }>(
-          `SELECT target_context_id,mutation_id FROM business.context_successor
-           WHERE workspace_id=$1 AND source_context_id=$2
-             AND (($3::timestamptz IS NULL AND ended_at IS NULL)
-               OR ($3::timestamptz IS NOT NULL AND started_at <= $3 AND (ended_at IS NULL OR ended_at > $3)))
-           ORDER BY started_at,id`,
-          [access.workspaceId, id, asOf],
-        );
         return {
           id,
           workspaceId,
@@ -815,10 +804,6 @@ export class KnowledgeService {
             fromContextId: r.from_context_id,
             toContextId: r.to_context_id,
             type: r.type,
-          })),
-          successors: successors.rows.map((r) => ({
-            contextId: r.target_context_id,
-            mutationId: r.mutation_id,
           })),
         };
       },

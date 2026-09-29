@@ -27,14 +27,6 @@
       "types": "./dist/calendar.d.ts",
       "default": "./dist/calendar.js"
     },
-    "./judgement": {
-      "types": "./dist/judgement.d.ts",
-      "default": "./dist/judgement.js"
-    },
-    "./extraction": {
-      "types": "./dist/extraction.d.ts",
-      "default": "./dist/extraction.js"
-    },
     "./delivery": {
       "types": "./dist/delivery.d.ts",
       "default": "./dist/delivery.js"
@@ -78,7 +70,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ieum/core": "workspace:*",
     "zod": "4.6.5"
   },
   "devDependencies": {

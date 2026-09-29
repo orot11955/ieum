@@ -64,7 +64,6 @@ function importsIn(file) {
 
 export function findBoundaryViolations(root = defaultRoot) {
   const groups = [
-    ["core", path.join(root, "packages/core/src")],
     ["web", path.join(root, "apps/web/src")],
     ["web", path.join(root, "packages/ui/src")],
     ["delivery", path.join(root, "packages/contracts/src/delivery")],
@@ -96,21 +95,10 @@ export function findBoundaryViolations(root = defaultRoot) {
           ) ||
           resolved.includes(`${path.sep}apps${path.sep}api${path.sep}`) ||
           resolved.includes(`${path.sep}apps${path.sep}worker${path.sep}`);
-        const corePath = resolved.startsWith(
-          path.join(root, "packages/core") + path.sep,
-        );
         const forbidden =
-          group === "core"
-            ? !relative ||
-              !resolved.startsWith(
-                path.join(root, "packages/core/src") + path.sep,
-              )
-            : forbiddenBackend.test(specifier) ||
-              backendPath ||
-              (group === "delivery" &&
-                (specifier.startsWith("@ieum/core") ||
-                  corePath ||
-                  specifier.includes("management")));
+          forbiddenBackend.test(specifier) ||
+          backendPath ||
+          (group === "delivery" && specifier.includes("management"));
         if (forbidden)
           violations.push(`${path.relative(root, file)} imports ${specifier}`);
       }

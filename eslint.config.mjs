@@ -3,7 +3,6 @@ import tseslint from "typescript-eslint";
 
 export default defineConfig({
   files: [
-    "packages/core/src/**/*.ts",
     "packages/contracts/src/**/*.ts",
     "packages/backend/{src,test}/**/*.ts",
     "apps/api/{src,test}/**/*.ts",

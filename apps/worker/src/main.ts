@@ -6,7 +6,6 @@ import {
   registerContextMembershipWorker,
   relayOutboxOnce,
 } from "@ieum/backend/platform/jobs/outbox";
-import { registerJudgementWorker } from "@ieum/backend/platform/jobs/judgement";
 import { registerGenerationWorker } from "@ieum/backend/platform/jobs/generation";
 import { generationPolicyFromEnv } from "@ieum/backend/generation/input";
 import {
@@ -51,7 +50,6 @@ if (!relayUrl && !applicationUrl) {
     await assertApplicationDatabaseRole(applicationPool);
     await boss.start();
     await registerContextMembershipWorker(boss, applicationPool);
-    await registerJudgementWorker(boss, applicationPool);
     let generationPolicy: ReturnType<typeof generationPolicyFromEnv> = null;
     try {
       generationPolicy = generationPolicyFromEnv(process.env);

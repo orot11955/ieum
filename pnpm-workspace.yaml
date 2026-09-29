@@ -1,5 +1,4 @@
 packages:
-  - packages/core
   - packages/contracts
   - packages/backend
   - packages/ui

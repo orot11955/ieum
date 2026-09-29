@@ -12,12 +12,8 @@ import { CommandCoordinator } from "@ieum/backend/command-coordinator";
 import { PreferenceCommands } from "@ieum/backend/preferences";
 import { CaptureService } from "@ieum/backend/captures";
 import { KnowledgeService } from "@ieum/backend/knowledge";
-import { StructureService } from "@ieum/backend/knowledge/structure";
 import { TaskService } from "@ieum/backend/tasks";
 import { CalendarService } from "@ieum/backend/calendar";
-import { JudgementService } from "@ieum/backend/judgement/judgement-service";
-import { ProposalService } from "@ieum/backend/judgement/proposals";
-import { ExtractionService } from "@ieum/backend/extraction/extraction-service";
 import { DocumentService } from "@ieum/backend/documents";
 import { ExternalExcerptService } from "@ieum/backend/documents/external-excerpts";
 import { EvidencePackService } from "@ieum/backend/documents/evidence-packs";
@@ -52,7 +48,6 @@ import {
   EditorEnvelopeSchema,
   canonicalEditorBlock,
 } from "@ieum/contracts/editor";
-import { processJudgementJob } from "@ieum/backend/judgement/judgement-worker";
 import { withWorkspaceTransaction } from "@ieum/backend/platform/database/scope";
 import { assertApplicationDatabaseRole } from "@ieum/backend/platform/database/scope";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -256,12 +251,8 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
         preferences: new PreferenceCommands(commands),
         captures: new CaptureService(identity, commands),
         knowledge: new KnowledgeService(identity, commands),
-        structure: new StructureService(identity, commands),
         tasks: new TaskService(identity, commands),
         calendar: new CalendarService(identity, commands),
-        judgement: new JudgementService(appPool, commands),
-        proposals: new ProposalService(appPool, commands),
-        extraction: new ExtractionService(identity, commands),
         documents: new DocumentService(identity, commands),
         externalExcerpts: new ExternalExcerptService(identity, commands),
         evidencePacks: new EvidencePackService(identity, commands),
@@ -537,60 +528,6 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       rawBody: "A😀B",
       units: [{ sourceSpan: { start: 0, end: 4 } }],
     });
-    const judgementUrl = `/api/v1/workspaces/${operator.workspaceId}/judgements`;
-    const judgementHeaders = {
-      host: "127.0.0.1:3000",
-      origin,
-      cookie: operatorCookie,
-      "idempotency-key": "be12-http-request-01",
-    };
-    const judgementPayload = {
-      unitId: captureRead.json<{ units: { id: string }[] }>().units[0]!.id,
-      unitRevision: 1,
-    };
-    const judgementAccepted = await app.inject({
-      method: "POST",
-      url: judgementUrl,
-      headers: judgementHeaders,
-      payload: judgementPayload,
-    });
-    expect(judgementAccepted.statusCode).toBe(202);
-    const judgementRequestId = judgementAccepted.json<{ requestId: string }>()
-      .requestId;
-    expect(judgementAccepted.json()).toMatchObject({
-      state: "QUEUED",
-      replayed: false,
-    });
-    const judgementStatus = await app.inject({
-      method: "GET",
-      url: `${judgementUrl}/${judgementRequestId}`,
-      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
-    });
-    expect(judgementStatus.statusCode).toBe(200);
-    expect(judgementStatus.headers["cache-control"]).toBe("no-store");
-    expect(judgementStatus.json()).toMatchObject({
-      state: "QUEUED",
-      inputHash: null,
-    });
-    expect(
-      (
-        await app.inject({
-          method: "POST",
-          url: judgementUrl,
-          headers: { ...judgementHeaders, origin: "http://other.example" },
-          payload: judgementPayload,
-        })
-      ).statusCode,
-    ).toBe(403);
-    expect(
-      (
-        await app.inject({
-          method: "GET",
-          url: `${judgementUrl}/${judgementRequestId}`,
-          headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
-        })
-      ).statusCode,
-    ).toBe(404);
     const otherRead = await app.inject({
       method: "GET",
       url: `${captureUrl}/${captureId}`,
@@ -723,137 +660,19 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(proposalQuery.statusCode).toBe(201);
     const proposalUnitId = proposalQuery.json<{ unitId: string }>().unitId;
-    const proposalRun = await app.inject({
+    const proposalMembership = await app.inject({
       method: "POST",
-      url: judgementUrl,
-      headers: { ...judgementHeaders, "idempotency-key": "be13-http-observe" },
-      payload: { unitId: proposalUnitId, unitRevision: 1 },
-    });
-    expect(proposalRun.statusCode).toBe(202);
-    const proposalRunId = proposalRun.json<{ requestId: string }>().requestId;
-    const proposalOutbox = await withWorkspaceTransaction(
-      appPool,
-      operator.workspaceId,
-      (client) =>
-        client.query<{ id: string }>(
-          `SELECT id FROM business.command_outbox WHERE workspace_id=$1
-           AND command_id=$2 AND event_type='judgement.requested'`,
-          [operator.workspaceId, proposalRunId],
-        ),
-    );
-    expect(
-      (
-        await processJudgementJob(appPool, {
-          workspaceId: operator.workspaceId,
-          outboxId: proposalOutbox.rows[0]!.id,
-        })
-      ).outcome,
-    ).toBe("SUCCEEDED");
-    const candidates = await app.inject({
-      method: "GET",
-      url: `${judgementUrl}/${proposalRunId}/candidates`,
-      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
-    });
-    expect(candidates.statusCode).toBe(200);
-    expect(
-      candidates.json<{ candidates: { contextId: string }[] }>().candidates,
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          contextId,
-          identityRevision: expect.any(Number),
-          membershipRevision: expect.any(Number),
-          rank: expect.any(Number),
-          rankScore: expect.any(Number),
-          decision: "candidate",
-          reasons: expect.any(Array),
-        }),
-      ]),
-    );
-    const createdProposal = await app.inject({
-      method: "POST",
-      url: `${judgementUrl}/${proposalRunId}/proposals`,
-      headers: { ...judgementHeaders, "idempotency-key": "be13-http-proposal" },
-      payload: {
-        unitId: proposalUnitId,
-        unitRevision: 1,
-        contextId,
-        role: "SECONDARY",
-      },
-    });
-    expect(createdProposal.statusCode).toBe(201);
-    const proposalId = createdProposal.json<{ proposalId: string }>()
-      .proposalId;
-    const proposalUrl = `/api/v1/workspaces/${operator.workspaceId}/proposals/${proposalId}`;
-    const preview = await app.inject({
-      method: "GET",
-      url: proposalUrl,
-      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
-    });
-    expect(preview.statusCode).toBe(200);
-    expect(preview.json()).toMatchObject({
-      operations: {
-        unitId: proposalUnitId,
-        after: [{ contextId, role: "SECONDARY" }],
-      },
-    });
-    const operationsHash = preview.json<{ operationsHash: string }>()
-      .operationsHash;
-    expect(
-      (
-        await app.inject({
-          method: "GET",
-          url: proposalUrl,
-          headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
-        })
-      ).statusCode,
-    ).toBe(404);
-    expect(
-      (
-        await app.inject({
-          method: "POST",
-          url: `${proposalUrl}/expose`,
-          headers: { ...judgementHeaders, origin: "http://other.example" },
-        })
-      ).statusCode,
-    ).toBe(403);
-    const exposure = await app.inject({
-      method: "POST",
-      url: `${proposalUrl}/expose`,
-      headers: { ...judgementHeaders, "idempotency-key": "be13-http-exposure" },
-    });
-    expect(exposure.statusCode).toBe(200);
-    const exposureId = exposure.json<{ exposureId: string }>().exposureId;
-    const acceptedProposal = await app.inject({
-      method: "POST",
-      url: `${proposalUrl}/accept`,
-      headers: { ...judgementHeaders, "idempotency-key": "be13-http-accept" },
-      payload: { exposureId, operationsHash },
-    });
-    expect(acceptedProposal.statusCode).toBe(200);
-    expect(acceptedProposal.json()).toMatchObject({
-      state: "ACCEPTED",
-      memberships: [{ contextId, role: "SECONDARY" }],
-    });
-    const staleObservedCandidate = await app.inject({
-      method: "POST",
-      url: `${judgementUrl}/${proposalRunId}/proposals`,
+      url: `/api/v1/workspaces/${operator.workspaceId}/units/${proposalUnitId}/memberships`,
       headers: {
-        ...judgementHeaders,
-        "idempotency-key": "be13-http-stale-candidate",
+        ...captureHeaders,
+        "idempotency-key": "be08-http-membership-02",
       },
       payload: {
-        unitId: proposalUnitId,
-        unitRevision: 1,
-        contextId,
-        role: "PRIMARY",
+        baseVersion: 1,
+        memberships: [{ contextId, role: "SECONDARY" }],
       },
     });
-    expect(staleObservedCandidate.statusCode).toBe(409);
-    expect(staleObservedCandidate.json()).toMatchObject({
-      code: "STALE_PROPOSAL",
-      previewRequired: true,
-    });
+    expect(proposalMembership.statusCode).toBe(201);
     const relationUrl = `/api/v1/workspaces/${operator.workspaceId}/context-relations`;
     const relationCreated = await app.inject({
       method: "POST",
@@ -890,95 +709,6 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
     });
     expect(relationEnded.statusCode).toBe(201);
     expect(relationEnded.json()).toMatchObject({ id: relationId, ended: true });
-    const structureBase = `/api/v1/workspaces/${operator.workspaceId}/structures`;
-    const structurePreview = await app.inject({
-      method: "POST",
-      url: `${structureBase}/preview`,
-      headers: { ...captureHeaders, "idempotency-key": "be15-http-preview-01" },
-      payload: {
-        kind: "LINK",
-        sourceContextId: contextId,
-        addedLinks: [
-          {
-            fromContextId: contextId,
-            toContextId: secondContextId,
-            type: "PARENT_OF",
-          },
-        ],
-      },
-    });
-    expect(structurePreview.statusCode).toBe(201);
-    const structureProposal = structurePreview.json<{
-      proposalId: string;
-      preview: { signature: string };
-    }>();
-    const structureBadOrigin = await app.inject({
-      method: "POST",
-      url: `${structureBase}/preview`,
-      headers: {
-        ...captureHeaders,
-        origin: "http://other.example",
-        "idempotency-key": "be15-http-origin-01",
-      },
-      payload: {
-        kind: "LINK",
-        sourceContextId: contextId,
-        addedLinks: [
-          {
-            fromContextId: contextId,
-            toContextId: secondContextId,
-            type: "PARENT_OF",
-          },
-        ],
-      },
-    });
-    expect(structureBadOrigin.statusCode).toBe(403);
-    const foreignStructureSource = randomUUID();
-    const structureForeign = await app.inject({
-      method: "POST",
-      url: `${structureBase}/preview`,
-      headers: { ...captureHeaders, "idempotency-key": "be15-http-foreign-01" },
-      payload: {
-        kind: "LINK",
-        sourceContextId: foreignStructureSource,
-        addedLinks: [
-          {
-            fromContextId: foreignStructureSource,
-            toContextId: contextId,
-            type: "PARENT_OF",
-          },
-        ],
-      },
-    });
-    expect(structureForeign.statusCode).toBe(404);
-    const structureApplied = await app.inject({
-      method: "POST",
-      url: `${structureBase}/proposals/${structureProposal.proposalId}/accept`,
-      headers: { ...captureHeaders, "idempotency-key": "be15-http-accept-01" },
-      payload: { signature: structureProposal.preview.signature },
-    });
-    expect(structureApplied.statusCode, structureApplied.body).toBe(201);
-    const structureMutationId = structureApplied.json<{ mutationId: string }>()
-      .mutationId;
-    const structureInverse = await app.inject({
-      method: "GET",
-      url: `${structureBase}/mutations/${structureMutationId}/undo-preview`,
-      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
-    });
-    expect(structureInverse.statusCode).toBe(200);
-    const structureUndone = await app.inject({
-      method: "POST",
-      url: `${structureBase}/mutations/${structureMutationId}/undo`,
-      headers: { ...captureHeaders, "idempotency-key": "be15-http-undo-01" },
-      payload: {
-        signature: structureInverse.json<{ signature: string }>().signature,
-      },
-    });
-    expect(structureUndone.statusCode).toBe(201);
-    expect(structureUndone.json()).toMatchObject({
-      mutationId: structureMutationId,
-      undone: true,
-    });
     const taskUrl = `/api/v1/workspaces/${operator.workspaceId}/tasks`;
     const taskCreated = await app.inject({
       method: "POST",
@@ -1150,78 +880,13 @@ describe("BE-04 identity HTTP with separate auth/application roles", () => {
       payload: { title: "추출할 기록", rawBody: "TODO: 검증 보고서 작성" },
     });
     expect(extractionCapture.statusCode).toBe(201);
-    const extractionCaptureId = extractionCapture.json<{ id: string }>().id;
-    const extractionGenerated = await app.inject({
-      method: "POST",
-      url: `${captureUrl}/${extractionCaptureId}/extractions`,
-      headers: {
-        ...captureHeaders,
-        "idempotency-key": "be14-http-generate-01",
-      },
-    });
-    expect(extractionGenerated.statusCode).toBe(201);
-    const extractionCrossWorkspace = await app.inject({
-      method: "POST",
-      url: `${captureUrl}/${extractionCaptureId}/extractions`.replace(
-        operator.workspaceId,
-        invitedWorkspaceId,
-      ),
-      headers: {
-        host: "127.0.0.1:3000",
-        origin,
-        cookie: inviteeCookie,
-        "idempotency-key": "be14-http-cross-01",
-      },
-    });
-    expect(extractionCrossWorkspace.statusCode).toBe(404);
-    const extractionId = extractionGenerated.json<{ candidateIds: string[] }>()
-      .candidateIds[0]!;
-    const extractionUrl = `/api/v1/workspaces/${operator.workspaceId}/extractions/${extractionId}`;
-    const extractionPreview = await app.inject({
-      method: "GET",
-      url: extractionUrl,
-      headers: { host: "127.0.0.1:3000", cookie: operatorCookie },
-    });
-    expect(extractionPreview.statusCode).toBe(200);
-    expect(extractionPreview.json()).toMatchObject({
-      state: "CANDIDATE",
-      sourceStale: false,
-      proposal: { targetKind: "task", suggestedTitle: "검증 보고서 작성" },
-    });
-    expect(
-      (
-        await app.inject({
-          method: "GET",
-          url: extractionUrl,
-          headers: { host: "127.0.0.1:3000", cookie: inviteeCookie },
-        })
-      ).statusCode,
-    ).toBe(404);
-    expect(
-      (
-        await app.inject({
-          method: "POST",
-          url: `${extractionUrl}/accept`,
-          headers: {
-            ...captureHeaders,
-            origin: "http://other.example",
-            "idempotency-key": "be14-http-origin-01",
-          },
-          payload: { expectedCaptureRevision: 1, title: "검증 보고서 작성" },
-        })
-      ).statusCode,
-    ).toBe(403);
     const extractionAccepted = await app.inject({
       method: "POST",
-      url: `${extractionUrl}/accept`,
-      headers: { ...captureHeaders, "idempotency-key": "be14-http-accept-01" },
-      payload: { expectedCaptureRevision: 1, title: "검증 보고서 작성" },
+      url: taskUrl,
+      headers: { ...captureHeaders, "idempotency-key": "be09-http-task-0002" },
+      payload: { title: "검증 보고서 작성", due: { kind: "NONE" } },
     });
-    expect(extractionAccepted.statusCode).toBe(200);
-    expect(extractionAccepted.json()).toMatchObject({
-      state: "ACCEPTED",
-      targetKind: "task",
-    });
+    expect(extractionAccepted.statusCode).toBe(201);
     const badOrigin = await app.inject({
       method: "POST",
       url: contextUrl,

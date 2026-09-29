@@ -5,13 +5,9 @@ import { IdentityError } from "@ieum/backend/identity-service";
 import { CommandError } from "@ieum/backend/command-coordinator";
 import { CaptureError } from "@ieum/backend/captures";
 import { KnowledgeError } from "@ieum/backend/knowledge";
-import { StructureError } from "@ieum/backend/knowledge/structure";
 import { TaskError } from "@ieum/backend/tasks";
 import { CalendarError } from "@ieum/backend/calendar";
 import { CalendarTimeError } from "@ieum/backend/calendar-time";
-import { JudgementError } from "@ieum/backend/judgement/judgement-service";
-import { ProposalError } from "@ieum/backend/judgement/proposals";
-import { ExtractionError } from "@ieum/backend/extraction/extraction-service";
 import { DocumentError } from "@ieum/backend/documents";
 import { ExternalExcerptError } from "@ieum/backend/documents/external-excerpts";
 import { EvidencePackError } from "@ieum/backend/documents/evidence-packs";
@@ -99,74 +95,47 @@ export class ProblemFilter implements ExceptionFilter {
                     ? exception.code === "INVALID_COMMAND"
                       ? 422
                       : 409
-                    : exception instanceof JudgementError
-                      ? exception.code === "INVALID_REQUEST"
-                        ? 422
-                        : 404
-                      : exception instanceof ProposalError
-                        ? exception.code === "INVALID_PROPOSAL"
-                          ? 422
-                          : exception.code === "PROPOSAL_NOT_FOUND" ||
-                              exception.code === "CANDIDATE_UNAVAILABLE"
-                            ? 404
+                    : exception instanceof TaskError
+                      ? exception.code === "TASK_NOT_FOUND" ||
+                        exception.code === "TASK_ORIGIN_INVALID" ||
+                        exception.code === "TASK_CONTEXT_INVALID"
+                        ? 404
+                        : 409
+                      : exception instanceof CalendarError
+                        ? exception.code === "EVENT_NOT_FOUND"
+                          ? 404
+                          : exception.code === "PERIOD_TOO_LARGE"
+                            ? 422
                             : 409
-                        : exception instanceof ExtractionError
-                          ? exception.code === "EXTRACTION_NOT_FOUND"
-                            ? 404
-                            : exception.code === "EXTRACTION_PARSER_UNAVAILABLE"
-                              ? 503
-                              : exception.code === "EXTRACTION_UNRESOLVED"
+                        : exception instanceof CalendarTimeError
+                          ? 422
+                          : exception instanceof KnowledgeError
+                            ? [
+                                "CONTEXT_NOT_FOUND",
+                                "UNIT_NOT_FOUND",
+                                "RELATION_NOT_FOUND",
+                              ].includes(exception.code)
+                              ? 404
+                              : exception.code === "MEMBERSHIP_DUPLICATE"
                                 ? 422
                                 : 409
-                          : exception instanceof TaskError
-                            ? exception.code === "TASK_NOT_FOUND" ||
-                              exception.code === "TASK_ORIGIN_INVALID" ||
-                              exception.code === "TASK_CONTEXT_INVALID"
-                              ? 404
-                              : 409
-                            : exception instanceof CalendarError
-                              ? exception.code === "EVENT_NOT_FOUND"
+                            : exception instanceof CaptureError
+                              ? exception.code === "CAPTURE_NOT_FOUND"
                                 ? 404
-                                : exception.code === "PERIOD_TOO_LARGE"
+                                : exception.code === "INVALID_SPANS"
                                   ? 422
                                   : 409
-                              : exception instanceof CalendarTimeError
-                                ? 422
-                                : exception instanceof StructureError
-                                  ? exception.code === "STRUCTURE_NOT_FOUND"
+                              : exception instanceof IdentityError
+                                ? exception.code === "INVALID_INPUT"
+                                  ? 422
+                                  : exception.code === "INVITATION_INVALID"
                                     ? 404
-                                    : exception.code === "STRUCTURE_INVALID"
-                                      ? 422
+                                    : exception.code === "ACCESS_DENIED"
+                                      ? 403
                                       : 409
-                                  : exception instanceof KnowledgeError
-                                    ? [
-                                        "CONTEXT_NOT_FOUND",
-                                        "UNIT_NOT_FOUND",
-                                        "RELATION_NOT_FOUND",
-                                      ].includes(exception.code)
-                                      ? 404
-                                      : exception.code ===
-                                          "MEMBERSHIP_DUPLICATE"
-                                        ? 422
-                                        : 409
-                                    : exception instanceof CaptureError
-                                      ? exception.code === "CAPTURE_NOT_FOUND"
-                                        ? 404
-                                        : exception.code === "INVALID_SPANS"
-                                          ? 422
-                                          : 409
-                                      : exception instanceof IdentityError
-                                        ? exception.code === "INVALID_INPUT"
-                                          ? 422
-                                          : exception.code ===
-                                              "INVITATION_INVALID"
-                                            ? 404
-                                            : exception.code === "ACCESS_DENIED"
-                                              ? 403
-                                              : 409
-                                        : exception instanceof HttpException
-                                          ? exception.getStatus()
-                                          : HttpStatus.INTERNAL_SERVER_ERROR;
+                                : exception instanceof HttpException
+                                  ? exception.getStatus()
+                                  : HttpStatus.INTERNAL_SERVER_ERROR;
     if (exception instanceof AssetValidationError) status = 422;
     if (exception instanceof DocumentAssetError)
       status = exception.code === "DOCUMENT_NOT_FOUND" ? 404 : 409;
@@ -231,33 +200,25 @@ export class ProblemFilter implements ExceptionFilter {
               ? exception.code
               : exception instanceof CommandError
                 ? exception.code
-                : exception instanceof JudgementError
+                : exception instanceof TaskError
                   ? exception.code
-                  : exception instanceof ProposalError
+                  : exception instanceof CalendarError
                     ? exception.code
-                    : exception instanceof ExtractionError
+                    : exception instanceof CalendarTimeError
                       ? exception.code
-                      : exception instanceof TaskError
+                      : exception instanceof KnowledgeError
                         ? exception.code
-                        : exception instanceof CalendarError
+                        : exception instanceof CaptureError
                           ? exception.code
-                          : exception instanceof CalendarTimeError
+                          : exception instanceof IdentityError
                             ? exception.code
-                            : exception instanceof StructureError
-                              ? exception.code
-                              : exception instanceof KnowledgeError
-                                ? exception.code
-                                : exception instanceof CaptureError
-                                  ? exception.code
-                                  : exception instanceof IdentityError
-                                    ? exception.code
-                                    : status === 422
-                                      ? "VALIDATION_ERROR"
-                                      : status === 404
-                                        ? "NOT_FOUND"
-                                        : status >= 500
-                                          ? "INTERNAL_ERROR"
-                                          : "HTTP_ERROR";
+                            : status === 422
+                              ? "VALIDATION_ERROR"
+                              : status === 404
+                                ? "NOT_FOUND"
+                                : status >= 500
+                                  ? "INTERNAL_ERROR"
+                                  : "HTTP_ERROR";
     if (
       exception instanceof AssetValidationError ||
       exception instanceof AssetError ||
@@ -299,16 +260,6 @@ export class ProblemFilter implements ExceptionFilter {
           ? { currentVersion: exception.currentVersion }
           : {}),
         ...(fieldErrors ? { fieldErrors } : {}),
-        ...(exception instanceof ExtractionError &&
-        exception.code === "EXTRACTION_PARSER_UNAVAILABLE"
-          ? { retryable: true }
-          : {}),
-        ...((exception instanceof ProposalError &&
-          exception.code === "STALE_PROPOSAL") ||
-        (exception instanceof ExtractionError &&
-          exception.code === "EXTRACTION_STALE")
-          ? { previewRequired: true }
-          : {}),
       });
   }
 }

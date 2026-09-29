@@ -5,12 +5,8 @@ import { CommandCoordinator } from "@ieum/backend/command-coordinator";
 import { PreferenceCommands } from "@ieum/backend/preferences";
 import { CaptureService } from "@ieum/backend/captures";
 import { KnowledgeService } from "@ieum/backend/knowledge";
-import { StructureService } from "@ieum/backend/knowledge/structure";
 import { TaskService } from "@ieum/backend/tasks";
 import { CalendarService } from "@ieum/backend/calendar";
-import { JudgementService } from "@ieum/backend/judgement/judgement-service";
-import { ProposalService } from "@ieum/backend/judgement/proposals";
-import { ExtractionService } from "@ieum/backend/extraction/extraction-service";
 import { DocumentService } from "@ieum/backend/documents";
 import { ExternalExcerptService } from "@ieum/backend/documents/external-excerpts";
 import { EvidencePackService } from "@ieum/backend/documents/evidence-packs";
@@ -108,12 +104,8 @@ if (databaseUrl && applicationDatabaseUrl && baseUrl && secret) {
         preferences: new PreferenceCommands(commands),
         captures: new CaptureService(service, commands),
         knowledge: new KnowledgeService(service, commands),
-        structure: new StructureService(service, commands),
         tasks: new TaskService(service, commands),
         calendar: new CalendarService(service, commands),
-        judgement: new JudgementService(businessPool, commands),
-        proposals: new ProposalService(businessPool, commands),
-        extraction: new ExtractionService(service, commands),
         documents: new DocumentService(service, commands),
         externalExcerpts: new ExternalExcerptService(service, commands),
         evidencePacks: new EvidencePackService(service, commands),

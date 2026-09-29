@@ -1,11 +1,8 @@
 import * as z from "zod";
-import type { CoreCaptureSnapshot, Utf16Span } from "@ieum/core";
 import { identityOpenApiPaths } from "./identity.js";
 import { knowledgeOpenApiPaths } from "./knowledge.js";
 import { taskOpenApiPaths } from "./tasks.js";
 import { calendarOpenApiPaths } from "./calendar.js";
-import { judgementOpenApiPaths } from "./judgement.js";
-import { extractionOpenApiPaths } from "./extraction.js";
 import { documentOpenApiPaths } from "./documents.js";
 import { workbenchOpenApiPaths } from "./workbench.js";
 import { generationOpenApiPaths } from "./generation.js";
@@ -175,18 +172,6 @@ export function toCapturePersistenceInput(
   };
 }
 
-export function toCoreCaptureSnapshot(
-  record: Readonly<{ id: string; revision: number; rawBody: string }>,
-  span: Utf16Span,
-): CoreCaptureSnapshot {
-  return {
-    captureId: record.id,
-    revision: record.revision,
-    rawBody: record.rawBody,
-    span,
-  };
-}
-
 export const managementOpenApi = {
   openapi: "3.0.3",
   info: { title: "IEUM management contract example", version: "0.1.0" },
@@ -195,8 +180,6 @@ export const managementOpenApi = {
     ...knowledgeOpenApiPaths,
     ...taskOpenApiPaths,
     ...calendarOpenApiPaths,
-    ...judgementOpenApiPaths,
-    ...extractionOpenApiPaths,
     ...documentOpenApiPaths,
     ...workbenchOpenApiPaths,
     ...generationOpenApiPaths,
