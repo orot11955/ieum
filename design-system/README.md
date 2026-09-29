@@ -1,4 +1,4 @@
-> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../docs/plan/README.md)과 [ADR 0012](../docs/adr/0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+> 2026-09-29 기준: 보존된 세부 설계 또는 과거 결정입니다. 현재 범위·순서·상태는 [계획 2.0](../docs/plan/README.md)과 [ADR 0014](../docs/adr/0014-remove-core-personal-management-first.md)를 우선합니다. 판단 Core·제안·추출·구조(ContextProfile, JudgementRun, Proposal, 구조 변경 등)에 관한 서술은 ADR 0014로 제거된 범위이며 역사 기록이다. 원본·출처·권한·디자인 안전 계약과 Paper/Dark는 현재 기준입니다.
 
 # IEUM Paper Terminal 1.0.0
 
@@ -29,7 +29,7 @@ build는 `tokens.css`, `ui.css`, `tokens.ts`를 생성한다. 이 파일들은 G
 
 제품 web entry가 생성한 tokens.css → ui.css 순으로 한 번만 import하도록 한다. 컴포넌트마다 복사하지 않는다. 포털은 같은 theme/density 경계에 둔다. 외부 블로그에 이 CSS 사용을 강제하지 않는다.
 
-상세: [디자인 계약](../docs/design/design-system-contract.md), [컴포넌트 상태](../docs/design/component-state-contract.md), [최종 구현 판단](../docs/plan/01-master-roadmap.md).
+상세: [디자인 계약](../docs/design/design-system-contract.md), [컴포넌트 상태](../docs/design/component-state-contract.md), [최종 구현 판단](../docs/plan/README.md).
 
 ## 고정과 변경
 

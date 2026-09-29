@@ -1,4 +1,4 @@
-> 2026-09-23 기준: 보존된 세부 설계 또는 과거 검토입니다. 현재 실행 순서·런타임·작업 상태는 [단일 실행 계획](../plan/README.md)과 [ADR 0012](../adr/0012-main-zero-base-execution.md)를 우선합니다. 옛 M/S/I 단계와 예시 명령은 현재 구현 상태를 뜻하지 않습니다. 원본·출처·권한·디자인 안전 계약은 유지하며 Paper/Dark 모두 현재 기준입니다.
+> 2026-09-29 기준: 보존된 세부 설계 또는 과거 결정입니다. 현재 범위·순서·상태는 [계획 2.0](../plan/README.md)과 [ADR 0014](../adr/0014-remove-core-personal-management-first.md)를 우선합니다. 판단 Core·제안·추출·구조(ContextProfile, JudgementRun, Proposal, 구조 변경 등)에 관한 서술은 ADR 0014로 제거된 범위이며 역사 기록이다. 원본·출처·권한·디자인 안전 계약과 Paper/Dark는 현재 기준입니다.
 
 # 도메인·데이터 모델
 
@@ -100,13 +100,13 @@ primary 이동은 기존 primary 종료와 새 primary 생성이 원자적이어
 
 Undo는 과거 DB snapshot으로 전체 시스템을 되감는 기능이 아니다. 해당 명령이 바꾼 범위에 대한 반대 변경안을 생성한다. 현재 revision이 적용 직후와 같으면 원자적으로 반영하고, 다른 변경이 누적되었으면 충돌과 재검토가 필요하다.
 
-병합/분리 후 생긴 새 기록을 되돌리기 위해 지우지 않는다. 원래 Context ID와 이전 Artifact의 출처는 유지한다. 구조 변경의 구체적 영향은 [구조·파생 문서](structure-and-derivation.md)를 따른다.
+병합/분리 후 생긴 새 기록을 되돌리기 위해 지우지 않는다. 원래 Context ID와 이전 Artifact의 출처는 유지한다. 구조 변경의 구체적 영향은 [구조·파생 문서](../adr/0014-remove-core-personal-management-first.md)를 따른다.
 
 ## 9. Artifact와 정리본
 
 ArtifactRevision은 source unit의 최신 상태가 아니라 **작성 당시 revision**을 참조한다. claimMap은 문장 또는 문단과 sourceRefs, transform, 확인 상태를 연결한다. 나중에 근거가 수정되면 결과물에 stale 경고를 붙이고 자동으로 과거 글을 덮어쓰지 않는다.
 
-임의 출처 ID, 존재하지 않는 인용, 누락된 반론을 검증할 수 있어야 한다. 출처가 있다는 사실만으로 문장의 참을 보증하지 않는다. 자세한 글 정제 흐름은 [구조·파생](structure-and-derivation.md)에 정의한다.
+임의 출처 ID, 존재하지 않는 인용, 누락된 반론을 검증할 수 있어야 한다. 출처가 있다는 사실만으로 문장의 참을 보증하지 않는다. 자세한 글 정제 흐름은 [구조·파생](../adr/0014-remove-core-personal-management-first.md)에 정의한다.
 
 ## 10. 보존과 사용자 삭제
 

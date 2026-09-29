@@ -8,8 +8,7 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "plan:render": "node scripts/plan/render.mjs",
-    "plan:check": "node scripts/plan/render.mjs --check && node scripts/plan/check.mjs",
+    "plan:check": "node scripts/plan/check.mjs",
     "design:build": "node scripts/design/build.mjs && node scripts/design/themes.mjs",
     "design:test": "node --test scripts/design/test.mjs",
     "design:check": "node scripts/design/check.mjs && node scripts/design/themes.mjs --check",

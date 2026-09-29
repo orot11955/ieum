@@ -1,45 +1,97 @@
-# IEUM 제로베이스 실행 계획 · 1.1
+# IEUM 계획 · 2.0 개인 관리 우선
 
-2026-09-23 KST 1.1 채택 · 2026-09-29 **1.2 실사용 우선 재정렬** ([ADR 0013](../adr/0013-real-use-first-reorder.md))
+2026-09-29 채택 · [ADR 0014](../adr/0014-remove-core-personal-management-first.md)
 
-이음의 최종 목표는 원본·출처 보존, 일정·할일·위키 관리, 관련 맥락 연결·분리·병합, 근거 있는 문서 정제, 승인 발행·Delivery API다. 외부 블로그는 별도다. Core 장애가 명시적 저장·완료·편집·발행을 막지 않는다.
+**목표: 본인이 매일 쓰는 개인 관리 웹앱.** 기록(원문과 출처)을 남기고, 맥락으로 묶고, 할일·일정·위키로 관리한다. 백엔드 대부분은 이미 검증됐다. 이제 화면을 붙여 실제로 써 본다.
 
-## 실행 정본
+## 원칙
 
-**[backlog.json](backlog.json)이 75개 카드의 ID·범위·계약·검증·완료 기준·상태 정본이다.** 상세 문서의 카드 부분과 [task-index.md](task-index.md)는 여기서 생성한다. 수동으로 양쪽을 따로 수정하지 않는다.
+- 마일스톤 하나는 **사용자가 브라우저에서 끝까지 해 볼 수 있는 흐름**으로 닫는다. API만 만들거나 화면 목업만 만들지 않는다.
+- 필요한 백엔드 수정은 화면을 붙이면서 한다. 새 백엔드 영역을 미리 만들지 않는다.
+- 완료 판단은 체크리스트와 CI, 그리고 실제 브라우저 확인이다. 마일스톤마다 `docs/evidence/m<N>.md`에 실행 명령·결과·미검증을 짧게 적는다.
+- 상태 요약은 [프로젝트 상태](../status/project-state.md) 한 곳에만 둔다.
 
-| 문서 | 책임 |
-|---|---|
-| [00 · 재검토/결정](00-repository-review-and-decisions.md) | 현재/역사적 기준선, 보존·재작성, 기술 결정 |
-| [01 · P0–P9](01-master-roadmap.md) | 구간과 통합 순서 |
-| [02 · Core](02-core-plan.md) | CORE-01–16 |
-| [03 · Backend](03-backend-plan.md) | BE-01–26 |
-| [04 · Web](04-web-plan.md) | FE-01–21, W01–W27 |
-| [05 · 데이터/API](05-data-api-and-state-contracts.md) | 수명·transaction·출처·공개 계약 |
-| [06 · 검증](06-testing-and-release-gates.md) | QA-01–09 및 품질·운영 gate |
-| [07 · 실행 지시](07-codex-execution-playbook.md) | main 전용 시작 지시, 커밋·보고 |
-| [08 · 출처/추적](08-sources-and-traceability.md) | 기존 계획의 출처·요구/화면 매핑 |
-| [09 · 단계별 구현 순서](09-implementation-sequence.md) | 카드 선행관계에 따른 실행 묶음·gate·문서 충돌 정리 |
-| [최소 계약 예제](contracts.md) | BASE-03의 관리/Delivery·편집기·Core 경계와 생성 경로 |
+## 마일스톤
 
-카드 상태는 이 문서에 반복하지 않는다. [backlog](backlog.json)·[작업 인덱스](task-index.md)·[상태 문서](../status/project-state.md)를 본다. **계획 1.2는 직접 매일 쓸 수 있는 얇은 앱(QA-04)을 다음 목표로 두고, 그 전에는 백엔드 기능 확장을 동결하며, 판단 효용을 CORE-16에서 실사용 자료로 먼저 평가한다.** main 이외 브랜치·PR을 만들지 않는다.
+| # | 흐름 | 상태 |
+|---|---|---|
+| M1 | 앱 기반과 로그인 | 다음 |
+| M2 | 기록함과 원문 | 대기 |
+| M3 | 맥락 | 대기 |
+| M4 | 할일과 일정 | 대기 |
+| M5 | 위키 | 대기 |
+| M6 | 홈과 검색 | 대기 |
+| M7 | 실사용 시작 | 대기 |
 
-## 현재 실행 가능한 검사
+### M1 · 앱 기반과 로그인
 
-Node 24에서 패키지 설치 없이 실행한다.
+React/Vite + React Router에 app provider, 인증 bootstrap, shell, error route를 구성한다. 서버 상태는 TanStack Query, 필터는 URL, 편집 중 값은 feature state, modal은 local state로 둔다. 로그인·로그아웃·세션 만료와 MFA challenge 화면(W01, W03)을 만든다. 초대 수락(W02)은 기존 API로 가능한 최소 형태만 둔다.
 
-```sh
-node scripts/plan/render.mjs --check
-node scripts/plan/check.mjs
-node scripts/design/build.mjs
-node scripts/design/themes.mjs
-node --test scripts/design/test.mjs
-node scripts/design/check.mjs
-node scripts/design/themes.mjs --check
-```
+- [ ] 로그인 → 개인 공간 진입 → 새로고침 → 로그아웃이 실제 API와 PostgreSQL로 동작한다
+- [ ] 세션 만료·다른 사용자 로그인 시 이전 사용자의 본문이 한 프레임도 보이지 않는다
+- [ ] 직접 URL·뒤로가기·forbidden route·모바일 navigation 확인
+- [ ] 브라우저 E2E(Playwright)가 CI에서 격리 DB로 돈다
+- [ ] 경계 검사: web이 backend/ORM을 import하면 CI가 실패한다(기존 `contracts:check`)
 
-카드를 바꾼 경우 `node scripts/plan/render.mjs`로 파생 문서를 갱신한다. `pnpm install --frozen-lockfile`, `pnpm contracts:check`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm lab:smoke`는 현재 workspace 소스를 검사한다. 업무 DB 통합·브라우저 E2E·실제 판단 품질은 각 카드의 별도 증거를 따른다.
+### M2 · 기록함과 원문
 
-[상태와 제한](../status/project-state.md) · [BASE-01 증거](../evidence/base-01.md) · [BASE-02 증거](../evidence/base-02.md) · [BASE-03 증거](../evidence/base-03.md) · [CORE-01 증거](../evidence/core-01.md) · [CORE-02 증거](../evidence/core-02.md) · [CORE-03 증거](../evidence/core-03.md) · [CORE-04 증거](../evidence/core-04.md) · [CORE-05 증거](../evidence/core-05.md) · [CORE-06 증거](../evidence/core-06.md) · [CORE-07 증거](../evidence/core-07.md) · [CORE-08 증거](../evidence/core-08.md) · [CORE-09 증거](../evidence/core-09.md) · [CORE-10 증거](../evidence/core-10.md) · [CORE-11 증거](../evidence/core-11.md) · [CORE-12 증거](../evidence/core-12.md) · [CORE-13 증거](../evidence/core-13.md) · [CORE-14 증거](../evidence/core-14.md) · [CORE-15 증거](../evidence/core-15.md) · [CORE-16 착수 조건](../evidence/core-16.md) · [문서 우선순위](../adr/0012-main-zero-base-execution.md) · [실사용 우선 재정렬](../adr/0013-real-use-first-reorder.md)
+기록 작성·목록·상세(W05, W06), 원문 개정과 과거 revision 보기, 수동 unit 분할, 보관을 붙인다.
 
-통합 Markdown/ZIP·기존 validation-report·SHA256SUMS는 배포 사본이므로 저장소에 중복 체크인하지 않는다. 최신 실행/검사 결과는 상태 문서와 CI가 기준이다.
+- [ ] 기록을 쓰고 고치고, 과거 revision의 원문을 그대로 볼 수 있다
+- [ ] 분할 후에도 원문과 이전 unit revision이 보존된다
+- [ ] 이모지·한글 IME 입력, 긴 본문, 저장 실패와 재시도
+- [ ] 다른 사용자 공간의 기록은 404
+
+### M3 · 맥락
+
+맥락 목록·상세(W10), 기록 unit의 다중 맥락 연결과 PRIMARY 지정, 맥락 간 관계를 붙인다.
+
+- [ ] 한 기록을 여러 맥락에 연결하고 PRIMARY를 최대 하나만 지정한다
+- [ ] 두 탭에서 같은 소속을 바꿀 때 오래된 version은 충돌로 보인다
+- [ ] 보관한 맥락은 기본 목록에서 빠지고 필터로 볼 수 있다
+
+### M4 · 할일과 일정
+
+할일(W07)의 상태 전이·기한·결과 기록(결과는 새 기록으로 연결)과 일정(W08)의 목록·월 보기·시간대·종일·변경/취소를 붙인다.
+
+- [ ] 원문을 고쳐도 완료한 할일이 다시 열리지 않는다
+- [ ] 결과 기록이 기록함에 원본 연결과 함께 나타난다
+- [ ] 종일 일정·시간대·DST 경계·취소가 목록과 월 보기에서 일관된다
+
+### M5 · 위키
+
+개인 위키(W09) 편집기와 autosave, 두 탭 충돌, revision 복원, 위키 링크·역링크를 붙인다. 편집 계약은 [editor-schema](../design/editor-schema.md)를 따른다.
+
+- [ ] 자동저장이 역순 응답·네트워크 실패·세션 만료에서도 입력을 잃지 않는다
+- [ ] 두 탭 동시 편집이 충돌 화면으로 이어지고 어느 쪽도 조용히 덮이지 않는다
+- [ ] IME 조합 중 저장·단축키가 조합을 깨지 않는다
+
+### M6 · 홈과 검색
+
+홈(W04)에 최근 기록·진행할 일·다가오는 일정·최근 위키를 모은다. 기록·맥락·할일·일정·위키를 가로지르는 권한 내 검색(W11)을 PostgreSQL 검색(전문 검색 또는 trigram)으로 만든다.
+
+- [ ] 홈에서 다음 행동과 원문으로 바로 이동한다. 가짜 수치나 완료율을 쓰지 않는다
+- [ ] 검색 결과가 권한 밖 자료를 포함하지 않고, cursor 페이지가 안정적이다
+- [ ] 일부 영역 조회 실패가 홈 전체를 막지 않는다
+
+### M7 · 실사용 시작
+
+본인 기록을 실제로 넣기 전에 데이터를 지킬 준비를 한다.
+
+- [ ] 로컬 배포 방식(Compose 등)과 DB·파일 volume 백업, 빈 DB 복원 1회 확인
+- [ ] 개인 데이터 export 범위 결정. BE-21의 중단된 이식 코드를 이어 쓸지, 단순 export로 줄일지 정한다
+- [ ] 로그인부터 위키까지 핵심 흐름의 종단 E2E
+- [ ] 2주 이상 실사용한 뒤 불편·누락 목록을 다음 계획의 입력으로 남긴다
+
+## 동결·후순위
+
+| 영역 | 현재 코드 | 처리 |
+|---|---|---|
+| 문서 작업실·모델 초안·첨부·발행·Delivery API (BE-16–20) | 검증된 API·DB·테스트 | 동결. 개인 관리 완성 후 재판단 |
+| 개인 데이터 이식 (BE-21) | 일부 도메인 | 중단. M7에서 범위 결정 |
+| 휴지통·운영 화면·배포 자동화·성능 | 없음 | 실사용 후 필요한 것만 |
+| 지능 보조(비슷한 기록, 자연어 추출) | 없음 | 실사용에서 필요가 확인되면 임베딩·LLM 호출을 얇게 추가 |
+
+## 참고 계약
+
+[도메인 모델](../architecture/domain-model.md) · [권한·신원](../architecture/identity-and-access.md) · [웹 설계](../architecture/web-application-design.md) · [화면·ERD](../design/README.md) · [편집 계약](../design/editor-schema.md) · [DB migration](../../db/README.md)

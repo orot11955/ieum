@@ -26,7 +26,6 @@ jobs:
           node-version-file: .nvmrc
       - name: Check preparation scripts
         run: |
-          node --check scripts/plan/render.mjs
           node --check scripts/plan/check.mjs
       - name: Verify preparation from a clean checkout without dependency installation
         run: npm run prep:check

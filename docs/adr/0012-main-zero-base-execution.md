@@ -1,7 +1,7 @@
 # ADR 0012 · main 단일 브랜치와 제로베이스 계획 1.1
 
 - 날짜: 2026-09-23 KST
-- 상태: 채택 — 사용자의 main 직접 작업·계획 정리 요청
+- 상태: 대체됨 — main 직접 작업 규칙은 유지하고, 실행 계획·카드 체계는 [ADR 0014](0014-remove-core-personal-management-first.md)로 대체
 - 기준: main f4ccbc233aa5c62f3310e00d483c2115f145876a
 
 ## 결정
