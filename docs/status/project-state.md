@@ -26,7 +26,7 @@
 
 로컬 Node 24.18.0에서 `npm run prep:check`, `pnpm contracts:check`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm api:smoke`, `pnpm --filter @ieum/backend test:db`, `pnpm --filter @ieum/api test:identity`를 실행한다. 두 DB 테스트는 Testcontainers PostgreSQL을 쓴다. `pnpm --filter @ieum/api test:auth`는 `AUTH_DATABASE_URL`이 필요하며 CI가 실행한다. 원격 Linux CI는 `.github/workflows/preparation-ci.yml`이다.
 
-ADR 0014의 Core 제거 커밋은 위 명령을 로컬에서 통과했다(`test:auth`는 로컬 skip). 브랜치 보호 설정은 확인하지 못했으므로 CI 실패가 main 반영을 막는다고 주장하지 않는다.
+ADR 0014의 Core 제거 커밋은 위 명령을 로컬에서 통과했다(`test:auth`는 로컬 skip). 원격 Linux CI run `36511718995`(commit `fb41fcc`)는 인증 PostgreSQL을 포함한 4개 job 모두 성공했다. 브랜치 보호 설정은 확인하지 못했으므로 CI 실패가 main 반영을 막는다고 주장하지 않는다.
 
 ## 알려진 제한
 
