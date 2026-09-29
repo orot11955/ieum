@@ -18,7 +18,7 @@
 | M1 | 앱 기반과 로그인 | 구현·CI 검증 완료 ([증거](../evidence/m1.md)) |
 | M2 | 기록함과 원문 | 구현·CI 검증 완료 ([증거](../evidence/m2.md)) |
 | M3 | 맥락 | 구현·CI 검증 완료 ([증거](../evidence/m3.md)) |
-| M4 | 할일과 일정 | 구현·로컬 검증 완료 ([증거](../evidence/m4.md)) |
+| M4 | 할일과 일정 | 구현·CI 검증 완료 ([증거](../evidence/m4.md)) |
 | M5 | 위키 | 다음 |
 | M6 | 홈과 검색 | 대기 |
 | M7 | 실사용 시작 | 대기 |
@@ -60,7 +60,7 @@ React/Vite + React Router에 app provider, 인증 bootstrap, shell, error route�
 - [x] 원문을 고쳐도 완료한 할일이 다시 열리지 않는다
 - [x] 결과 기록이 기록함에 원본 연결과 함께 나타난다
 - [x] 종일 일정·시간대·DST 경계·취소가 목록과 월 보기에서 일관된다
-- [ ] 원격 Linux CI에서 브라우저 E2E 통과 확인
+- [x] 원격 Linux CI에서 브라우저 E2E 통과 확인
 
 ### M5 · 위키
 
