@@ -1,6 +1,6 @@
 # IEUM 제로베이스 실행 계획 · 1.1
 
-2026-09-23 KST 채택 · 2026-09-29 상태 갱신 · **BASE·CORE-01–15·BE-01–20·FE-01–02 VERIFIED / BE-21 IN_PROGRESS / CORE-16 BLOCKED**
+2026-09-23 KST 1.1 채택 · 2026-09-29 **1.2 실사용 우선 재정렬** ([ADR 0013](../adr/0013-real-use-first-reorder.md))
 
 이음의 최종 목표는 원본·출처 보존, 일정·할일·위키 관리, 관련 맥락 연결·분리·병합, 근거 있는 문서 정제, 승인 발행·Delivery API다. 외부 블로그는 별도다. Core 장애가 명시적 저장·완료·편집·발행을 막지 않는다.
 
@@ -22,7 +22,7 @@
 | [09 · 단계별 구현 순서](09-implementation-sequence.md) | 카드 선행관계에 따른 실행 묶음·gate·문서 충돌 정리 |
 | [최소 계약 예제](contracts.md) | BASE-03의 관리/Delivery·편집기·Core 경계와 생성 경로 |
 
-BASE-01–03, CORE-01–15, BE-01–20, FE-01–02는 VERIFIED다. BE-21 개인 데이터 이식은 IN_PROGRESS다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·holdout이 준비될 때 재개한다.** main 이외 브랜치·PR을 만들지 않는다.
+카드 상태는 이 문서에 반복하지 않는다. [backlog](backlog.json)·[작업 인덱스](task-index.md)·[상태 문서](../status/project-state.md)를 본다. **계획 1.2는 직접 매일 쓸 수 있는 얇은 앱(QA-04)을 다음 목표로 두고, 그 전에는 백엔드 기능 확장을 동결하며, 판단 효용을 CORE-16에서 실사용 자료로 먼저 평가한다.** main 이외 브랜치·PR을 만들지 않는다.
 
 ## 현재 실행 가능한 검사
 
@@ -40,6 +40,6 @@ node scripts/design/themes.mjs --check
 
 카드를 바꾼 경우 `node scripts/plan/render.mjs`로 파생 문서를 갱신한다. `pnpm install --frozen-lockfile`, `pnpm contracts:check`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm build`, `pnpm lab:smoke`는 현재 workspace 소스를 검사한다. 업무 DB 통합·브라우저 E2E·실제 판단 품질은 각 카드의 별도 증거를 따른다.
 
-[상태와 제한](../status/project-state.md) · [BASE-01 증거](../evidence/base-01.md) · [BASE-02 증거](../evidence/base-02.md) · [BASE-03 증거](../evidence/base-03.md) · [CORE-01 증거](../evidence/core-01.md) · [CORE-02 증거](../evidence/core-02.md) · [CORE-03 증거](../evidence/core-03.md) · [CORE-04 증거](../evidence/core-04.md) · [CORE-05 증거](../evidence/core-05.md) · [CORE-06 증거](../evidence/core-06.md) · [CORE-07 증거](../evidence/core-07.md) · [CORE-08 증거](../evidence/core-08.md) · [CORE-09 증거](../evidence/core-09.md) · [CORE-10 증거](../evidence/core-10.md) · [CORE-11 증거](../evidence/core-11.md) · [CORE-12 증거](../evidence/core-12.md) · [CORE-13 증거](../evidence/core-13.md) · [CORE-14 증거](../evidence/core-14.md) · [CORE-15 증거](../evidence/core-15.md) · [CORE-16 차단 근거](../evidence/core-16.md) · [문서 우선순위](../adr/0012-main-zero-base-execution.md)
+[상태와 제한](../status/project-state.md) · [BASE-01 증거](../evidence/base-01.md) · [BASE-02 증거](../evidence/base-02.md) · [BASE-03 증거](../evidence/base-03.md) · [CORE-01 증거](../evidence/core-01.md) · [CORE-02 증거](../evidence/core-02.md) · [CORE-03 증거](../evidence/core-03.md) · [CORE-04 증거](../evidence/core-04.md) · [CORE-05 증거](../evidence/core-05.md) · [CORE-06 증거](../evidence/core-06.md) · [CORE-07 증거](../evidence/core-07.md) · [CORE-08 증거](../evidence/core-08.md) · [CORE-09 증거](../evidence/core-09.md) · [CORE-10 증거](../evidence/core-10.md) · [CORE-11 증거](../evidence/core-11.md) · [CORE-12 증거](../evidence/core-12.md) · [CORE-13 증거](../evidence/core-13.md) · [CORE-14 증거](../evidence/core-14.md) · [CORE-15 증거](../evidence/core-15.md) · [CORE-16 착수 조건](../evidence/core-16.md) · [문서 우선순위](../adr/0012-main-zero-base-execution.md) · [실사용 우선 재정렬](../adr/0013-real-use-first-reorder.md)
 
 통합 Markdown/ZIP·기존 validation-report·SHA256SUMS는 배포 사본이므로 저장소에 중복 체크인하지 않는다. 최신 실행/검사 결과는 상태 문서와 CI가 기준이다.

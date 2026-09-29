@@ -22,7 +22,7 @@
 | CORE-13 | P5 | VERIFIED | 분리·병합·상위 묶음 변경안 | CORE-12 |
 | CORE-14 | P6 | VERIFIED | 문서 목적·관점·개요·readiness | CORE-08 |
 | CORE-15 | P6 | VERIFIED | 모델 초안·claim map 검증 | CORE-14, CORE-11 |
-| CORE-16 | P9 | BLOCKED | 실제 판단·정리 효용 최종 평가 | CORE-10, CORE-13, CORE-15, FE-14, FE-16 |
+| CORE-16 | P4 | PLANNED | 실사용 자료의 관련 맥락 제안 효용 평가·판단 확장 결정 | CORE-10, FE-12, QA-04 |
 | BE-01 | P0 | VERIFIED | NestJS + Fastify 통합과 composition root | BASE-02 |
 | BE-02 | P0 | VERIFIED | 인증 adapter의 실제 호환성 검증 | BE-01, BASE-03 |
 | BE-03 | P2 | VERIFIED | PostgreSQL migration·소유 범위·RLS | BE-02 |
@@ -43,12 +43,12 @@
 | BE-18 | P6 | VERIFIED | 비공개 첨부·안전 검증·공개 파생물 | BE-05, BE-11, BE-06 |
 | BE-19 | P7 | VERIFIED | 봉인·검토·발행·개정·철회 | BE-16, BE-18, BE-05 |
 | BE-20 | P7 | VERIFIED | Delivery 전용 API·읽기 권한·클라이언트 | BE-19, BASE-03 |
-| BE-21 | P8 | IN_PROGRESS | 개인 Import/Export·dry-run·중복 처리 | BE-07, BE-11, BE-18, BE-06 |
-| BE-22 | P8 | PLANNED | 휴지통·복원·삭제 영향·영구 삭제 | BE-07, BE-08, BE-11, BE-18, BE-19 |
-| BE-23 | P8 | PLANNED | 운영·계정 관리·작업·설정·알림 | BE-04, BE-06, BE-20 |
+| BE-21 | P8 | IN_PROGRESS | 개인 Import/Export·dry-run·중복 처리 | BE-07, BE-11, BE-18, BE-06, QA-04 |
+| BE-22 | P8 | PLANNED | 휴지통·복원·삭제 영향·영구 삭제 | BE-07, BE-08, BE-11, BE-18, BE-19, QA-04 |
+| BE-23 | P8 | PLANNED | 운영·계정 관리·작업·설정·알림 | BE-04, BE-06, BE-20, QA-04 |
 | BE-24 | P8 | PLANNED | 배포·백업·복원·migration 복구 | BE-21, BE-22, BE-23 |
 | BE-25 | P9 | PLANNED | 성능·관측·병목 최적화 | BE-12, BE-20, BE-24 |
-| BE-26 | P4 | PLANNED | 통합 검색·필터·안전한 read model | BE-07, BE-08, BE-09, BE-10, BE-11, CORE-04 |
+| BE-26 | P4 | PLANNED | 통합 검색·필터·안전한 read model | BE-07, BE-08, BE-09, BE-10, BE-11, CORE-04, QA-04 |
 | FE-01 | P0 | VERIFIED | Paper/Dark 토큰·공통 UI·상태 gallery | BASE-02 |
 | FE-02 | P0 | VERIFIED | 편집기·폼·HTTP 계약 spike | FE-01, BASE-03 |
 | FE-03 | P2 | PLANNED | 앱 shell·라우팅·서버 상태·권한 표시 | FE-01, BE-04 |
@@ -62,7 +62,7 @@
 | FE-11 | P4 | PLANNED | 통합 검색·필터·원문 이동 | FE-03, BE-26 |
 | FE-12 | P4 | PLANNED | 판단 상태·후보·근거·제안함 | FE-05, FE-06, BE-13 |
 | FE-13 | P4 | PLANNED | 추출 후보 편집·중복 비교·승인 | FE-12, BE-14 |
-| FE-14 | P5 | PLANNED | 구조 before/after·bridge·충돌·Undo | FE-06, FE-12, BE-15 |
+| FE-14 | P5 | PLANNED | 구조 before/after·bridge·충돌·Undo | FE-06, FE-12, BE-15, CORE-16 |
 | FE-15 | P6 | PLANNED | 문서 작업실·자료 선택·관점·claim | FE-09, BE-16 |
 | FE-16 | P6 | PLANNED | 모델 정제·부분 적용·검토 diff | FE-15, BE-17 |
 | FE-17 | P6 | PLANNED | 파일·검증 상태·사용처·공개 선택 | FE-03, BE-18 |
@@ -75,7 +75,7 @@
 | QA-03 | P2 | PLANNED | 인증·두 사용자·transaction gate | QA-01, BE-03, BE-04, BE-05, FE-04 |
 | QA-04 | P3 | PLANNED | Core OFF 기본 개인 관리 E2E | FE-10, BE-09, BE-10, BE-11, QA-03 |
 | QA-05 | P4 | PLANNED | 비동기 판단·추출·오류 격리 gate | BE-06, BE-12, BE-13, BE-14, FE-12, FE-13 |
-| QA-06 | P6 | PLANNED | 구조·근거·문서 정제 gate | BE-15, BE-16, BE-17, FE-14, FE-15, FE-16 |
+| QA-06 | P6 | PLANNED | 구조·근거·문서 정제 gate | BE-15, BE-16, BE-17, FE-14, FE-15, FE-16, CORE-16 |
 | QA-07 | P7 | PLANNED | 공개 경계·개정·철회·외부 소비자 gate | BE-19, BE-20, FE-18 |
 | QA-08 | P8 | PLANNED | 실제 이식·삭제·복원·운영 gate | BE-21, BE-22, BE-24, FE-19, FE-20 |
 | QA-09 | P9 | PLANNED | 최초 컨셉 종단 인수·릴리스 판정 | QA-01, QA-02, QA-04, QA-05, QA-06, QA-07, QA-08, CORE-16, BE-25, FE-21 |

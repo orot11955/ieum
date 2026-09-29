@@ -1,6 +1,6 @@
 {
-  "version": "1.1",
-  "date": "2026-09-23",
+  "version": "1.2",
+  "date": "2026-09-29",
   "status": "PREPARED_AWAITING_IMPLEMENTATION",
   "reviewed_main": "f4ccbc233aa5c62f3310e00d483c2115f145876a",
   "implementation_baseline": "f4ccbc233aa5c62f3310e00d483c2115f145876a",
@@ -279,20 +279,18 @@
     },
     {
       "id": "CORE-16",
-      "phase": "P9",
-      "title": "실제 판단·정리 효용 최종 평가",
+      "phase": "P4",
+      "title": "실사용 자료의 관련 맥락 제안 효용 평가·판단 확장 결정",
       "dependencies": [
         "CORE-10",
-        "CORE-13",
-        "CORE-15",
-        "FE-14",
-        "FE-16"
+        "FE-12",
+        "QA-04"
       ],
-      "status": "BLOCKED",
-      "scope": "허용된 실제 기록과 별도 holdout에서 관련성, 구조 변경, 글 정제 효용을 각각 측정한다. 후보 정확도뿐 아니라 직접 검색/수동 정리 대비 선택 시간·수정량·피로도를 비교한다.",
-      "contract": "산출물: core-quality-report.md, 실제 표본 수와 slice/분모/불확실성, 활성화 가능한 정책 목록. 합성 데이터와 실제 데이터를 섞은 점수 금지.",
-      "tests": "소규모 표본·관련 pair 미검토·같은 과제 기억 효과·중복 origin·실패 slice·추천 0건 처리를 검토.",
-      "acceptance": "full V1의 판단·구조·정제 상태를 검증됨/관찰 모드/미달로 명시한다. 미달 기능을 완성으로 포장하지 않고 다음 개선 카드의 실패 근거를 남긴다.",
+      "status": "PLANNED",
+      "scope": "QA-04 이후 사용자가 이음을 실제로 사용해 쌓은 기록 중 평가 사용을 허용한 범위에서, 관련 맥락 후보(B0–B3)의 관련성과 직접 검색·수동 연결 대비 선택 시간·수정량·피로도를 측정한다. 결과로 제안 정책(off/observe/suggest)과 P5 구조 보조·P6 모델 정제 확장 여부를 결정한다. 구조 변경·글 정제의 실제 효용은 해당 기능이 생긴 뒤 QA-06에서 측정한다.",
+      "contract": "산출물: 저장소 밖 private dataset(원본 계열·시점·권한·검토 라벨, development/validation/새 holdout), 공개 가능한 core-quality-report.md(실제 표본 수, slice/분모/불확실성, 활성화 가능한 정책, 확장 결정과 근거). 합성 데이터와 실제 데이터를 섞은 점수 금지. private 원문·embedding·라벨은 공개 Git에 넣지 않는다.",
+      "tests": "소규모 표본·관련 pair 미검토·같은 과제 기억 효과·중복 origin·실패 slice·추천 0건·사용 기간이 짧아 생긴 편향을 검토.",
+      "acceptance": "관련 맥락 제안을 검증됨/관찰 모드/미달로 명시하고, 구조 보조(FE-14)·모델 정제 확장 여부와 그 근거를 기록한다. 미달이면 판단 기능을 줄이는 결정도 정상 결과로 남긴다.",
       "out_of_scope": "이 카드가 요구하지 않는 후속 기능과 빈 모듈을 미리 만들지 않는다.",
       "screens": []
     },
@@ -630,10 +628,11 @@
         "BE-07",
         "BE-11",
         "BE-18",
-        "BE-06"
+        "BE-06",
+        "QA-04"
       ],
       "status": "IN_PROGRESS",
-      "scope": "버전 있는 JSON/Markdown export와 manifest/asset hash를 구현한다. import는 validate→dry-run→사용자 확인→적용 순서로 진행하며 충돌/중복/참조 누락을 보고한다. 명시적 같은 사용자의 로컬 데이터만 취급한다.",
+      "scope": "버전 있는 JSON/Markdown export와 manifest/asset hash를 구현한다. import는 validate→dry-run→사용자 확인→적용 순서로 진행하며 충돌/중복/참조 누락을 보고한다. 명시적 같은 사용자의 로컬 데이터만 취급한다. 계획 1.2에 따라 현재 구현 범위에서 일시 중단하고 QA-04 이후 재개한다. 재개 시 data-transfer 서비스 분할과 출시 전 archive 버전 호환 범위를 먼저 결정한다.",
       "contract": "모듈: data-transfer. import run/row 상태와 제한된 staging; export 파일 만료·권한 재검사. 개인 Export는 서버 auth DB 전체 Backup과 다르다.",
       "tests": "경로 탈출·과대 파일·지원하지 않는 schema, 일부 오류, 동일 bundle 두 번 import, source FK 실패, 작업 중 account 정지, export 다운로드 만료.",
       "acceptance": "사용자가 데이터를 다른 환경으로 이식하고 결과/실패를 검증할 수 있다. 성공 행과 실패 행을 모두 성공으로 표시하지 않는다.",
@@ -649,7 +648,8 @@
         "BE-08",
         "BE-11",
         "BE-18",
-        "BE-19"
+        "BE-19",
+        "QA-04"
       ],
       "status": "PLANNED",
       "scope": "각 기능의 soft delete를 통합 조회하고 복원/참조 영향/재인증 후 purge를 구현한다. 원문 제거 시 profile/vector/cache/export 잔존과 문서 unresolved source를 정리한다. 공개본 철회 여부는 별도 명시 정책으로 처리한다.",
@@ -666,7 +666,8 @@
       "dependencies": [
         "BE-04",
         "BE-06",
-        "BE-20"
+        "BE-20",
+        "QA-04"
       ],
       "status": "PLANNED",
       "scope": "Operator의 초대/정지/운영 상태, owner의 job retry/cancel·선호 설정·노출 빈도를 구현한다. 로그는 request/run/command ID와 상태·원인 코드 중심이며 본문과 credential은 마스킹한다.",
@@ -720,7 +721,8 @@
         "BE-09",
         "BE-10",
         "BE-11",
-        "CORE-04"
+        "CORE-04",
+        "QA-04"
       ],
       "status": "PLANNED",
       "scope": "기록/맥락/위키/문서/할일·일정의 권한 내 검색과 필터·정렬·cursor pagination을 구현한다. 일반 탐색 검색과 core 추천을 별도 use case로 둔다. PG lexical adapter는 lab TF-IDF와 동일 알고리즘이라고 주장하지 않는다.",
@@ -987,7 +989,8 @@
       "dependencies": [
         "FE-06",
         "FE-12",
-        "BE-15"
+        "BE-15",
+        "CORE-16"
       ],
       "status": "PLANNED",
       "scope": "유지/연결/상위 묶음/분리/병합 대안, 변경 전후 소속, bridge, primary 및 과거 출처 영향을 표시한다. 승인·기각과 역변경 preview를 제공한다.",
@@ -1211,7 +1214,7 @@
       ],
       "status": "PLANNED",
       "scope": "로그인→기록→다중 맥락→할일→완료→결과→위키, 일정 변경/취소, 충돌 복구를 수행한다. Core/provider를 강제로 끈다.",
-      "contract": "gate G3: Playwright trace, 실제 DB에 저장된 revision/state, 모델 접근 요청 0 확인.",
+      "contract": "gate G3: Playwright trace, 실제 DB에 저장된 revision/state, 모델 접근 요청 0 확인. 실사용 자료 입력 전 로컬 DB·파일 volume 백업과 별도 빈 DB 복원을 1회 수행하고 절차를 기록한다(BE-24 운영 backup 완료로 보지 않는다).",
       "tests": "재시작 후 조회, 두 탭 autosave, 세션 만료, 네트워크 오류, 날짜/시간대, source 수정 후 task 상태 유지.",
       "acceptance": "기본 개인 관리 제품이 데이터 유실 없이 실제로 사용 가능하다. 이 단계만으로 최초 지능형 제품 목표 완료라고 부르지 않는다.",
       "out_of_scope": "이 카드가 요구하지 않는 후속 기능과 빈 모듈을 미리 만들지 않는다.",
@@ -1247,10 +1250,11 @@
         "BE-17",
         "FE-14",
         "FE-15",
-        "FE-16"
+        "FE-16",
+        "CORE-16"
       ],
       "status": "PLANNED",
-      "scope": "구조 변경/역변경과 출처 기반 문서 작성·생성 결과 채택을 분리 검증한다. 두 부분의 결과를 별도 report로 남긴다.",
+      "scope": "구조 변경/역변경과 출처 기반 문서 작성·생성 결과 채택을 분리 검증한다. 두 부분의 결과를 별도 report로 남긴다. 이전 CORE-16 범위였던 구조 변경·글 정제의 실제 효용(허용된 실사용 자료에서 선택 시간·수정량·피로도)도 이 gate에서 별도 report로 측정한다.",
       "contract": "gate G5/G6: structure mutation/inverse proof; evidence/claim editing audit; hallucinated source rejection; user review trace.",
       "tests": "bridge, 신규 record 후 Undo, 출처 수정/삭제, 문단 split/merge, 생성 중 편집, 반론 누락, 존재 출처≠의미 타당성.",
       "acceptance": "맥락 구조와 문서의 provenance가 변경 이후에도 유지된다. 모델 사용 여부와 검토 상태를 정확히 표시한다.",

@@ -155,7 +155,7 @@ worker를 죽이고 모델을 끊은 상태에서 수동 저장을 확인한다.
 
 **구현 범위:** 로그인→기록→다중 맥락→할일→완료→결과→위키, 일정 변경/취소, 충돌 복구를 수행한다. Core/provider를 강제로 끈다.
 
-**입출력·데이터·코드 계약:** gate G3: Playwright trace, 실제 DB에 저장된 revision/state, 모델 접근 요청 0 확인.
+**입출력·데이터·코드 계약:** gate G3: Playwright trace, 실제 DB에 저장된 revision/state, 모델 접근 요청 0 확인. 실사용 자료 입력 전 로컬 DB·파일 volume 백업과 별도 빈 DB 복원을 1회 수행하고 절차를 기록한다(BE-24 운영 backup 완료로 보지 않는다).
 
 **필수 반례·검증:** 재시작 후 조회, 두 탭 autosave, 세션 만료, 네트워크 오류, 날짜/시간대, source 수정 후 task 상태 유지.
 
@@ -183,9 +183,9 @@ worker를 죽이고 모델을 끊은 상태에서 수동 저장을 확인한다.
 
 ### QA-06 · 구조·근거·문서 정제 gate
 
-**구간:** P6 · **상태:** PLANNED · **선행:** BE-15, BE-16, BE-17, FE-14, FE-15, FE-16
+**구간:** P6 · **상태:** PLANNED · **선행:** BE-15, BE-16, BE-17, FE-14, FE-15, FE-16, CORE-16
 
-**구현 범위:** 구조 변경/역변경과 출처 기반 문서 작성·생성 결과 채택을 분리 검증한다. 두 부분의 결과를 별도 report로 남긴다.
+**구현 범위:** 구조 변경/역변경과 출처 기반 문서 작성·생성 결과 채택을 분리 검증한다. 두 부분의 결과를 별도 report로 남긴다. 이전 CORE-16 범위였던 구조 변경·글 정제의 실제 효용(허용된 실사용 자료에서 선택 시간·수정량·피로도)도 이 gate에서 별도 report로 측정한다.
 
 **입출력·데이터·코드 계약:** gate G5/G6: structure mutation/inverse proof; evidence/claim editing audit; hallucinated source rejection; user review trace.
 

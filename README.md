@@ -2,11 +2,9 @@
 
 **생각·경험·외부 자료를 원본과 출처로 보존하고, 일정·할일·위키를 관리하며, 축적한 자료를 문서로 정제해 승인한 공개본을 API로 제공하는 개인 내부 관리 제품.** 외부 블로그 독자 화면은 별도다.
 
-## 현재 상태 · 2026-09-26 KST
+## 현재 상태
 
-**main 단일 브랜치 · BASE-01–03, CORE-01–15, BE-01–20, FE-01–02 VERIFIED · BE-21 진행 중 · CORE-16 BLOCKED.** Core의 원본·snapshot·관찰 판단과 Lab 계약, Nest/Fastify 관리·Delivery API, 업무 DB, Paper/Dark 공통 UI 및 합성 편집기·폼 spike를 검증했다. 개인 데이터 이식은 일부 도메인만 지원한다. 실제 사용자 품질, 전체 업무 웹, 운영 DB·배포는 아직 미검증이다.
-
-현재는 Core/Lab의 합성 검증 경로, 인증과 업무 DB를 사용하는 관리 API·worker, 승인된 공개본의 Delivery API, Paper/Dark 공통 UI·편집기/폼 표본, 관리/Delivery 계약과 75개 작업 카드가 있다. 웹은 공통 UI 갤러리 단계이며 실제 업무 화면 전체는 아직 없다. Lab의 합성 결과를 실제 판단 품질로 설명하지 않는다.
+Core/Lab 합성 검증, 인증·업무 DB를 쓰는 관리 API·worker, Delivery API, Paper/Dark 공통 UI·편집기 spike가 있다. **업무 웹 화면은 아직 없다.** 계획 1.2([ADR 0013](docs/adr/0013-real-use-first-reorder.md))의 다음 목표는 직접 매일 쓸 수 있는 얇은 앱이며, 판단 효용은 그 뒤 실사용 자료로 평가한다. 카드별 상태와 미검증 범위는 [프로젝트 상태](docs/status/project-state.md)에만 둔다. Lab의 합성 결과를 실제 판단 품질로 설명하지 않는다.
 
 ## 구현의 시작점
 
@@ -32,7 +30,7 @@
 | [CORE-12 증거](docs/evidence/core-12.md) · [CORE-13 증거](docs/evidence/core-13.md) | 승인 snapshot의 구조 진단과 변경안별 영향 미리보기 |
 | [CORE-14 증거](docs/evidence/core-14.md) | 목적별 checklist·관점·출처 기반 개요와 readiness 계약 |
 | [CORE-15 증거](docs/evidence/core-15.md) | 모델 초안의 출처·claim map 검증 계약 |
-| [CORE-16 차단 근거](docs/evidence/core-16.md) | 실제 효용 평가의 미충족 선행과 재개 조건 |
+| [CORE-16 착수 조건](docs/evidence/core-16.md) | 실사용 자료의 제안 효용 평가 착수 조건 |
 | [BE-01 증거](docs/evidence/be-01.md) · [API/화면 재점검](docs/review/api-wireframe-server-entry-2026-09-23.md) | 서버 최소 실행 경계와 남은 계약 |
 | [BE-02 증거](docs/evidence/be-02.md) · [auth spike](docs/evidence/auth-spike-report.md) | 인증 adapter의 실제 PostgreSQL·Linux CI 검증 |
 | [BE-03 증거](docs/evidence/be-03.md) · [DB migration 안내](db/README.md) | 업무 schema·RLS·role의 로컬 및 Linux PostgreSQL 검증 |
@@ -44,9 +42,7 @@
 | [BE-10 증거](docs/evidence/be-10.md) | 일정의 시간대·종일·DST·취소의 실제 PostgreSQL·HTTP 검증 |
 | [BE-06 증거](docs/evidence/be-06.md) | pg-boss outbox relay·worker·권한 격리의 PostgreSQL·Linux CI 검증 |
 
-CORE-01–15, BE-01–20, FE-01–02가 Linux CI에서 VERIFIED다. **CORE-16은 FE-14·FE-16과 허용된 실제 기록·별도 holdout이 준비될 때 재개한다.** 다음 서버 작업은 BE-21의 남은 개인 데이터 관계·문서·첨부 이식이다.
 
-BE-11 공통 문서 draft/revision 엔진은 [구현 증거](docs/evidence/be-11.md)의 격리 PostgreSQL·Linux CI를 통과했다.
 
 ## 현재 실행 가능한 검사
 

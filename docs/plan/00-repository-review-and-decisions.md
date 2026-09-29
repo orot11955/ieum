@@ -129,6 +129,6 @@ packages/
   ui/                              # Paper/Dark wrappers
 ```
 
-작은 설정 조회까지 네 폴더를 의무 생성하지 않는다. 중요한 경계는 `controller → application → domain/core`, `infrastructure → port`, `web → HTTP contract`이다. API/worker는 backend package를 공유하고 서로의 앱 entrypoint를 import하지 않는다. web은 backend/ORM/core 실행 코드를 가져오지 않는다. 읽기 집계 SQL은 scope가 있는 read adapter에서 허용하지만 다른 모듈 소유 데이터를 임의로 변경하지 않는다.
+작은 설정 조회까지 네 폴더를 의무 생성하지 않는다. 중요한 경계는 `controller → application → domain/core`, `infrastructure → port`, `web → HTTP contract`이다. [ADR 0013](../adr/0013-real-use-first-reorder.md)에서 실제 코드에 맞춰 `controller → backend 기능 모듈 → domain/core`와 교체·격리가 필요한 경계의 port로 완화했다. API/worker는 backend package를 공유하고 서로의 앱 entrypoint를 import하지 않는다. web은 backend/ORM/core 실행 코드를 가져오지 않는다. 읽기 집계 SQL은 scope가 있는 read adapter에서 허용하지만 다른 모듈 소유 데이터를 임의로 변경하지 않는다.
 
 **예: 기록 저장**은 HTTP 입력 확인→SaveCapture use case→repository transaction→revision/audit/receipt/outbox→저장 완료로 끝난다. worker의 판단 실패는 저장 응답을 취소하지 않는다. **예: 제안 승인**은 AcceptProposal use case→현재 권한/revision 검사→pure operation 검증→소속 변경+이력+무효화 transaction으로 끝난다.

@@ -343,9 +343,9 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-21 · 개인 Import/Export·dry-run·중복 처리
 
-**구간:** P8 · **상태:** IN_PROGRESS · **선행:** BE-07, BE-11, BE-18, BE-06
+**구간:** P8 · **상태:** IN_PROGRESS · **선행:** BE-07, BE-11, BE-18, BE-06, QA-04
 
-**구현 범위:** 버전 있는 JSON/Markdown export와 manifest/asset hash를 구현한다. import는 validate→dry-run→사용자 확인→적용 순서로 진행하며 충돌/중복/참조 누락을 보고한다. 명시적 같은 사용자의 로컬 데이터만 취급한다.
+**구현 범위:** 버전 있는 JSON/Markdown export와 manifest/asset hash를 구현한다. import는 validate→dry-run→사용자 확인→적용 순서로 진행하며 충돌/중복/참조 누락을 보고한다. 명시적 같은 사용자의 로컬 데이터만 취급한다. 계획 1.2에 따라 현재 구현 범위에서 일시 중단하고 QA-04 이후 재개한다. 재개 시 data-transfer 서비스 분할과 출시 전 archive 버전 호환 범위를 먼저 결정한다.
 
 **입출력·데이터·코드 계약:** 모듈: data-transfer. import run/row 상태와 제한된 staging; export 파일 만료·권한 재검사. 개인 Export는 서버 auth DB 전체 Backup과 다르다.
 
@@ -359,7 +359,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-22 · 휴지통·복원·삭제 영향·영구 삭제
 
-**구간:** P8 · **상태:** PLANNED · **선행:** BE-07, BE-08, BE-11, BE-18, BE-19
+**구간:** P8 · **상태:** PLANNED · **선행:** BE-07, BE-08, BE-11, BE-18, BE-19, QA-04
 
 **구현 범위:** 각 기능의 soft delete를 통합 조회하고 복원/참조 영향/재인증 후 purge를 구현한다. 원문 제거 시 profile/vector/cache/export 잔존과 문서 unresolved source를 정리한다. 공개본 철회 여부는 별도 명시 정책으로 처리한다.
 
@@ -375,7 +375,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-23 · 운영·계정 관리·작업·설정·알림
 
-**구간:** P8 · **상태:** PLANNED · **선행:** BE-04, BE-06, BE-20
+**구간:** P8 · **상태:** PLANNED · **선행:** BE-04, BE-06, BE-20, QA-04
 
 **구현 범위:** Operator의 초대/정지/운영 상태, owner의 job retry/cancel·선호 설정·노출 빈도를 구현한다. 로그는 request/run/command ID와 상태·원인 코드 중심이며 본문과 credential은 마스킹한다.
 
@@ -423,7 +423,7 @@ Infrastructure: Drizzle·storage·auth·model·queue 구현
 
 ### BE-26 · 통합 검색·필터·안전한 read model
 
-**구간:** P4 · **상태:** PLANNED · **선행:** BE-07, BE-08, BE-09, BE-10, BE-11, CORE-04
+**구간:** P4 · **상태:** PLANNED · **선행:** BE-07, BE-08, BE-09, BE-10, BE-11, CORE-04, QA-04
 
 **구현 범위:** 기록/맥락/위키/문서/할일·일정의 권한 내 검색과 필터·정렬·cursor pagination을 구현한다. 일반 탐색 검색과 core 추천을 별도 use case로 둔다. PG lexical adapter는 lab TF-IDF와 동일 알고리즘이라고 주장하지 않는다.
 

@@ -1,9 +1,11 @@
-# IEUM 프로젝트 상태 · BE-01–20·FE-02 VERIFIED, BE-21 진행 중
+# IEUM 프로젝트 상태 · 계획 1.2 실사용 우선 · 2026-09-29
 
 - 검증 기준: BE-15 Linux GitHub Actions run `35921525076`, FE-01 run `36090745845`, FE-02 run `36092642869`, BE-11 run `36094399398`, BE-16 run `36096572669`, BE-17 run `36099486660`, BE-18·19·20은 각 [증거](../evidence/be-18.md)·[기록](../evidence/be-19.md)·[검증](../evidence/be-20.md)의 Linux CI 성공(2026-09-25 KST)
-- 실행 정본: [계획 1.1](../plan/README.md), [backlog](../plan/backlog.json)
+- 실행 정본: [계획 1.2](../plan/README.md), [backlog](../plan/backlog.json), [ADR 0013 실사용 우선 재정렬](../adr/0013-real-use-first-reorder.md). 카드 상태의 사람용 요약은 이 문서 하나에만 둔다.
 - 완료 범위: **BASE-01–03, CORE-01–15, BE-01–20, FE-01–02 VERIFIED**. BE-18 첨부, BE-19 봉인·검토·발행, BE-20 Delivery 전용 API까지 포함한다. 이전 BE-01–17의 상세 근거는 영역별 증거 문서에 있다.
-- 진행 중: BE-21 개인 데이터 이식. **CORE-16은 FE-14·FE-16과 허용된 실제 기록/holdout 부재로 BLOCKED**다.
+- 일시 중단: BE-21 개인 데이터 이식(IN_PROGRESS, 일부 도메인 구현). 계획 1.2에 따라 QA-04 뒤 재개한다.
+- 다음 목표: 직접 매일 쓸 수 있는 얇은 앱. 착수 가능 카드는 **FE-03·QA-01·QA-02**이며 FE-03→FE-04→QA-03→FE-05–10→QA-04 순서를 우선한다. 사용자 ACCEPTED 카드는 아직 없다.
+- CORE-16: 실사용 자료의 관련 맥락 제안 효용 평가로 재정의(P4, 선행 CORE-10·FE-12·QA-04). 더 이상 BLOCKED가 아니라 선행 대기 PLANNED다.
 - 브랜치 정책: main 직접 작업, 새 브랜치/PR/force push 없음
 
 ## 실제 현재 상태
@@ -13,11 +15,11 @@
 | 원본 제품 목적·권한·도메인·화면/ERD 계약 | 보존된 설계; 새 실행 정본 아래 참고 | 해당 BASE/CORE/BE/FE 카드 |
 | Paper/Dark 토큰·recipe·lock·생성/검사 스크립트 | 보존, 준비 검사와 FE-01 브라우저 검사 통과 | FE-02 |
 | 공통 React UI·theme-init·상태 갤러리 | 로컬 Chromium 3/3, 320px Paper/Dark 캡처와 Linux E2E 통과 | FE-02 |
-| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03·CORE-01–15·BE-01–20·FE-01–02 VERIFIED, BE-21 IN_PROGRESS, CORE-16 BLOCKED | BE-21 |
+| 75개 작업 카드와 렌더/정합성 검사 | BASE-01–03·CORE-01–15·BE-01–20·FE-01–02 VERIFIED, BE-21 IN_PROGRESS(중단), 나머지 PLANNED | FE-03·QA-01·QA-02 |
 | pnpm workspace·strict TS·Vitest·lint/format·core/lab/API build와 CI 정의 | Node 24.18.0 로컬 검사와 Linux GitHub Actions 통과 | BE-02·FE-01 제품 기반 |
 | 관리/Delivery Zod·OpenAPI·client 타입, Core 원본·근거 검증/시점 snapshot/lexical·semantic·hybrid 후보 검색·관찰 판단 기준선 | 합성 예제와 Linux CI 통과; 계정·원문 HTTP/DB만 구현 | 후속 BE/FE 카드 |
-| 판단 Core·Lab·실제 판단 품질 | 합성 40 Context/60 query에서 B0 Recall@10 49/50, 합성 B1 37/50, B2/B3 47.5/50. 구조·문서 계약은 검증됐으나 실제 사용자 품질 미평가, 활성 제안 설정 없음 | CORE-16은 FE-14·FE-16/실제 자료 후 재개 |
-| Nest API·인증·DB·worker·업무 기능 | BE-01–20 Linux CI 통과. BE-21은 개인 이식 일부 구현, 전체 export는 미완료. BE-17의 실제 모델 호출은 미검증 | BE-21–26 |
+| 판단 Core·Lab·실제 판단 품질 | 합성 40 Context/60 query에서 B0 Recall@10 49/50, 합성 B1 37/50, B2/B3 47.5/50. 구조·문서 계약은 검증됐으나 실제 사용자 품질 미평가, 활성 제안 설정 없음 | QA-04 뒤 실사용 → FE-12 → CORE-16 |
+| Nest API·인증·DB·worker·업무 기능 | BE-01–20 Linux CI 통과. BE-21은 개인 이식 일부 구현, 전체 export는 미완료. BE-17의 실제 모델 호출은 미검증. QA-04까지 기능 확장 동결 | 화면 연결 중 계약 수정만 |
 | 내부 업무 웹·편집기·브라우저 E2E | FE-01 공통 UI와 FE-02 합성 편집기·폼 Chromium 8/8, Linux CI 통과 | FE-03–21 |
 | Delivery·운영 복원·개인 데이터 migration | Delivery API는 BE-20 VERIFIED. 운영 복원·개인 데이터 전체 이식은 미검증 | BE-21–26 |
 | 실제 운영 DB/배포/사용자 기기 작업 트리 | 미접근·미확인·미변경 | 실제 작업 전에 명시적으로 확인 |
@@ -32,7 +34,7 @@ BASE-01에서 삭제된 제품 경로를 실행하는 npm scripts·의존성/loc
 
 ## 준비 검증과 다음 행동
 
-실제 실행 결과는 [BASE-01 증거](../evidence/base-01.md), [BASE-02 증거](../evidence/base-02.md), [BASE-03 증거](../evidence/base-03.md), [CORE-01 증거](../evidence/core-01.md), [CORE-02 증거](../evidence/core-02.md), [CORE-03 증거](../evidence/core-03.md), [CORE-04 증거](../evidence/core-04.md), [CORE-05 증거](../evidence/core-05.md), [CORE-06 증거](../evidence/core-06.md), [CORE-07 증거](../evidence/core-07.md), [CORE-08 증거](../evidence/core-08.md), [CORE-09 증거](../evidence/core-09.md), [CORE-10 증거](../evidence/core-10.md), [CORE-11 증거](../evidence/core-11.md), [CORE-12 증거](../evidence/core-12.md), [CORE-13 증거](../evidence/core-13.md), [CORE-14 증거](../evidence/core-14.md), [CORE-15 증거](../evidence/core-15.md), [CORE-16 차단 근거](../evidence/core-16.md)를 따른다. plan/design 검사 통과를 제품 typecheck/build/DB/E2E 통과로 해석하지 않고, core/lab 빌드를 완성된 판단 기능 검증으로 확대하지 않는다. CORE-07/09/10은 합성 자료의 회귀 평가이며 실제 사용자 품질·제안 precision은 검증하지 않았다. workflow는 원격 Linux에서 통과했지만 브랜치 보호 설정은 확인하지 못했으므로 main 반영 차단이 설정됐다고 주장하지 않는다.
+실제 실행 결과는 [BASE-01 증거](../evidence/base-01.md), [BASE-02 증거](../evidence/base-02.md), [BASE-03 증거](../evidence/base-03.md), [CORE-01 증거](../evidence/core-01.md), [CORE-02 증거](../evidence/core-02.md), [CORE-03 증거](../evidence/core-03.md), [CORE-04 증거](../evidence/core-04.md), [CORE-05 증거](../evidence/core-05.md), [CORE-06 증거](../evidence/core-06.md), [CORE-07 증거](../evidence/core-07.md), [CORE-08 증거](../evidence/core-08.md), [CORE-09 증거](../evidence/core-09.md), [CORE-10 증거](../evidence/core-10.md), [CORE-11 증거](../evidence/core-11.md), [CORE-12 증거](../evidence/core-12.md), [CORE-13 증거](../evidence/core-13.md), [CORE-14 증거](../evidence/core-14.md), [CORE-15 증거](../evidence/core-15.md), [CORE-16 착수 조건](../evidence/core-16.md)를 따른다. plan/design 검사 통과를 제품 typecheck/build/DB/E2E 통과로 해석하지 않고, core/lab 빌드를 완성된 판단 기능 검증으로 확대하지 않는다. CORE-07/09/10은 합성 자료의 회귀 평가이며 실제 사용자 품질·제안 precision은 검증하지 않았다. workflow는 원격 Linux에서 통과했지만 브랜치 보호 설정은 확인하지 못했으므로 main 반영 차단이 설정됐다고 주장하지 않는다.
 
 BE-02의 PostgreSQL·CI 시험은 [BE-02 증거](../evidence/be-02.md)와 [auth spike 보고서](../evidence/auth-spike-report.md)에 있다. BE-03의 로컬/Linux PostgreSQL·role/RLS 반례는 [BE-03 증거](../evidence/be-03.md)에 있다. BE-04의 계정·초대·MFA·세션·복구와 로컬 PostgreSQL 반례는 [BE-04 증거](../evidence/be-04.md)에 있다.
 

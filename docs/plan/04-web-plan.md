@@ -265,7 +265,7 @@ Paper와 Dark를 같은 token/recipe 체계에서 관리한다. 외부 editor/pi
 
 ### FE-14 · 구조 before/after·bridge·충돌·Undo
 
-**구간:** P5 · **상태:** PLANNED · **선행:** FE-06, FE-12, BE-15
+**구간:** P5 · **상태:** PLANNED · **선행:** FE-06, FE-12, BE-15, CORE-16
 
 **화면:** W10, W15
 

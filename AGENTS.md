@@ -3,8 +3,9 @@
 ## 현재 작업 정책
 
 - **main에서 직접 작업한다. 새 브랜치·PR을 만들지 않는다.** 원격 main을 force 이동하거나 hard reset, 사용자 미커밋 변경 덮어쓰기, 과거 제품 패치 전체 재적용을 하지 않는다.
-- BASE-01–03, CORE-01–15, BE-01–20, FE-01–02는 로컬 검증과 Linux CI까지 VERIFIED다. BE-21은 IN_PROGRESS다. 업무 Web 화면(FE-03 이후)과 QA gate(QA-01–09)는 아직 없다. CORE-07/09/10의 공개 품질 수치는 합성 자료에 한정되며 실제 사용자 품질이나 활성 추천 정책을 입증하지 않는다. CORE-16은 FE-14·FE-16과 허용된 실제 자료·holdout이 없어 BLOCKED다. 문서/정리 요청만으로 제품 기능이나 DB/배포를 변경하지 않는다.
-- 다음 카드 전 git status·원격 main·현재 prep 검사와 선행 카드 증거를 확인한다. 2026-09-29 기준 선행이 충족된 카드는 BE-21(진행 중)·BE-22·BE-23·BE-26·FE-03·QA-01·QA-02이며, 최신 목록은 backlog.json의 선행 그래프로 다시 계산한다. 백엔드는 P7까지 검증됐지만 P2 gate(QA-03)와 P3 gate(QA-04)는 닫히지 않았다. CORE-16 재개 조건은 `docs/evidence/core-16.md`를 따른다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
+- 카드 상태의 정본은 docs/plan/backlog.json, 사람이 읽는 요약은 docs/status/project-state.md 하나다. 이 파일과 README·계획 문서에 카드 상태 목록을 반복하지 않는다. 합성 자료의 Core 품질 수치는 실제 사용자 품질이나 활성 추천 정책을 입증하지 않는다. 문서/정리 요청만으로 제품 기능이나 DB/배포를 변경하지 않는다.
+- **계획 1.2(ADR 0013) 실사용 우선:** 다음 목표는 직접 매일 쓸 수 있는 얇은 앱(FE-03→FE-04→QA-03→FE-05–10→QA-04)이다. QA-04 전에는 BE-21 재개나 BE-22·23·26 같은 백엔드 기능 확장을 하지 않고, 화면 연결에서 드러난 계약 결함만 고친다. 판단 효용은 CORE-16에서 실사용 자료로 먼저 평가한 뒤 구조 보조·모델 정제 확장을 결정한다.
+- 다음 카드 전 git status·원격 main·현재 prep 검사와 선행 카드 증거를 확인한다. 착수 가능한 카드는 `node scripts/plan/check.mjs`의 readyTasks로 확인한다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
 
 ## 반드시 읽을 정본
 
@@ -12,7 +13,7 @@ README → docs/status/project-state.md → docs/plan/README.md → docs/plan/01
 
 75개 작업 카드의 정본은 **docs/plan/backlog.json**이다. 범위·선행·완료 기준·상태를 여기서 수정하고 `node scripts/plan/render.mjs`를 실행한다. 생성 카드/목록을 독립 수정하지 않는다.
 
-우선순위: 사용자 최신 지시 → 이 파일 → ADR 0012 → 새 실행 계획 → 보존된 제품/도메인/디자인 계약. 역사적 ADR의 변경 경위는 보존하되 옛 M/S/I 실행 순서, 다크 후속, 삭제된 브랜치로 시작하라는 지시를 적용하지 않는다. 새 계획도 원본·권한·출처·공개 안전 불변식을 약화하지 않는다.
+우선순위: 사용자 최신 지시 → 이 파일 → ADR 0013 → ADR 0012 → 새 실행 계획 → 보존된 제품/도메인/디자인 계약. 역사적 ADR의 변경 경위는 보존하되 옛 M/S/I 실행 순서, 다크 후속, 삭제된 브랜치로 시작하라는 지시를 적용하지 않는다. 새 계획도 원본·권한·출처·공개 안전 불변식을 약화하지 않는다.
 
 ## 범위와 의존 방향
 
@@ -20,7 +21,7 @@ README → docs/status/project-state.md → docs/plan/README.md → docs/plan/01
 
 Core: packages/core에 DB·네트워크·Nest·React·모델 SDK·실시간 clock I/O를 넣지 않는다. snapshot/config/time/seed를 주입한다. 계산과 후보 검색용 데이터 준비를 구분한다.
 
-Backend: controller → application → domain/core, infrastructure → ports. API/worker는 업무 package를 재사용한다. ORM row를 HTTP/Core 타입으로 노출하지 않는다. Fastify 수동 라우터 거대 파일이나 generic Repository/Service 프레임워크를 만들지 않는다.
+Backend: controller → backend 기능 모듈 → domain/core. controller는 HTTP 변환·인증 문맥만 다루고 SQL·transaction을 갖지 않는다. port/infrastructure 분리는 provider·파일 저장소·clock처럼 교체·격리가 필요한 경계에 두며 모든 모듈에 폴더를 강제하지 않는다(ADR 0013). 1,000줄을 넘는 소스 파일은 수정할 때 기능 단위로 나눈다. API/worker는 업무 package를 재사용한다. ORM row를 HTTP/Core 타입으로 노출하지 않는다. Fastify 수동 라우터 거대 파일이나 generic Repository/Service 프레임워크를 만들지 않는다.
 
 Web: app은 조립, pages는 화면 조합, features는 사용자 동작·미저장 편집, entities는 query key/서버 상태, shared는 기술 공통이다. query cache·폼 draft·URL 필터·local modal을 구분한다. 모든 상태를 전역 store 또는 page hook 하나에 넣지 않는다. 프론트 권한 표시는 보조이고 최종 검사는 서버다.
 

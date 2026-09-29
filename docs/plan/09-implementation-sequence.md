@@ -1,6 +1,6 @@
 # 09 · 단계별 구현 순서와 충돌 정리
 
-상태: **구현 계획**. 이 문서는 새 작업 카드나 구현 허가가 아니다. 75개 카드의 범위·선행·상태·완료 기준은 [backlog.json](backlog.json)이 정본이다. 아래 순서는 그 선행 그래프를 사용자 기능 단위로 풀어 쓴 실행안이다. 현재 상태는 [backlog](backlog.json)와 [상태 문서](../status/project-state.md)를 따른다. 2026-09-29 기준 BASE-01–03·CORE-01–15·BE-01–20·FE-01–02는 VERIFIED, BE-21은 IN_PROGRESS, CORE-16은 BLOCKED다. 업무 웹 화면(FE-03 이후)과 QA gate는 미구현이므로 아래 묶음 5 이후의 Web·gate 행은 아직 닫히지 않았다.
+상태: **구현 계획**. 이 문서는 새 작업 카드나 구현 허가가 아니다. 75개 카드의 범위·선행·상태·완료 기준은 [backlog.json](backlog.json)이 정본이다. 아래 순서는 그 선행 그래프를 사용자 기능 단위로 풀어 쓴 실행안이다. 카드 상태는 [상태 문서](../status/project-state.md)를 따른다. **계획 1.2([ADR 0013](../adr/0013-real-use-first-reorder.md))부터는 §2의 묶음 번호보다 [로드맵의 실사용 우선 순서](01-master-roadmap.md)가 앞선다.** 묶음 5–8의 웹·gate를 먼저 닫고, BE-26(묶음 10)과 BE-21·22·23(묶음 16·17)은 QA-04 뒤, CORE-16은 묶음 9의 FE-12 뒤, FE-14는 CORE-16 뒤로 옮겼다.
 
 ## 1. 공통 실행 규칙
 
@@ -25,16 +25,16 @@
 | 6 · 원문과 맥락 | BE-07 → FE-05 → BE-08 → FE-06 | 원문 revision·unit 분할, 기록함, 다중 membership·관계, 맥락 화면 | 이전 revision/span 불변, 원문 수정 후 분할 재검토, primary 최대 하나, 경쟁하는 연결과 낡은 화면 응답. CORE-01 타입은 저장 모델과 명시적으로 매핑한다. |
 | 7 · 관리 항목 | BE-09 → FE-07; BE-10 → FE-08 | 할일/결과와 일정의 독립 lifecycle, 기한·시간대 UI | 완료한 Task가 원문 수정으로 재개되지 않음, 결과 origin 보존, 종일/시간대/DST·변경/취소와 오래된 revision 충돌. |
 | 8 · 위키와 홈 | BE-11 → FE-09 → FE-10 → QA-04 | 공통 draft/revision 엔진, autosave/IME/충돌, 기록→행동→지식 홈 | 두 탭·역순 ACK·저장 실패·세션 만료. Core/provider를 끄고 로그인→기록→다중 맥락→할일/결과→일정/위키를 재시작 후까지 E2E로 확인해 G3를 닫는다. |
-| 9 · 판단 연결 | CORE-09 → CORE-10; BE-06 → BE-12 → BE-13 → FE-12 | exact semantic/hybrid 비교, worker/outbox, scope 고정 snapshot/profile, 제안·노출·승인 UI | 동일 eligible set 비교, stale result, worker kill/중복, actor 철회, 원자적 승인. 실제 품질과 정책이 충분하지 않으면 observe를 유지한다. |
+| 9 · 판단 연결 | CORE-09 → CORE-10; BE-06 → BE-12 → BE-13 → FE-12 → CORE-16(QA-04 뒤 실사용 자료) | exact semantic/hybrid 비교, worker/outbox, scope 고정 snapshot/profile, 제안·노출·승인 UI | 동일 eligible set 비교, stale result, worker kill/중복, actor 철회, 원자적 승인. 실제 품질과 정책이 충분하지 않으면 observe를 유지한다. |
 | 10 · 추출과 검색 | CORE-11 → BE-14 → FE-13; BE-26 → FE-11; 마지막 QA-05 | 자유 기록의 할일/일정 후보와 승인 명령, 별도의 통합 검색 | 모호한 날짜·중복 생성·동일 origin·권한 밖 검색 결과·cursor 범위. QA-05는 판단/추출 G4이며 P4 전체 완료에는 BE-26/FE-11 검증도 필요하다. |
-| 11 · 맥락 구조 | CORE-12 → CORE-13 → BE-15 → FE-14 | 목적/bridge 진단, split/merge/link 대안, before/after·원자 적용·inverse | 원본 파생물의 독립 근거 과대 가산 금지, 다중 맥락 bridge 유지, 새 기록 후 Undo 충돌. G5 증거를 이 시점에 남기고 QA-06에서 다시 검토한다. 품질 미달이면 적용 기능을 비활성화한다. |
+| 11 · 맥락 구조 | CORE-12 → CORE-13 → BE-15 → (CORE-16 확장 결정) → FE-14 | 목적/bridge 진단, split/merge/link 대안, before/after·원자 적용·inverse | 원본 파생물의 독립 근거 과대 가산 금지, 다중 맥락 bridge 유지, 새 기록 후 Undo 충돌. G5 증거를 이 시점에 남기고 QA-06에서 다시 검토한다. 품질 미달이면 적용 기능을 비활성화한다. |
 | 12 · 수동 문서 작업실 | CORE-14 → BE-16 → FE-15 | evidence pack·관점/outline/readiness, 출처와 claim이 있는 수동 문서 | 자기 경험/외부 주장/반론 구별, 원문 수정·삭제의 stale 표시, block 변경 뒤 claim 재검토. 모델 없이 문서를 완성할 수 있어야 한다. |
 | 13 · 선택적 정제 | CORE-15 → BE-17 → FE-16 | 모델 초안 검증, opt-in provider job, diff와 부분 적용 | 지어낸 source·변경된 claim·prompt 지시·provider 실패·생성 중 사용자 편집. 결과는 검토 전 draft를 덮어쓰지 않는다. P7의 수동 발행 개발은 이 기능의 성공에 종속되지 않는다. |
 | 14 · 첨부와 문서 gate | BE-18 → FE-17; 구조/문서 카드 뒤 QA-06 | private asset/검증/public derivative, 파일 UI, G5/G6 보고서 | 다른 사용자 다운로드, MIME/경로/메타데이터, 검증 전 사용, 모델 오류 격리. QA-06은 구조와 문서를 별도 판정하며 full V1의 두 영역을 함께 확인한다. |
 | 15 · 발행 | BE-19 → BE-20 → FE-18 → QA-07 | READY manifest·immutable 공개 projection·Delivery 전용 role/API·검토 UI·독립 소비자 | stale review, r7 발행 중 draft r8 수정, private canary, alias/asset/304 우회, 철회·credential 폐기. G7은 공개 기능의 검증이며 공개 운영 승인은 아니다. |
 | 16 · 개인 데이터 수명 | BE-21 → BE-22 → FE-19 | import/export dry-run, 휴지통/복원/영구 삭제 영향 화면 | 중복/참조 누락·권한 변경 후 다운로드·삭제 후 출처 경고. Export 파일과 운영 backup의 목적/복구 범위를 분리한다. |
 | 17 · 운영·복원 | BE-23 → BE-24 → FE-20 → QA-08 | 계정·job·설정/로그, backup manifest, 배포/복원 절차, 운영 화면 | 새 빈 환경 restore, 누락 asset, 이전 backup의 삭제/철회 재노출, role/credential 복구, 실패 rollback. 운영 DB 변경은 별도 승인된 범위에서만 한다. |
-| 18 · 최종 인수 | CORE-16; BE-25; FE-21; 마지막 QA-09 | 실제 품질·효용 보고, 실측 성능, 27화면 상태·접근성, 종단 릴리스 판정 | G1–G8 증거와 실제 허용 데이터/환경의 한계를 묶어 G9를 판정한다. 수동 사용 가능, 의미 판단 활성, full V1, 공개 운영 가능을 각각 표기한다. |
+| 18 · 최종 인수 | BE-25; FE-21; 마지막 QA-09 | 실제 품질·효용 보고, 실측 성능, 27화면 상태·접근성, 종단 릴리스 판정 | G1–G8 증거와 실제 허용 데이터/환경의 한계를 묶어 G9를 판정한다. 수동 사용 가능, 의미 판단 활성, full V1, 공개 운영 가능을 각각 표기한다. |
 
 ## 3. 모순처럼 보이던 지점의 적용 결정
 
