@@ -2,7 +2,7 @@
 
 - 실행 정본: [계획 2.0](../plan/README.md), [ADR 0014](../adr/0014-remove-core-personal-management-first.md). 상태 요약은 이 문서 하나에만 둔다.
 - 브랜치 정책: main 직접 작업, 새 브랜치/PR/force push 없음
-- 다음 작업: **M4 할일과 일정** (M1·M2는 [원격 CI 검증 완료](../evidence/m2.md), M3는 [로컬 검증 완료](../evidence/m3.md)로 원격 CI 확인 대기, 모두 사용자 인수 전)
+- 다음 작업: **M4 할일과 일정** (M1–M3는 [원격 CI 검증 완료](../evidence/m3.md), 모두 사용자 인수 전)
 - 사용자 ACCEPTED 기능: 없음
 
 ## 영역별 현재 상태

@@ -17,7 +17,7 @@
 |---|---|---|
 | M1 | 앱 기반과 로그인 | 구현·CI 검증 완료 ([증거](../evidence/m1.md)) |
 | M2 | 기록함과 원문 | 구현·CI 검증 완료 ([증거](../evidence/m2.md)) |
-| M3 | 맥락 | 구현·로컬 검증 완료 ([증거](../evidence/m3.md)) |
+| M3 | 맥락 | 구현·CI 검증 완료 ([증거](../evidence/m3.md)) |
 | M4 | 할일과 일정 | 다음 |
 | M5 | 위키 | 대기 |
 | M6 | 홈과 검색 | 대기 |
@@ -51,7 +51,7 @@ React/Vite + React Router에 app provider, 인증 bootstrap, shell, error route�
 - [x] 한 기록을 여러 맥락에 연결하고 PRIMARY를 최대 하나만 지정한다
 - [x] 두 탭에서 같은 소속을 바꿀 때 오래된 version은 충돌로 보인다
 - [x] 보관한 맥락은 기본 목록에서 빠지고 필터로 볼 수 있다
-- [ ] 원격 Linux CI에서 브라우저 E2E 통과 확인
+- [x] 원격 Linux CI에서 브라우저 E2E 통과 확인
 
 ### M4 · 할일과 일정
 
