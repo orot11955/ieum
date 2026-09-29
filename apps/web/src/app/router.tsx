@@ -5,6 +5,18 @@ import { RequireSession } from "../features/auth/session-boundary";
 import { LoginPage, SecondFactorPage } from "../pages/auth-pages";
 import { InvitationPage } from "../pages/invitation-page";
 import {
+  CalendarPage,
+  EventDetailPage,
+  EventEditPage,
+  NewEventPage,
+} from "../pages/calendar-pages";
+import {
+  NewTaskPage,
+  TaskDetailPage,
+  TaskEditPage,
+  TaskListPage,
+} from "../pages/task-pages";
+import {
   ContextDetailPage,
   ContextEditPage,
   ContextListPage,
@@ -93,6 +105,14 @@ export function createAppRouter() {
         { path: "contexts/new", element: <NewContextPage /> },
         { path: "contexts/:id", element: <ContextDetailPage /> },
         { path: "contexts/:id/edit", element: <ContextEditPage /> },
+        { path: "tasks", element: <TaskListPage /> },
+        { path: "tasks/new", element: <NewTaskPage /> },
+        { path: "tasks/:id", element: <TaskDetailPage /> },
+        { path: "tasks/:id/edit", element: <TaskEditPage /> },
+        { path: "calendar", element: <CalendarPage /> },
+        { path: "calendar/new", element: <NewEventPage /> },
+        { path: "calendar/events/:id", element: <EventDetailPage /> },
+        { path: "calendar/events/:id/edit", element: <EventEditPage /> },
         { path: "settings", element: <SettingsPage /> },
         { path: "ops/invitations", element: <InvitationsPage /> },
         { path: "*", element: <NotFoundPage /> },

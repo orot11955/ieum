@@ -23,6 +23,8 @@ export function AppShell({ me }: { me: Me }) {
         </NavLink>
         <NavLink to="/captures">기록함</NavLink>
         <NavLink to="/contexts">맥락</NavLink>
+        <NavLink to="/tasks">할일</NavLink>
+        <NavLink to="/calendar">일정</NavLink>
         <NavLink to="/settings">설정</NavLink>
         {me.operator && <NavLink to="/ops/invitations">초대</NavLink>}
         <hr className="ieum-rule" />

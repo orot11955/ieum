@@ -72,11 +72,36 @@ export async function apiCreateContext(
   workspace: string,
   name: string,
   purpose = `${name}의 목적`,
+  kind: "TOPIC" | "FLOW" | "PROJECT" | "COLLECTION" = "TOPIC",
 ): Promise<{ id: string }> {
   return apiPost(page, `/api/v1/workspaces/${workspace}/contexts`, {
     name,
     purpose,
     scope: `${name}의 범위`,
-    kind: "TOPIC",
+    kind,
+  });
+}
+
+export async function apiCreateTask(
+  page: Page,
+  workspace: string,
+  title: string,
+  extra: Record<string, unknown> = {},
+): Promise<{ id: string; version: number }> {
+  return apiPost(page, `/api/v1/workspaces/${workspace}/tasks`, {
+    title,
+    ...extra,
+  });
+}
+
+export async function apiCreateEvent(
+  page: Page,
+  workspace: string,
+  title: string,
+  schedule: Record<string, unknown>,
+): Promise<{ id: string; version: number }> {
+  return apiPost(page, `/api/v1/workspaces/${workspace}/events`, {
+    title,
+    schedule,
   });
 }
