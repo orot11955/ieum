@@ -15,7 +15,7 @@
 
 | # | 흐름 | 상태 |
 |---|---|---|
-| M1 | 앱 기반과 로그인 | 구현·로컬 검증 완료 ([증거](../evidence/m1.md)) |
+| M1 | 앱 기반과 로그인 | 구현·CI 검증 완료 ([증거](../evidence/m1.md)) |
 | M2 | 기록함과 원문 | 다음 |
 | M3 | 맥락 | 대기 |
 | M4 | 할일과 일정 | 대기 |
@@ -32,7 +32,7 @@ React/Vite + React Router에 app provider, 인증 bootstrap, shell, error route�
 - [x] 직접 URL·뒤로가기·forbidden route·모바일 navigation 확인
 - [x] 브라우저 E2E(Playwright)가 CI에서 격리 DB로 돈다
 - [x] 경계 검사: web이 backend/ORM을 import하면 CI가 실패한다(기존 `contracts:check`)
-- [ ] 원격 Linux CI에서 브라우저 E2E 통과 확인
+- [x] 원격 Linux CI에서 브라우저 E2E 통과 확인
 
 ### M2 · 기록함과 원문
 
