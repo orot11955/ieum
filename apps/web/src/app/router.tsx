@@ -5,6 +5,13 @@ import { RequireSession } from "../features/auth/session-boundary";
 import { LoginPage, SecondFactorPage } from "../pages/auth-pages";
 import { InvitationPage } from "../pages/invitation-page";
 import {
+  CaptureDetailPage,
+  CaptureEditPage,
+  CaptureListPage,
+  CaptureSplitPage,
+  NewCapturePage,
+} from "../pages/capture-pages";
+import {
   HomePage,
   InvitationsPage,
   NotFoundPage,
@@ -71,6 +78,11 @@ export function createAppRouter() {
       errorElement: <RouteErrorPage />,
       children: [
         { index: true, element: <HomePage /> },
+        { path: "captures", element: <CaptureListPage /> },
+        { path: "captures/new", element: <NewCapturePage /> },
+        { path: "captures/:id", element: <CaptureDetailPage /> },
+        { path: "captures/:id/edit", element: <CaptureEditPage /> },
+        { path: "captures/:id/split", element: <CaptureSplitPage /> },
         { path: "settings", element: <SettingsPage /> },
         { path: "ops/invitations", element: <InvitationsPage /> },
         { path: "*", element: <NotFoundPage /> },

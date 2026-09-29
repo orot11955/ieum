@@ -7,6 +7,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     readonly fieldErrors?: FieldErrors,
+    readonly currentVersion?: number,
   ) {
     super(code);
   }
@@ -28,17 +29,20 @@ function parseFieldErrors(value: unknown): FieldErrors | undefined {
 async function readError(response: Response): Promise<ApiError> {
   let code = response.status === 401 ? "UNAUTHORIZED" : "HTTP_ERROR";
   let fieldErrors: FieldErrors | undefined;
+  let currentVersion: number | undefined;
   try {
     const body: unknown = await response.json();
     if (typeof body === "object" && body !== null) {
       if ("code" in body && typeof body.code === "string") code = body.code;
       if ("fieldErrors" in body)
         fieldErrors = parseFieldErrors(body.fieldErrors);
+      if ("currentVersion" in body && typeof body.currentVersion === "number")
+        currentVersion = body.currentVersion;
     }
   } catch {
     // Non-JSON error bodies keep the status-derived code.
   }
-  return new ApiError(response.status, code, fieldErrors);
+  return new ApiError(response.status, code, fieldErrors, currentVersion);
 }
 
 export type RequestOptions = {

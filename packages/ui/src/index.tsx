@@ -20,7 +20,7 @@ type ButtonProps = Omit<
 > & {
   intent?: Intent;
   busy?: boolean;
-  disabledReason?: string;
+  disabledReason?: string | undefined;
 };
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   function Button(

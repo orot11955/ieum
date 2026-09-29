@@ -1,31 +1,11 @@
 import { createHmac } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { login, logout, menu, operator } from "./helpers";
 
-const operator = {
-  email: "operator@example.test",
-  password: "e2e operator fixture password 1234",
-};
 const invitee = {
   email: "invitee@example.test",
   password: "e2e invitee fixture password 1234",
 };
-
-function menu(page: Page, name: string) {
-  return page
-    .getByRole("navigation", { name: "주 메뉴" })
-    .getByRole("link", { name, exact: true });
-}
-
-async function login(page: Page, email: string, password: string) {
-  await page.getByLabel("이메일").fill(email);
-  await page.getByLabel("비밀번호", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "로그인" }).click();
-}
-
-async function logout(page: Page) {
-  await page.getByRole("button", { name: "로그아웃", exact: true }).click();
-  await expect(page).toHaveURL(/\/login$/);
-}
 
 function decodeBase32(value: string): Buffer {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
