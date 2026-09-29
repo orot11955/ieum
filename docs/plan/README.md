@@ -1,6 +1,6 @@
 # IEUM 제로베이스 실행 계획 · 1.1
 
-2026-09-23 KST · **main 채택 / CORE-01–15 VERIFIED / CORE-16 BLOCKED**
+2026-09-23 KST 채택 · 2026-09-29 상태 갱신 · **BASE·CORE-01–15·BE-01–20·FE-01–02 VERIFIED / BE-21 IN_PROGRESS / CORE-16 BLOCKED**
 
 이음의 최종 목표는 원본·출처 보존, 일정·할일·위키 관리, 관련 맥락 연결·분리·병합, 근거 있는 문서 정제, 승인 발행·Delivery API다. 외부 블로그는 별도다. Core 장애가 명시적 저장·완료·편집·발행을 막지 않는다.
 

@@ -3,8 +3,8 @@
 ## 현재 작업 정책
 
 - **main에서 직접 작업한다. 새 브랜치·PR을 만들지 않는다.** 원격 main을 force 이동하거나 hard reset, 사용자 미커밋 변경 덮어쓰기, 과거 제품 패치 전체 재적용을 하지 않는다.
-- BASE-01–03, CORE-01–15, BE-01은 로컬 검증과 Linux CI까지 VERIFIED다. CORE-07/09/10의 공개 품질 수치는 합성 자료에 한정되며 실제 사용자 품질이나 활성 추천 정책을 입증하지 않는다. CORE-16은 FE-14·FE-16과 허용된 실제 자료·holdout이 없어 BLOCKED다. 문서/정리 요청만으로 제품 기능이나 DB/배포를 변경하지 않는다.
-- 다음 카드 전 git status·원격 main·현재 prep 검사와 선행 카드 증거를 확인한다. 현재 준비된 카드는 BE-02·FE-01·QA-02다. CORE-16 재개 조건은 `docs/evidence/core-16.md`를 따른다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
+- BASE-01–03, CORE-01–15, BE-01–20, FE-01–02는 로컬 검증과 Linux CI까지 VERIFIED다. BE-21은 IN_PROGRESS다. 업무 Web 화면(FE-03 이후)과 QA gate(QA-01–09)는 아직 없다. CORE-07/09/10의 공개 품질 수치는 합성 자료에 한정되며 실제 사용자 품질이나 활성 추천 정책을 입증하지 않는다. CORE-16은 FE-14·FE-16과 허용된 실제 자료·holdout이 없어 BLOCKED다. 문서/정리 요청만으로 제품 기능이나 DB/배포를 변경하지 않는다.
+- 다음 카드 전 git status·원격 main·현재 prep 검사와 선행 카드 증거를 확인한다. 2026-09-29 기준 선행이 충족된 카드는 BE-21(진행 중)·BE-22·BE-23·BE-26·FE-03·QA-01·QA-02이며, 최신 목록은 backlog.json의 선행 그래프로 다시 계산한다. 백엔드는 P7까지 검증됐지만 P2 gate(QA-03)와 P3 gate(QA-04)는 닫히지 않았다. CORE-16 재개 조건은 `docs/evidence/core-16.md`를 따른다. main이 변경됐다면 diff를 재검토하고 사용자 변경을 보존한다.
 
 ## 반드시 읽을 정본
 
