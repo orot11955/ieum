@@ -15,7 +15,7 @@ import {
   CaptureFieldsSchema,
   type CaptureFields,
 } from "./capture-fields";
-import { UnsavedGuard, useDirtyGuard } from "./unsaved-guard";
+import { UnsavedGuard, useDirtyGuard } from "../../shared/unsaved-guard";
 
 export function NewCaptureForm({
   userId,

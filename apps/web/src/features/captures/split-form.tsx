@@ -15,7 +15,7 @@ import {
   displayToRawOffset,
   spansFromCuts,
 } from "./split-spans";
-import { UnsavedGuard, useDirtyGuard } from "./unsaved-guard";
+import { UnsavedGuard, useDirtyGuard } from "../../shared/unsaved-guard";
 
 function excerpt(text: string): string {
   const flat = text.replace(/\s+/g, " ").trim();

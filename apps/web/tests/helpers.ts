@@ -35,3 +35,48 @@ export async function signInAt(
   await login(page, account.email, account.password);
   await expect(page.getByTestId("account-email")).toHaveText(account.email);
 }
+
+/** Direct API calls as the signed-in page, for arranging data quickly. */
+export async function workspaceIdOf(page: Page): Promise<string> {
+  const me = await page.request.get("/api/v1/me");
+  return ((await me.json()) as { workspace: { id: string } }).workspace.id;
+}
+
+export async function apiPost<T>(
+  page: Page,
+  path: string,
+  data: unknown,
+): Promise<T> {
+  const response = await page.request.post(path, {
+    headers: { origin, "idempotency-key": `e2e-${crypto.randomUUID()}` },
+    data,
+  });
+  expect(response.ok(), await response.text()).toBe(true);
+  return (await response.json()) as T;
+}
+
+export async function apiCreateCapture(
+  page: Page,
+  workspace: string,
+  title: string,
+  rawBody: string,
+): Promise<{ id: string; unitId: string }> {
+  return apiPost(page, `/api/v1/workspaces/${workspace}/captures`, {
+    title,
+    rawBody,
+  });
+}
+
+export async function apiCreateContext(
+  page: Page,
+  workspace: string,
+  name: string,
+  purpose = `${name}의 목적`,
+): Promise<{ id: string }> {
+  return apiPost(page, `/api/v1/workspaces/${workspace}/contexts`, {
+    name,
+    purpose,
+    scope: `${name}의 범위`,
+    kind: "TOPIC",
+  });
+}

@@ -32,6 +32,7 @@ import { NewCaptureForm } from "../features/captures/capture-form";
 import { ReviseCaptureForm } from "../features/captures/revise-form";
 import { SplitCaptureForm } from "../features/captures/split-form";
 import { ArchiveCaptureButton } from "../features/captures/archive-button";
+import { UnitContextsCell } from "../features/contexts/unit-contexts-cell";
 import { ForbiddenPage, NotFoundPage } from "./app-pages";
 
 export function CaptureListPage() {
@@ -260,10 +261,22 @@ export function CaptureDetailPage() {
                   { key: "state", label: "상태" },
                   { key: "range", label: "범위(UTF-16)" },
                   { key: "text", label: "내용" },
+                  { key: "contexts", label: "맥락" },
                 ]}
                 rows={capture.units.map((unit) => ({
                   id: `${unit.id}-${unit.revision}`,
                   cells: {
+                    contexts:
+                      unit.state === "ACTIVE" && isLatest ? (
+                        <UnitContextsCell
+                          userId={me.user.id}
+                          workspaceId={me.workspace.id}
+                          unitId={unit.id}
+                          editable={editable}
+                        />
+                      ) : (
+                        "—"
+                      ),
                     state: (
                       <Status
                         tone={unit.state === "ACTIVE" ? "success" : "neutral"}

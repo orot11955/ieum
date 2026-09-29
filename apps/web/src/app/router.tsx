@@ -5,6 +5,12 @@ import { RequireSession } from "../features/auth/session-boundary";
 import { LoginPage, SecondFactorPage } from "../pages/auth-pages";
 import { InvitationPage } from "../pages/invitation-page";
 import {
+  ContextDetailPage,
+  ContextEditPage,
+  ContextListPage,
+  NewContextPage,
+} from "../pages/context-pages";
+import {
   CaptureDetailPage,
   CaptureEditPage,
   CaptureListPage,
@@ -83,6 +89,10 @@ export function createAppRouter() {
         { path: "captures/:id", element: <CaptureDetailPage /> },
         { path: "captures/:id/edit", element: <CaptureEditPage /> },
         { path: "captures/:id/split", element: <CaptureSplitPage /> },
+        { path: "contexts", element: <ContextListPage /> },
+        { path: "contexts/new", element: <NewContextPage /> },
+        { path: "contexts/:id", element: <ContextDetailPage /> },
+        { path: "contexts/:id/edit", element: <ContextEditPage /> },
         { path: "settings", element: <SettingsPage /> },
         { path: "ops/invitations", element: <InvitationsPage /> },
         { path: "*", element: <NotFoundPage /> },
