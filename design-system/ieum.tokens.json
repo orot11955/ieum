@@ -2,7 +2,7 @@
   "$description": "IEUM Paper Terminal 1.0.0 — attached reference interpreted for a readable Korean personal management app.",
   "$extensions": {
     "dev.ieum": {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "status": "frozen",
       "format": "DTCG 2025.10 subset",
       "mode": "paper-light",
@@ -66,7 +66,7 @@
     "font": {
       "size": {
         "caption": {"$type":"dimension","$value":{"value":0.75,"unit":"rem"}},
-        "helper": {"$type":"dimension","$value":{"value":0.8125,"unit":"rem"}},
+        "helper": {"$type":"dimension","$value":{"value":0.875,"unit":"rem"}},
         "label": {"$type":"dimension","$value":{"value":0.875,"unit":"rem"}},
         "body": {"$type":"dimension","$value":{"value":1,"unit":"rem"}},
         "section": {"$type":"dimension","$value":{"value":1.25,"unit":"rem"}},

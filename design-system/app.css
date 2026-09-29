@@ -20,7 +20,8 @@
 .ieum-prose code{font-family:var(--ieum-semantic-font-family-mono);background:var(--ieum-semantic-color-subtle);color:var(--ieum-semantic-color-text)}
 .ieum-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--ieum-semantic-layout-aside)),1fr));gap:var(--ieum-semantic-space-4)}
 .ieum-auth-page .ieum-brand{margin-block:var(--ieum-semantic-space-8)}
-.ieum-nav .ieum-rule{margin-block:var(--ieum-semantic-space-3)}
 .ieum-inline-code{font-family:var(--ieum-semantic-font-family-mono);font-size:var(--ieum-semantic-font-size-label);overflow-wrap:anywhere}
 .ieum-page-footer{margin-block-start:var(--ieum-semantic-space-8);padding-block:var(--ieum-semantic-space-4);border-block-start:var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-color-border-decorative)}
 .ieum-sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.ieum-stack-small{max-inline-size:var(--ieum-semantic-layout-reading)}
+.ieum-status{white-space:nowrap}

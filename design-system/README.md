@@ -1,6 +1,6 @@
 > 2026-09-29 기준: 보존된 세부 설계 또는 과거 결정입니다. 현재 범위·순서·상태는 [계획 2.0](../docs/plan/README.md)과 [ADR 0014](../docs/adr/0014-remove-core-personal-management-first.md)를 우선합니다. 판단 Core·제안·추출·구조(ContextProfile, JudgementRun, Proposal, 구조 변경 등)에 관한 서술은 ADR 0014로 제거된 범위이며 역사 기록이다. 원본·출처·권한·디자인 안전 계약과 Paper/Dark는 현재 기준입니다.
 
-# IEUM Paper Terminal 1.0.0
+# IEUM Paper Terminal 1.1.0
 
 내부 관리 웹의 고정 디자인 계약이다. 사용자가 제공한 크림·검정·형광 초록 컨셉을 해석했다. 제품 React UI/인증/DB/API를 구현한 패키지는 아니다.
 

@@ -2,7 +2,7 @@
    Breakpoints are compiled from ieum.tokens.json. Never ship this .in file as CSS. */
 * { box-sizing: border-box; }
 html { color-scheme: light; font-size: 100%; scroll-padding-block: var(--ieum-semantic-space-6); }
-body { margin: 0; background: var(--ieum-semantic-color-canvas); color: var(--ieum-semantic-color-text); font-family: var(--ieum-semantic-font-family-body); font-size: var(--ieum-semantic-font-size-body); line-height: var(--ieum-semantic-font-line-ui); }
+body { margin: 0; background: var(--ieum-semantic-color-canvas); color: var(--ieum-semantic-color-text); font-family: var(--ieum-semantic-font-family-body); font-size: var(--ieum-semantic-font-size-body); line-height: var(--ieum-semantic-font-line-ui); word-break: keep-all; overflow-wrap: break-word; }
 button, input, textarea, select { font: inherit; }
 button, a, input, textarea, select, summary { -webkit-tap-highlight-color: transparent; }
 a { color: var(--ieum-semantic-color-link); text-decoration: underline; text-underline-offset: var(--ieum-semantic-border-strong); }
@@ -19,6 +19,8 @@ body [hidden] { display: none; }
 .ieum-shell { display: grid; grid-template-columns: var(--ieum-semantic-layout-nav) minmax(0,1fr); min-height: 100dvh; }
 .ieum-nav { border-inline-end: var(--ieum-semantic-border-regular) solid var(--ieum-semantic-color-border-strong); padding: var(--ieum-semantic-space-6) var(--ieum-semantic-space-4); display: flex; flex-direction: column; gap: var(--ieum-semantic-space-2); }
 .ieum-brand { font-family: var(--ieum-semantic-font-family-mono); font-weight: var(--ieum-semantic-font-weight-display); font-size: var(--ieum-semantic-font-size-display); line-height: var(--ieum-semantic-font-line-tight); margin-block-end: var(--ieum-semantic-space-2); }
+.ieum-nav .ieum-brand { font-size: var(--ieum-semantic-font-size-heading); }
+.ieum-nav .ieum-rule { margin-block: var(--ieum-semantic-space-3); }
 .ieum-nav a { display: flex; align-items: center; min-height: var(--ieum-semantic-control-standard); padding: var(--ieum-semantic-space-2) var(--ieum-semantic-space-3); border: var(--ieum-semantic-border-regular) solid transparent; text-decoration: none; color: var(--ieum-semantic-color-text); }
 .ieum-nav a[aria-current="page"] { background: var(--ieum-component-nav-selected); color: var(--ieum-component-nav-selected-fg); border-color: var(--ieum-semantic-color-border-strong); font-weight: var(--ieum-semantic-font-weight-strong); }
 .ieum-main { min-width: 0; padding: var(--ieum-semantic-space-8); }
@@ -31,6 +33,7 @@ body [hidden] { display: none; }
 .ieum-help { font-size: var(--ieum-semantic-font-size-helper); color: var(--ieum-semantic-color-text-secondary); overflow-wrap: anywhere; }
 .ieum-card { min-width: 0; border: var(--ieum-semantic-border-regular) solid var(--ieum-component-card-border); border-radius: var(--ieum-component-card-radius); background: var(--ieum-component-card-bg); }
 .ieum-card > header { background: var(--ieum-component-card-header); border-block-end: var(--ieum-semantic-border-hairline) solid var(--ieum-component-card-border); padding: var(--ieum-semantic-space-3) var(--ieum-semantic-space-4); }
+.ieum-card > header :where(h2,h3) { font-size: var(--ieum-semantic-font-size-body); line-height: var(--ieum-semantic-font-line-ui); }
 .ieum-pad { padding: var(--ieum-semantic-space-5); }
 .ieum-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--ieum-semantic-space-2); min-block-size: var(--ieum-component-button-height); padding: var(--ieum-semantic-space-2) var(--ieum-semantic-space-4); background: var(--ieum-component-button-secondary-bg); color: var(--ieum-component-button-secondary-fg); border: var(--ieum-semantic-border-regular) solid var(--ieum-component-button-border); border-radius: var(--ieum-component-button-radius); box-shadow: var(--ieum-component-button-shadow); text-decoration: none; font-weight: var(--ieum-semantic-font-weight-strong); cursor: pointer; white-space: normal; overflow-wrap: anywhere; transition: background-color var(--ieum-semantic-motion-fast) var(--ieum-semantic-motion-ease); }
 .ieum-button[data-variant="primary"] { background: var(--ieum-component-button-primary-bg); color: var(--ieum-component-button-primary-fg); }
@@ -70,6 +73,7 @@ button.ieum-chip { min-block-size: var(--ieum-semantic-control-standard); cursor
 [data-tone="info"] { color: var(--ieum-semantic-status-info-fg); background: var(--ieum-semantic-status-info-bg); border-color: var(--ieum-semantic-status-info-border); }
 .ieum-table-wrap { overflow-x: auto; max-width: 100%; padding: var(--ieum-semantic-space-2); }
 .ieum-table { border-collapse: collapse; inline-size: 100%; font-size: var(--ieum-semantic-font-size-label); font-variant-numeric: tabular-nums; }
+.ieum-table caption { text-align: start; padding: var(--ieum-semantic-space-2) var(--ieum-semantic-space-3); font-weight: var(--ieum-semantic-font-weight-strong); }
 .ieum-table th, .ieum-table td { padding: var(--ieum-semantic-space-3); text-align: start; border-block-end: var(--ieum-semantic-border-hairline) solid var(--ieum-semantic-color-border-decorative); overflow-wrap: anywhere; }
 .ieum-table th { color: var(--ieum-semantic-color-text); background: var(--ieum-semantic-color-subtle); border-block-end-color: var(--ieum-semantic-color-border); }
 .ieum-table tr[aria-selected="true"] { background: var(--ieum-component-row-selected); color: var(--ieum-component-row-selected-fg); }
@@ -88,7 +92,9 @@ button.ieum-chip { min-block-size: var(--ieum-semantic-control-standard); cursor
 @media (max-width: __IEUM_WIDE__) { .ieum-split { grid-template-columns: minmax(0,1fr); } }
 @media (max-width: __IEUM_SMALL__) {
  .ieum-shell, .ieum-grid { grid-template-columns: minmax(0,1fr); }
- .ieum-nav { border-inline-end: 0; border-block-end: var(--ieum-semantic-border-regular) solid var(--ieum-semantic-color-border-strong); }
+ .ieum-nav { border-inline-end: 0; border-block-end: var(--ieum-semantic-border-regular) solid var(--ieum-semantic-color-border-strong); flex-direction: row; flex-wrap: wrap; align-items: center; padding: var(--ieum-semantic-space-3) var(--ieum-semantic-space-4); }
+ .ieum-nav .ieum-brand { margin-block-end: 0; margin-inline-end: var(--ieum-semantic-space-2); }
+ .ieum-nav .ieum-rule { margin-block: 0; }
  .ieum-main { padding: var(--ieum-semantic-space-4); }
  .ieum-dialog { padding: var(--ieum-semantic-space-4); }
 }

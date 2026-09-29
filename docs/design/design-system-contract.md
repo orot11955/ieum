@@ -1,6 +1,6 @@
 > 2026-09-29 기준: 보존된 세부 설계 또는 과거 결정입니다. 현재 범위·순서·상태는 [계획 2.0](../plan/README.md)과 [ADR 0014](../adr/0014-remove-core-personal-management-first.md)를 우선합니다. 판단 Core·제안·추출·구조(ContextProfile, JudgementRun, Proposal, 구조 변경 등)에 관한 서술은 ADR 0014로 제거된 범위이며 역사 기록이다. 원본·출처·권한·디자인 안전 계약과 Paper/Dark는 현재 기준입니다.
 
-# IEUM Paper Terminal · 디자인 계약 1.0.0
+# IEUM Paper Terminal · 디자인 계약 1.1.0
 
 - 상태: **내부 관리 웹의 시각 기준을 고정**. 제품 React 컴포넌트 구현/전체 접근성 인증 완료는 아님.
 - 기준: 2026-09-22 사용자가 첨부한 PRODUCT UI STYLEGUIDE 이미지.
@@ -82,3 +82,17 @@ JSON은 DTCG 2025.10의 color/dimension/duration/number/fontFamily/fontWeight/cu
 guard는 간단한 source scanner이며 동적으로 조립한 class/CSS나 모든 CSS AST를 완전히 검증하지 않는다. 제품 FE 기반에서 shared UI wrapper와 AST 기반 lint/Storybook 또는 동등한 state gallery/시각 회귀를 연결하는 것을 I-UI gate로 둔다. 프로젝트 기능 파일이 아직 없다면 scanned files=0은 정상이고 **제품 전체의 일관성이 검증되었다는 뜻이 아니다**.
 
 CI 작업을 제공하는 것과 main의 required check/branch protection을 설정하는 것은 다르다. 저장소 관리 설정을 변경하지 않았으므로 관리자가 required check를 켜야 merge 차단까지 강제된다. 최종 외부 블로그는 별도 디자인을 가질 수 있으며 Delivery 본문에 이음 내부 클래스/색상/토큰을 강요하지 않는다.
+
+## 1.1.0 조정 (2026-09-29)
+
+원본 이미지는 컨셉 참조이고 수치의 정본이 아니다. 실제 렌더링을 이미지와 비교해 가독성과 화면 비율을 조정했다. 색 토큰과 radius 단계는 접근성 검사를 통과하므로 바꾸지 않았다.
+
+- 도움말 글자를 13px에서 14px로 올렸다(`font.size.helper`). 한글 보조 문장 가독성 때문이다.
+- 카드 헤더 제목은 본문 크기(1rem, 굵게)로 낮춰 페이지 섹션 제목(1.25rem)과 위계를 나눴다.
+- 내비게이션의 브랜드는 heading 크기로 줄였다. display 크기는 로그인 등 표지에만 쓴다.
+- 입력 묶음(`.ieum-stack-small`)은 읽기 폭(44rem)을 넘지 않는다. 넓은 화면에서 입력창이 끝없이 늘어나지 않게 한다.
+- 상태 배지는 줄바꿈하지 않는다. 표 캡션은 왼쪽 정렬한 굵은 제목으로 표시한다.
+- 한글은 단어 단위로 줄바꿈한다(`word-break: keep-all`). 긴 URL·식별자는 `overflow-wrap`으로 넘치지 않게 한다.
+- 좁은 화면의 내비게이션은 세로 목록 대신 가로로 줄바꿈되는 한 덩어리로 표시해 본문이 화면 아래로 밀리지 않게 한다.
+
+이미지와 의도적으로 다른 점(본문 글자색 `#111`, 컨트롤 경계 `#666`, 포커스 `#111`, 시스템 한글 글꼴)은 위 접근성·가독성 규칙을 따른다.
