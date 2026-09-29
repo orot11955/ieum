@@ -67,7 +67,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   },
 );
 
-type FieldMeta = { label: string; error?: string; help?: string };
+type FieldMeta = {
+  label: string;
+  error?: string | undefined;
+  help?: string | undefined;
+};
 function descriptionIds(id: string, error?: string, help?: string) {
   return (
     [help && `${id}-help`, error && `${id}-error`].filter(Boolean).join(" ") ||

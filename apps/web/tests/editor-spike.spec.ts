@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("editor serializes stable block IDs, split, undo/redo and a source reference", async ({
   page,
 }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/dev/gallery");
   const editor = page.locator(".ieum-rich-editor");
   await expect(editor).toBeVisible();
   await expect(
@@ -75,7 +75,7 @@ test("form retains draft and presents server rejection before typed success", as
       });
     },
   );
-  await page.goto("/");
+  await page.goto("/dev/gallery");
   const title = page.getByLabel("문서 제목 표본");
   await page.getByRole("button", { name: "합성 저장 요청" }).click();
   await expect(title).toHaveAttribute("aria-invalid", "true");
@@ -93,7 +93,7 @@ test("merge preserves the surviving ID; clipboard paste and cut keep a valid dra
   context,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.goto("/");
+  await page.goto("/dev/gallery");
   const editor = page.locator(".ieum-rich-editor");
   const preview = page.getByTestId("editor-json-preview");
   await page.getByText("저장 JSON 확인").click();
@@ -169,7 +169,7 @@ test("merge preserves the surviving ID; clipboard paste and cut keep a valid dra
 test("composition holds serialization until the Korean input is committed", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/dev/gallery");
   const editor = page.locator(".ieum-rich-editor");
   await page.getByText("저장 JSON 확인").click();
   const preview = page.getByTestId("editor-json-preview");
@@ -209,7 +209,7 @@ test("malformed pasted source reference stays out of the saved JSON", async ({
   context,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.goto("/");
+  await page.goto("/dev/gallery");
   const editor = page.getByRole("textbox", { name: "문서 본문" });
   await page.getByText("저장 JSON 확인").click();
   const preview = page.getByTestId("editor-json-preview");
