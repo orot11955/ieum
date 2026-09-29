@@ -15,8 +15,8 @@
 
 | # | 흐름 | 상태 |
 |---|---|---|
-| M1 | 앱 기반과 로그인 | 다음 |
-| M2 | 기록함과 원문 | 대기 |
+| M1 | 앱 기반과 로그인 | 구현·로컬 검증 완료 ([증거](../evidence/m1.md)) |
+| M2 | 기록함과 원문 | 다음 |
 | M3 | 맥락 | 대기 |
 | M4 | 할일과 일정 | 대기 |
 | M5 | 위키 | 대기 |
@@ -27,11 +27,12 @@
 
 React/Vite + React Router에 app provider, 인증 bootstrap, shell, error route를 구성한다. 서버 상태는 TanStack Query, 필터는 URL, 편집 중 값은 feature state, modal은 local state로 둔다. 로그인·로그아웃·세션 만료와 MFA challenge 화면(W01, W03)을 만든다. 초대 수락(W02)은 기존 API로 가능한 최소 형태만 둔다.
 
-- [ ] 로그인 → 개인 공간 진입 → 새로고침 → 로그아웃이 실제 API와 PostgreSQL로 동작한다
-- [ ] 세션 만료·다른 사용자 로그인 시 이전 사용자의 본문이 한 프레임도 보이지 않는다
-- [ ] 직접 URL·뒤로가기·forbidden route·모바일 navigation 확인
-- [ ] 브라우저 E2E(Playwright)가 CI에서 격리 DB로 돈다
-- [ ] 경계 검사: web이 backend/ORM을 import하면 CI가 실패한다(기존 `contracts:check`)
+- [x] 로그인 → 개인 공간 진입 → 새로고침 → 로그아웃이 실제 API와 PostgreSQL로 동작한다
+- [x] 세션 만료·다른 사용자 로그인 시 이전 사용자의 본문이 한 프레임도 보이지 않는다
+- [x] 직접 URL·뒤로가기·forbidden route·모바일 navigation 확인
+- [x] 브라우저 E2E(Playwright)가 CI에서 격리 DB로 돈다
+- [x] 경계 검사: web이 backend/ORM을 import하면 CI가 실패한다(기존 `contracts:check`)
+- [ ] 원격 Linux CI에서 브라우저 E2E 통과 확인
 
 ### M2 · 기록함과 원문
 
